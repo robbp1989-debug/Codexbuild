@@ -1,0 +1,6 @@
+{
+  "name": "SHIFT: Reflection Arcade",
+  "description": "Notice the pattern. Test the prediction. Choose the next move. A psychologically grounded reflection console and active-recall practice arcade.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
