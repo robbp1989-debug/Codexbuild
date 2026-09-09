@@ -38,6 +38,8 @@ export interface PracticeRecord {
   difficulty: Difficulty;
   recalledBeforeReveal: boolean;
   completedAt: string;
+  mode?: 'guided-practice' | 'rapid-recall' | 'skill-match';
+  correct?: boolean;
 }
 
 export const frameworks: Framework[] = [
@@ -238,4 +240,3 @@ export function savePracticeRecords(records: PracticeRecord[]) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 }
-

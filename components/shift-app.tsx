@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
   Activity,
   Brain,
@@ -8,16 +8,20 @@ import {
   ClipboardList,
   Gamepad2,
   LockKeyhole,
-  Printer,
   RotateCcw,
   Sparkles,
 } from 'lucide-react';
 
+import { ArcadeView } from '@/components/arcade-view';
+import { ProgressView } from '@/components/progress-view';
+import { ReportView } from '@/components/report-view';
+import { ScienceView } from '@/components/science-view';
 import {
   Difficulty,
   FrameworkId,
   PracticeRecord,
   ViewId,
+  drills,
   frameworks,
   getDrillsForFramework,
   getFramework,
@@ -46,8 +50,97 @@ export function ShiftApp() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // oxlint-disable-next-line react/react-compiler -- localStorage becomes available after hydration
     setRecords(loadPracticeRecords());
     setReady(true);
+  }, []);
+
+  useEffect(() => {
+    type ToolDefinition = {
+      name: string;
+      title: string;
+      description: string;
+      inputSchema: object;
+      annotations: { readOnlyHint: boolean; untrustedContentHint: boolean };
+      execute: (input: unknown) => unknown;
+    };
+    type ModelContext = { registerTool: (tool: ToolDefinition, options: { signal: AbortSignal }) => void | Promise<void> };
+    const context = (document as Document & { modelContext?: ModelContext }).modelContext;
+    if (!context?.registerTool) return;
+    const lifecycle = new AbortController();
+    const register = (tool: ToolDefinition) => {
+      try {
+        void Promise.resolve(context.registerTool(tool, { signal: lifecycle.signal })).catch(() => undefined);
+      } catch {
+        // WebMCP is optional and unsupported browsers keep the visible experience.
+      }
+    };
+
+    register({
+      name: 'save_shift_practice_reflection',
+      title: 'Save SHIFT practice reflection',
+      description: 'Complete and save one CBT, ACT, DBT, or IPT active-recall practice entry to the same on-device history used by the visible app.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          framework: { type: 'string', enum: ['cbt', 'act', 'dbt', 'ipt'] },
+          drillId: { type: 'string' },
+          response: { type: 'string', minLength: 1 },
+          takeaway: { type: 'string' },
+          confidence: { type: 'integer', minimum: 1, maximum: 5 },
+          difficulty: { type: 'string', enum: ['easy', 'stretch', 'hard'] },
+        },
+        required: ['framework', 'drillId', 'response', 'confidence', 'difficulty'],
+        additionalProperties: false,
+      },
+      annotations: { readOnlyHint: false, untrustedContentHint: false },
+      execute(input) {
+        if (!input || typeof input !== 'object') throw new Error('Practice input must be an object.');
+        const data = input as Record<string, unknown>;
+        const targetDrill = drills.find((item) => item.id === data.drillId && item.framework === data.framework);
+        if (!targetDrill || typeof data.response !== 'string' || !data.response.trim()) throw new Error('Choose a valid drill and include a response.');
+        if (!Number.isInteger(data.confidence) || Number(data.confidence) < 1 || Number(data.confidence) > 5) throw new Error('Confidence must be an integer from 1 to 5.');
+        if (!['easy', 'stretch', 'hard'].includes(String(data.difficulty))) throw new Error('Difficulty must be easy, stretch, or hard.');
+        const record: PracticeRecord = {
+          id: crypto.randomUUID(),
+          drillId: targetDrill.id,
+          framework: targetDrill.framework,
+          title: targetDrill.title,
+          scenario: targetDrill.scenario,
+          response: data.response.trim(),
+          takeaway: typeof data.takeaway === 'string' ? data.takeaway.trim() : '',
+          confidence: Number(data.confidence),
+          difficulty: data.difficulty as Difficulty,
+          recalledBeforeReveal: true,
+          completedAt: new Date().toISOString(),
+          mode: 'guided-practice',
+        };
+        setRecords((current) => {
+          const next = [record, ...current];
+          savePracticeRecords(next);
+          return next;
+        });
+        setView('progress');
+        return { saved: true, recordId: record.id, framework: record.framework, title: record.title };
+      },
+    });
+
+    register({
+      name: 'read_shift_practice_summary',
+      title: 'Read SHIFT practice summary',
+      description: 'Read a concise summary of practice saved on this device without changing it.',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      annotations: { readOnlyHint: true, untrustedContentHint: false },
+      execute() {
+        const current = loadPracticeRecords();
+        return {
+          totalPractices: current.length,
+          byFramework: Object.fromEntries(frameworks.map((item) => [item.id, current.filter((record) => record.framework === item.id).length])),
+        };
+      },
+    });
+
+    return () => lifecycle.abort();
   }, []);
 
   const frameworkDrills = useMemo(() => getDrillsForFramework(frameworkId), [frameworkId]);
@@ -86,6 +179,7 @@ export function ShiftApp() {
       difficulty,
       recalledBeforeReveal: revealed,
       completedAt: new Date().toISOString(),
+      mode: 'guided-practice',
     };
     const next = [record, ...records];
     setRecords(next);
@@ -152,7 +246,7 @@ export function ShiftApp() {
                   <button
                     key={item.id}
                     className={frameworkId === item.id ? 'framework-pill selected' : 'framework-pill'}
-                    style={{ '--skill': item.color, '--skill-soft': item.softColor } as React.CSSProperties}
+                    style={{ '--skill': item.color, '--skill-soft': item.softColor } as CSSProperties}
                     onClick={() => chooseFramework(item.id)}
                   >
                     <b>{item.shortName}</b>
@@ -161,7 +255,7 @@ export function ShiftApp() {
                 ))}
               </div>
 
-              <article className="recall-card" style={{ '--skill': framework.color } as React.CSSProperties}>
+              <article className="recall-card" style={{ '--skill': framework.color } as CSSProperties}>
                 <div className="recall-card-header">
                   <div>
                     <span className="skill-label" style={{ color: framework.color }}>{framework.shortName} · {framework.focus}</span>
@@ -258,12 +352,10 @@ export function ShiftApp() {
                   <span>Session pulse</span>
                   <b>{todayCount}/4</b>
                 </div>
-                <div className="session-progress" role="progressbar" aria-label="Daily practice progress" aria-valuenow={Math.min(todayCount * 25, 100)} aria-valuemin={0} aria-valuemax={100}>
-                  <span style={{ width: `${Math.min(todayCount * 25, 100)}%` }} />
-                </div>
+                <progress className="session-progress" aria-label="Daily practice progress" value={Math.min(todayCount * 25, 100)} max={100} />
                 <p>Four thoughtful recalls make a complete practice set. There is no streak to protect.</p>
               </div>
-              <div className="framework-card" style={{ '--skill': framework.color, '--skill-soft': framework.softColor } as React.CSSProperties}>
+              <div className="framework-card" style={{ '--skill': framework.color, '--skill-soft': framework.softColor } as CSSProperties}>
                 <span className="framework-monogram">{framework.shortName}</span>
                 <h3>{framework.name}</h3>
                 <p>{framework.question}</p>
@@ -277,18 +369,14 @@ export function ShiftApp() {
               </div>
             </aside>
           </div>
-        ) : (
-          <section className="placeholder-view">
-            <span className="eyebrow">Next workspace</span>
-            <h1>{navItems.find((item) => item.id === view)?.label}</h1>
-            <p>The practice data is saved. This section is being assembled around the same learning loop.</p>
-            {view === 'report' && <button className="primary-action" onClick={() => window.print()}><Printer /> Print report</button>}
-          </section>
-        )}
+        ) : view === 'arcade' ? <ArcadeView records={records} onRecordsChange={setRecords} />
+          : view === 'progress' ? <ProgressView records={records} />
+            : view === 'report' ? <ReportView records={records} />
+              : <ScienceView />}
       </main>
 
       <nav className="mobile-nav" aria-label="Mobile navigation">
-        {navItems.slice(0, 4).map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           return <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}><Icon /><span>{item.label.replace('Therapist ', '')}</span></button>;
         })}
