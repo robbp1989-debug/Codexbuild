@@ -217,7 +217,7 @@ export const EpistemicMemoryScreen: React.FC = () => {
       {/* Memory Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filtered.map((item) => {
-          const conf = TAG_CONFIG[item.type] || TAG_CONFIG.working_interpretation;
+          const conf = TAG_CONFIG[item.type as EpistemicTag] || TAG_CONFIG.working_interpretation;
           return (
             <div
               key={item.id}

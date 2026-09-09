@@ -40,7 +40,7 @@ export const TherapyPrepScreen: React.FC = () => {
     lines.push('\n[1. RECENT EVENTS & OBSERVED TRIGGERS]');
     selectedShifts.forEach((s, idx) => {
       lines.push(`${idx + 1}. Observed: "${s.observation}"`);
-      lines.push(`   First-Person Reaction: ${s.felt_emotion} (Urge: ${s.first_person_reaction})`);
+      lines.push(`   Confirmed emotions: ${s.confirmed_emotions.join(', ')} (Urges: ${(s.urgesOrReactions || []).join(', ')})`);
     });
 
     lines.push('\n[2. PREDOMINANT PROTECTIVE RULES & HYPOTHESES]');
@@ -159,7 +159,7 @@ export const TherapyPrepScreen: React.FC = () => {
                       {new Date(s.createdAt).toLocaleDateString()}
                     </span>
                     <span className="text-slate-500">•</span>
-                    <span className="text-teal-400 font-mono text-[11px]">{s.felt_emotion}</span>
+                    <span className="text-teal-400 font-mono text-[11px]">{s.confirmed_emotions.join(', ')}</span>
                   </div>
                   <p className="text-slate-400 line-clamp-1">"{s.observation}"</p>
                 </div>

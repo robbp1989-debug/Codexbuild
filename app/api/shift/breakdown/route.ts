@@ -3,7 +3,7 @@ import { analyzeShiftReflection } from '@/server/gemini';
 
 export async function POST(request: Request) {
   try {
-    const { situation, memoryContext } = await request.json();
+    const { situation, memoryContext } = await request.json() as Record<string, unknown>;
     if (typeof situation !== 'string' || !situation.trim()) return Response.json({ error: 'Please provide a description of what is going on.' }, { status: 400 });
     const safety = evaluateSafety(situation);
     if (safety.isCrisis) return Response.json({ safetyInterruption: true, crisisType: safety.crisisType, crisisMessage: safety.crisisMessage });

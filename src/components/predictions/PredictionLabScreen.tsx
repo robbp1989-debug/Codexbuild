@@ -38,7 +38,7 @@ export const PredictionLabScreen: React.FC = () => {
     updatePrediction(id, {
       status: 'tested',
       whatActuallyHappened: outcomeText.trim(),
-      learningNote: learningText.trim() || 'Feared catastrophe did not materialize.',
+      learningNote: learningText.trim(),
     });
     setEditingPredId(null);
     setOutcomeText('');
@@ -50,12 +50,11 @@ export const PredictionLabScreen: React.FC = () => {
     if (!newContext.trim() || !newPredicted.trim()) return;
     playSoftSound('complete');
     addPrediction({
-      id: `pred-${Date.now()}`,
       cueContext: newContext.trim(),
+      intendedAction: newExperiment.trim(),
+      fearedConsequence: newPredicted.trim(),
       predictedOutcome: newPredicted.trim(),
       confidencePercent: newConfidence,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
     });
     setIsCreating(false);
     setNewContext('');

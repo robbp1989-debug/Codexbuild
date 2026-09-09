@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   ProtectiveRule,
   ReflectionRecord,
@@ -33,7 +33,16 @@ interface GamePersonalizationContext {
   sourceShiftId?: string;
 }
 
+type PracticeInput = Omit<PracticeSession, 'id' | 'date'> | { gameId: ArcadeModeType; score: number; durationSeconds: number; theme: string };
+
 interface AppContextType {
+  setShifts: React.Dispatch<React.SetStateAction<ShiftBreakdown[]>>;
+  distressInterrupted: boolean;
+  setDistressInterrupted: (open: boolean) => void;
+  addBoundary: (card: Omit<BoundaryCard, 'id' | 'createdAt'>) => void;
+  addRule: (rule: Pick<ProtectiveRule, 'title' | 'cueContext' | 'predictedConsequence' | 'protectiveResponse' | 'originalWording' | 'currentPresentDayWording' | 'tags'>) => void;
+  archiveRule: (id: string) => void;
+  updatePrediction: (id: string, updates: Partial<PredictionRecord>) => void;
   // Navigation & View
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -83,7 +92,7 @@ interface AppContextType {
   launchGameWithContext: (ctx: GamePersonalizationContext) => void;
   clearGameContext: () => void;
   practiceSessions: PracticeSession[];
-  logPracticeSession: (session: Omit<PracticeSession, 'id' | 'date'>) => void;
+  logPracticeSession: (session: PracticeInput) => void;
 
   // Grounding & Modals
   groundingModalOpen: boolean;
@@ -187,6 +196,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (parsed.practiceSessions) setPracticeSessions(parsed.practiceSessions);
         if (parsed.rules) setRules(parsed.rules);
         if (parsed.reflections) setReflections(parsed.reflections);
+        if (parsed.boundaries) setBoundaries(parsed.boundaries);
       }
     } catch (e) {
       console.warn('Could not read saved data from localStorage', e);
@@ -199,6 +209,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!storageLoaded) return;
     try {
       const dataToSave = {
+        boundaries,
         shifts,
         memoryItems,
         skillNodes,
@@ -211,7 +222,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.warn('Could not persist data to localStorage', e);
     }
-  }, [storageLoaded, shifts, memoryItems, skillNodes, predictions, practiceSessions, rules, reflections]);
+  }, [storageLoaded, boundaries, shifts, memoryItems, skillNodes, predictions, practiceSessions, rules, reflections]);
 
   // Audio synthesizer
   const playSoftSound = (type: 'chime' | 'tap' | 'ground' | 'complete' = 'tap') => {
@@ -424,15 +435,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveGameContext(null);
   };
 
-  const logPracticeSession = (session: Omit<PracticeSession, 'id' | 'date'>) => {
+  const logPracticeSession = useCallback((session: PracticeInput) => {
+    const normalized = 'gameId' in session ? { ...session, mode: session.gameId, itemsAttempted: 1 } : session;
     const newSession: PracticeSession = {
-      ...session,
+      ...normalized,
       id: 'sess-' + Date.now(),
       date: new Date().toISOString(),
     };
     setPracticeSessions((prev) => [newSession, ...prev]);
-    incrementSkillPractice(session.mode);
-  };
+    setSkillNodes((current) => current.map((node) => node.id === normalized.mode || node.recommendedGameId === normalized.mode ? { ...node, practiceCount: node.practiceCount + 1 } : node));
+  }, []);
 
   // Export / Import JSON
   const exportDataJSON = () => {
@@ -598,6 +610,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        setShifts,
+        distressInterrupted: crisisInterruption.isOpen,
+        setDistressInterrupted: (isOpen) => setCrisisInterruption((current) => ({ ...current, isOpen })),
+        addBoundary: (card) => setBoundaries((current) => [{ ...card, id: crypto.randomUUID(), createdAt: new Date().toISOString() }, ...current]),
+        addRule: (rule) => setRules((current) => [{ ...rule, id: crypto.randomUUID(), status: 'active', versionHistory: [], linkedReflectionIds: [], supportingEvidence: [], challengingEvidence: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...current]),
+        archiveRule: (id) => setRules((current) => current.map((rule) => rule.id === id ? { ...rule, status: 'archived' } : rule)),
+        updatePrediction: (id, updates) => setPredictions((current) => current.map((prediction) => prediction.id === id ? { ...prediction, ...updates, learningInsight: updates.learningNote ?? updates.learningInsight ?? prediction.learningInsight } : prediction)),
         activeTab,
         setActiveTab,
         audioEnabled,

@@ -191,7 +191,7 @@ export const ReviewPage: React.FC = () => {
                       {e.tag} ({e.intensity}/10)
                     </span>
                   ))}
-                  {ref.needsOrValues.map((n) => (
+                  {(ref.needsOrValues || []).map((n) => (
                     <span
                       key={n}
                       className="px-2.5 py-0.5 rounded-md bg-teal-950/50 border border-teal-900/60 text-teal-300 text-[11px]"

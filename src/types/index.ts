@@ -31,6 +31,9 @@ export interface EmotionEntry {
 
 // All Reusable Arcade Game Engines
 export type ArcadeModeType =
+  | 'cue_response'
+  | 'prediction_check'
+  | 'kart_lane_runner_3d'
   | 'fact_or_story'
   | 'known_possible_assumed'
   | 'both_can_be_true'
@@ -64,6 +67,7 @@ export interface RuleVersion {
 }
 
 export interface ProtectiveRule {
+  tags?: string[];
   id: string;
   title: string;
   cueContext: string;
@@ -82,6 +86,7 @@ export interface ProtectiveRule {
 }
 
 export interface PredictionRecord {
+  learningNote?: string;
   id: string;
   ruleId?: string;
   reflectionId?: string;

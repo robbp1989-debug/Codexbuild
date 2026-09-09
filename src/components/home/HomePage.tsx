@@ -70,7 +70,7 @@ export const HomePage: React.FC = () => {
         throw new Error('Server returned an error status');
       }
 
-      const data = await response.json();
+      const data = await response.json() as { safetyInterruption?: boolean; crisisType?: string; crisisMessage?: string; breakdown?: ReturnType<typeof generateFallbackBreakdown> };
 
       if (data.safetyInterruption) {
         setCrisisInterruption({
