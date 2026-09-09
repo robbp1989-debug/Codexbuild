@@ -1,5 +1,5 @@
-import { ShiftApp } from '@/components/shift-app';
+import App from '@/src/App';
 
 export default function Home() {
-  return <ShiftApp />;
+  return <App />;
 }

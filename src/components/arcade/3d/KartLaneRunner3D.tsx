@@ -1,0 +1,1310 @@
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import * as THREE from 'three';
+import { useApp } from '../../../context/AppContext';
+import { ShiftBreakdown } from '../../../types';
+import {
+  Trophy,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Gauge,
+  Type,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+} from 'lucide-react';
+
+export interface LaneGateQuestion {
+  id: string;
+  categoryTitle: string; // e.g. "TRUTH OR COGNITIVE TRAP?" or "FACT VS STORY"
+  statement: string;
+  leftLaneLabel: string; // e.g. "Cognitive Trap" or "Story"
+  leftGateBanner: string; // e.g. "TRAP"
+  leftSubtext?: string;
+  rightLaneLabel: string; // e.g. "Objective Truth" or "Fact"
+  rightGateBanner: string; // e.g. "TRUTH"
+  rightSubtext?: string;
+  correctLane: 'left' | 'right';
+  explanation: string;
+  techniqueBadge?: string;
+}
+
+interface KartLaneRunner3DProps {
+  onComplete?: () => void;
+  questionsOverride?: LaneGateQuestion[];
+  scenario?: ShiftBreakdown | null;
+}
+
+type SpeedPace = 'relaxed' | 'normal' | 'brisk';
+type TextSize = 'normal' | 'large' | 'huge';
+
+export const KartLaneRunner3D: React.FC<KartLaneRunner3DProps> = ({
+  onComplete,
+  questionsOverride,
+  scenario,
+}) => {
+  const { activeShift, playSoftSound, logPracticeSession, shifts } = useApp();
+  const currentShift = scenario || activeShift || shifts[0] || null;
+
+  // DOM Refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Settings
+  const [speedPace, setSpeedPace] = useState<SpeedPace>('relaxed');
+  const [textSize, setTextSize] = useState<TextSize>('normal');
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Gameplay State
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(90);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [selectedLane, setSelectedLane] = useState<'left' | 'right'>('left');
+
+  // Real-time Reaction Countdown & Distance
+  const [distanceRemaining, setDistanceRemaining] = useState<number>(110);
+  const [secondsToGate, setSecondsToGate] = useState<number>(13.5);
+
+  const [lastFeedback, setLastFeedback] = useState<{
+    isCorrect: boolean;
+    explanation: string;
+    show: boolean;
+  } | null>(null);
+
+  // Dynamic Questions derived from Active Shift
+  const questions: LaneGateQuestion[] = useMemo(() => {
+    if (questionsOverride && questionsOverride.length > 0) {
+      return questionsOverride;
+    }
+
+    const list: LaneGateQuestion[] = [];
+    const obs = currentShift?.userEditedObservation || currentShift?.observation;
+    const interp = currentShift?.userEditedInterpretation || currentShift?.interpretation;
+    const rule = currentShift?.protective_rule_hypothesis;
+    const perspective = currentShift?.updated_perspective;
+    const choice = currentShift?.choice;
+
+    // Item 1: Camera Fact (Observation)
+    if (obs) {
+      list.push({
+        id: 'q1-obs',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: `“${obs}”`,
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Mind story & alarm',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Camera verifiable fact',
+        correctLane: 'right',
+        explanation: 'Camera fact: Verifiable physical data observed by any neutral camera without speculation.',
+        techniqueBadge: 'Camera Observation',
+      });
+    } else {
+      list.push({
+        id: 'q-def-1',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: '“My friend hasn\'t replied to my text for 18 hours.”',
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Mind story & alarm',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Camera verifiable fact',
+        correctLane: 'right',
+        explanation: 'Camera fact: The timestamps on the phone objectively verify the time elapsed.',
+        techniqueBadge: 'Camera Observation',
+      });
+    }
+
+    // Item 2: Mind Story / Interpretation Trap
+    if (interp) {
+      list.push({
+        id: 'q2-interp',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: `“${interp}”`,
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Mind story & alarm',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Camera verifiable fact',
+        correctLane: 'left',
+        explanation: 'Cognitive Trap: An automatic interpretation generated by internal protective alarm systems.',
+        techniqueBadge: 'Cognitive Distortions',
+      });
+    } else {
+      list.push({
+        id: 'q-def-2',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: '“They\'re not replying because they are tired of me and avoiding me.”',
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Mind story & alarm',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Camera verifiable fact',
+        correctLane: 'left',
+        explanation: 'Mind-reading trap: You cannot observe their private thoughts through a screen.',
+        techniqueBadge: 'Mind Reading',
+      });
+    }
+
+    // Item 3: Protective Urgency Rule
+    if (rule) {
+      list.push({
+        id: 'q3-rule',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: `“${rule}”`,
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Urgent defensive rule',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Camera verifiable fact',
+        correctLane: 'left',
+        explanation: 'Protective Reflex: A rigid rule attempting to over-control ambiguity before verifying data.',
+        techniqueBadge: 'Protective Reflex',
+      });
+    } else {
+      list.push({
+        id: 'q-def-3',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: '“If somebody becomes distant, I must immediately panic or confront them.”',
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Urgent defensive rule',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Camera verifiable fact',
+        correctLane: 'left',
+        explanation: 'Protective Rule: An anxious reflex dictating urgency rather than tolerating ambiguity.',
+        techniqueBadge: 'Urge Interception',
+      });
+    }
+
+    // Item 4: Balanced Dialectical Perspective
+    if (perspective) {
+      list.push({
+        id: 'q4-persp',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: `“${perspective}”`,
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Black-and-white trap',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Balanced dialectic',
+        correctLane: 'right',
+        explanation: 'Dialectical Truth: A grounded perspective that accommodates emotion while honoring facts.',
+        techniqueBadge: 'Both Can Be True',
+      });
+    } else {
+      list.push({
+        id: 'q-def-4',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: '“I am experiencing an anxious spike, AND that does not mean disaster is occurring.”',
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Black-and-white trap',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Balanced dialectic',
+        correctLane: 'right',
+        explanation: 'Emotional differentiation: Feeling anxious is a biological sensation, not evidence of catastrophe.',
+        techniqueBadge: 'Both Can Be True',
+      });
+    }
+
+    // Item 5: Grounded Action Choice
+    if (choice) {
+      list.push({
+        id: 'q5-choice',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: `“${choice}”`,
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Compulsive reaction',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Grounded values choice',
+        correctLane: 'right',
+        explanation: 'Grounded Choice: A deliberate values-aligned action that breaks automatic panic cycles.',
+        techniqueBadge: 'Behavioral Choice',
+      });
+    } else {
+      list.push({
+        id: 'q-def-5',
+        categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+        statement: '“Take a 60-second pause to ground my nervous system before sending any message.”',
+        leftLaneLabel: 'Cognitive Trap',
+        leftGateBanner: 'TRAP',
+        leftSubtext: 'Compulsive reaction',
+        rightLaneLabel: 'Objective Truth',
+        rightGateBanner: 'TRUTH',
+        rightSubtext: 'Grounded values choice',
+        correctLane: 'right',
+        explanation: 'The Pause Button: Strategic delay creates the cognitive space needed for executive choice.',
+        techniqueBadge: 'The Pause Button',
+      });
+    }
+
+    // Item 6: Defusion Observation
+    list.push({
+      id: 'q6-label',
+      categoryTitle: 'OBJECTIVE FACT OR COGNITIVE TRAP?',
+      statement: '“I am noticing the thought that things might go wrong.”',
+      leftLaneLabel: 'Cognitive Trap',
+      leftGateBanner: 'TRAP',
+      leftSubtext: 'Fusing with panic',
+      rightLaneLabel: 'Objective Truth',
+      rightGateBanner: 'TRUTH',
+      rightSubtext: 'Objective observation',
+      correctLane: 'right',
+      explanation: 'Notice the defusion phrase “I am noticing the thought...”. Observing yourself having a thought is 100% objective fact!',
+      techniqueBadge: 'Cognitive Defusion',
+    });
+
+    return list;
+  }, [currentShift, questionsOverride]);
+
+  const currentQ = questions[currentQuestionIndex % questions.length];
+
+  // Sound helper
+  const triggerSound = useCallback(
+    (type: 'tap' | 'chime' | 'thud') => {
+      if (!soundEnabled) return;
+      playSoftSound(type === 'thud' ? 'tap' : type);
+    },
+    [soundEnabled, playSoftSound]
+  );
+
+  // Steer Kart
+  const handleSteer = useCallback(
+    (lane: 'left' | 'right') => {
+      setSelectedLane(lane);
+      triggerSound('tap');
+    },
+    [triggerSound]
+  );
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isGameOver) return;
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        handleSteer('left');
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        handleSteer('right');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSteer, isGameOver]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (isGameOver) return;
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsGameOver(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isGameOver]);
+
+  // Log score when finished
+  useEffect(() => {
+    if (isGameOver) {
+      logPracticeSession({
+        gameId: 'scenario_replay',
+        score,
+        durationSeconds: 90 - timeLeft,
+        theme: currentShift?.protective_rule_hypothesis || 'Active Recall 3D Lane Runner',
+      });
+    }
+  }, [isGameOver, score, timeLeft, logPracticeSession, currentShift]);
+
+  // Calibrated Speed Rates:
+  // Relaxed: 8.2 u/s -> ~13.5s per gate
+  // Normal: 11.0 u/s -> ~10s per gate
+  // Brisk: 15.0 u/s -> ~7s per gate
+  const baseSpeed = useMemo(() => {
+    switch (speedPace) {
+      case 'relaxed':
+        return 8.2;
+      case 'normal':
+        return 11.0;
+      case 'brisk':
+        return 15.0;
+    }
+  }, [speedPace]);
+
+  // --------------------------------------------------------------------------
+  // THREE.JS 3D WORLD ENGINE
+  // --------------------------------------------------------------------------
+  const SPAWN_GATE_Z = -110;
+
+  const gameLoopRef = useRef({
+    currentLane: 'left' as 'left' | 'right',
+    targetX: -2.3,
+    kartX: -2.3,
+    gateZ: SPAWN_GATE_Z,
+    currentSpeed: baseSpeed,
+    correctLane: currentQ.correctLane,
+    explanation: currentQ.explanation,
+    leftBanner: currentQ.leftGateBanner,
+    rightBanner: currentQ.rightGateBanner,
+    isProcessingCrossing: false,
+    reducedMotion: false,
+    updateGateTexturesFn: null as ((left: string, right: string) => void) | null,
+  });
+
+  // Sync state into ref
+  useEffect(() => {
+    gameLoopRef.current.currentLane = selectedLane;
+    gameLoopRef.current.targetX = selectedLane === 'left' ? -2.3 : 2.3;
+  }, [selectedLane]);
+
+  useEffect(() => {
+    gameLoopRef.current.currentSpeed = baseSpeed;
+  }, [baseSpeed]);
+
+  useEffect(() => {
+    gameLoopRef.current.correctLane = currentQ.correctLane;
+    gameLoopRef.current.explanation = currentQ.explanation;
+    gameLoopRef.current.leftBanner = currentQ.leftGateBanner;
+    gameLoopRef.current.rightBanner = currentQ.rightGateBanner;
+
+    if (gameLoopRef.current.updateGateTexturesFn) {
+      gameLoopRef.current.updateGateTexturesFn(
+        currentQ.leftGateBanner,
+        currentQ.rightGateBanner
+      );
+    }
+  }, [currentQ]);
+
+  useEffect(() => {
+    gameLoopRef.current.reducedMotion = reducedMotion;
+  }, [reducedMotion]);
+
+  // Main Three.js Scene Setup & Render Loop
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    let animationFrameId: number;
+    let clock = new THREE.Clock();
+
+    // Scene & Fog
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xa7c2d4); // Calming open sky
+    scene.fog = new THREE.FogExp2(0xa7c2d4, 0.007); // Low fog so gates are visible right at spawn
+
+    // Elevated Chase Camera for 100% unobstructed panoramic view down the highway
+    const camera = new THREE.PerspectiveCamera(
+      46,
+      container.clientWidth / container.clientHeight,
+      0.1,
+      250
+    );
+    camera.position.set(0, 4.2, 7.5);
+    camera.lookAt(0, 1.8, -25);
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff7ed, 1.3);
+    dirLight.position.set(25, 40, 20);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 180;
+    dirLight.shadow.camera.left = -25;
+    dirLight.shadow.camera.right = 25;
+    dirLight.shadow.camera.top = 25;
+    dirLight.shadow.camera.bottom = -25;
+    scene.add(dirLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xa7c2d4, 0x8fae79, 0.45);
+    scene.add(hemiLight);
+
+    // ------------------------------------------------------------------------
+    // Environment & Track Geometry
+    // ------------------------------------------------------------------------
+    // Green terrain lawn
+    const groundGeo = new THREE.PlaneGeometry(240, 300);
+    const groundMat = new THREE.MeshLambertMaterial({ color: 0x88ad78 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(0, -0.05, -60);
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Dark asphalt track
+    const roadWidth = 9.4;
+    const roadLength = 260;
+    const roadGeo = new THREE.PlaneGeometry(roadWidth, roadLength);
+    const roadMat = new THREE.MeshStandardMaterial({
+      color: 0x1e242d,
+      roughness: 0.85,
+      metalness: 0.1,
+    });
+    const road = new THREE.Mesh(roadGeo, roadMat);
+    road.rotation.x = -Math.PI / 2;
+    road.position.set(0, 0, -60);
+    road.receiveShadow = true;
+    scene.add(road);
+
+    // Curbs (Red and White alternating rumble strips)
+    const curbGroup = new THREE.Group();
+    const curbSegments = 60;
+    const segmentLength = 4.5;
+    const curbRedMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+    const curbWhiteMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
+    const curbGeo = new THREE.BoxGeometry(0.65, 0.24, segmentLength);
+
+    for (let i = 0; i < curbSegments; i++) {
+      const isRed = i % 2 === 0;
+      const mat = isRed ? curbRedMat : curbWhiteMat;
+      const zPos = 20 - i * segmentLength;
+
+      const leftCurb = new THREE.Mesh(curbGeo, mat);
+      leftCurb.position.set(-(roadWidth / 2 + 0.32), 0.12, zPos);
+      leftCurb.receiveShadow = true;
+      curbGroup.add(leftCurb);
+
+      const rightCurb = new THREE.Mesh(curbGeo, mat);
+      rightCurb.position.set(roadWidth / 2 + 0.32, 0.12, zPos);
+      rightCurb.receiveShadow = true;
+      curbGroup.add(rightCurb);
+    }
+    scene.add(curbGroup);
+
+    // Center Dashed White Road Stripes
+    const centerStripesGroup = new THREE.Group();
+    const stripeGeo = new THREE.PlaneGeometry(0.3, 2.8);
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (let i = 0; i < 50; i++) {
+      const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+      stripe.rotation.x = -Math.PI / 2;
+      stripe.position.set(0, 0.02, 10 - i * 5.4);
+      centerStripesGroup.add(stripe);
+    }
+    scene.add(centerStripesGroup);
+
+    // Roadside Grandstands
+    const standsGroup = new THREE.Group();
+    const standMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+    const standGeo = new THREE.BoxGeometry(4.5, 3.2, 140);
+
+    const leftStand = new THREE.Mesh(standGeo, standMat);
+    leftStand.position.set(-10.5, 1.6, -60);
+    standsGroup.add(leftStand);
+
+    const rightStand = new THREE.Mesh(standGeo, standMat);
+    rightStand.position.set(10.5, 1.6, -60);
+    standsGroup.add(rightStand);
+
+    // Spectator blocks
+    const spectatorGeo = new THREE.BoxGeometry(0.4, 0.45, 0.4);
+    const specColors = [0xef4444, 0x3b82f6, 0xf59e0b, 0x10b981, 0x8b5cf6, 0xffffff];
+    for (let i = 0; i < 90; i++) {
+      const mat = new THREE.MeshLambertMaterial({
+        color: specColors[i % specColors.length],
+      });
+      const spec = new THREE.Mesh(spectatorGeo, mat);
+      const side = i % 2 === 0 ? -1 : 1;
+      spec.position.set(side * (9.5 + (i % 3) * 0.85), 3.4, -10 - i * 1.3);
+      standsGroup.add(spec);
+    }
+    scene.add(standsGroup);
+
+    // ------------------------------------------------------------------------
+    // Player's 3D Yellow Kart
+    // ------------------------------------------------------------------------
+    const kart = new THREE.Group();
+
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0xf5b72e,
+      roughness: 0.35,
+      metalness: 0.15,
+    });
+    const bodyGeo = new THREE.BoxGeometry(1.6, 0.45, 2.2);
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.4;
+    body.castShadow = true;
+    kart.add(body);
+
+    const noseGeo = new THREE.BoxGeometry(1.3, 0.25, 0.8);
+    const nose = new THREE.Mesh(noseGeo, bodyMat);
+    nose.position.set(0, 0.3, -1.3);
+    nose.castShadow = true;
+    kart.add(nose);
+
+    const cockpitMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.8,
+    });
+    const cockpitGeo = new THREE.BoxGeometry(0.9, 0.4, 0.9);
+    const cockpit = new THREE.Mesh(cockpitGeo, cockpitMat);
+    cockpit.position.set(0, 0.65, 0.1);
+    cockpit.castShadow = true;
+    kart.add(cockpit);
+
+    const spoilerMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.4,
+    });
+    const spoilerGeo = new THREE.BoxGeometry(1.7, 0.1, 0.4);
+    const spoiler = new THREE.Mesh(spoilerGeo, spoilerMat);
+    spoiler.position.set(0, 0.95, 1.15);
+    spoiler.castShadow = true;
+    kart.add(spoiler);
+
+    const strutGeo = new THREE.BoxGeometry(0.08, 0.4, 0.08);
+    const strutLeft = new THREE.Mesh(strutGeo, cockpitMat);
+    strutLeft.position.set(-0.6, 0.75, 1.15);
+    kart.add(strutLeft);
+    const strutRight = new THREE.Mesh(strutGeo, cockpitMat);
+    strutRight.position.set(0.6, 0.75, 1.15);
+    kart.add(strutRight);
+
+    // Wheels
+    const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.28, 16);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const tireMat = new THREE.MeshStandardMaterial({
+      color: 0x111827,
+      roughness: 0.9,
+    });
+
+    const wheels: THREE.Mesh[] = [];
+    const wheelPositions = [
+      [-0.95, 0.32, -0.85],
+      [0.95, 0.32, -0.85],
+      [-1.0, 0.35, 0.85],
+      [1.0, 0.35, 0.85],
+    ];
+
+    wheelPositions.forEach(([x, y, z]) => {
+      const w = new THREE.Mesh(wheelGeo, tireMat);
+      w.position.set(x, y, z);
+      w.castShadow = true;
+      wheels.push(w);
+      kart.add(w);
+    });
+
+    kart.position.set(-2.3, 0, 0);
+    scene.add(kart);
+
+    // ------------------------------------------------------------------------
+    // HIGH-VISIBILITY 3D ARCH GATES (Completely Unobstructed in Clean Sky!)
+    // ------------------------------------------------------------------------
+    const gateGroup = new THREE.Group();
+
+    // High resolution banner texture: 1024x256 with extra bold, giant lettering
+    const createLargeBannerTexture = (text: string, bgColor: string, textColor: string) => {
+      const can = document.createElement('canvas');
+      can.width = 1024;
+      can.height = 256;
+      const ctx = can.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, can.width, can.height);
+
+        // Crisp glowing border
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 18;
+        ctx.strokeRect(9, 9, can.width - 18, can.height - 18);
+
+        // Giant legible text
+        ctx.fillStyle = textColor;
+        ctx.font = '900 135px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.letterSpacing = '4px';
+        ctx.fillText(text.toUpperCase(), can.width / 2, can.height / 2);
+      }
+      const tex = new THREE.CanvasTexture(can);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+
+    const bannerGeo = new THREE.PlaneGeometry(4.4, 1.4);
+    const gatePostGeo = new THREE.BoxGeometry(0.35, 4.6, 0.35);
+    const crossbarGeo = new THREE.BoxGeometry(4.6, 0.4, 0.4);
+
+    // Left Gate (Red: TRAP / STORY)
+    const leftGateGroup = new THREE.Group();
+    const leftFrameMat = new THREE.MeshStandardMaterial({
+      color: 0xb91c1c,
+      roughness: 0.3,
+    });
+
+    const leftPost1 = new THREE.Mesh(gatePostGeo, leftFrameMat);
+    leftPost1.position.set(-4.4, 2.3, 0);
+    leftPost1.castShadow = true;
+    leftGateGroup.add(leftPost1);
+
+    const leftPost2 = new THREE.Mesh(gatePostGeo, leftFrameMat);
+    leftPost2.position.set(-0.2, 2.3, 0);
+    leftPost2.castShadow = true;
+    leftGateGroup.add(leftPost2);
+
+    const leftCrossbar = new THREE.Mesh(crossbarGeo, leftFrameMat);
+    leftCrossbar.position.set(-2.3, 4.4, 0);
+    leftGateGroup.add(leftCrossbar);
+
+    const leftBeaconGeo = new THREE.SphereGeometry(0.28, 12, 12);
+    const leftBeaconMat = new THREE.MeshBasicMaterial({ color: 0xff3b3b });
+    const leftBeacon = new THREE.Mesh(leftBeaconGeo, leftBeaconMat);
+    leftBeacon.position.set(-2.3, 4.85, 0);
+    leftGateGroup.add(leftBeacon);
+
+    const leftBannerMat = new THREE.MeshBasicMaterial({
+      map: createLargeBannerTexture(gameLoopRef.current.leftBanner, '#dc2626', '#ffffff'),
+    });
+    const leftBannerMesh = new THREE.Mesh(bannerGeo, leftBannerMat);
+    leftBannerMesh.position.set(-2.3, 3.5, 0.08);
+    leftGateGroup.add(leftBannerMesh);
+    gateGroup.add(leftGateGroup);
+
+    // Right Gate (Blue: TRUTH / FACT)
+    const rightGateGroup = new THREE.Group();
+    const rightFrameMat = new THREE.MeshStandardMaterial({
+      color: 0x1d4ed8,
+      roughness: 0.3,
+    });
+
+    const rightPost1 = new THREE.Mesh(gatePostGeo, rightFrameMat);
+    rightPost1.position.set(0.2, 2.3, 0);
+    rightPost1.castShadow = true;
+    rightGateGroup.add(rightPost1);
+
+    const rightPost2 = new THREE.Mesh(gatePostGeo, rightFrameMat);
+    rightPost2.position.set(4.4, 2.3, 0);
+    rightPost2.castShadow = true;
+    rightGateGroup.add(rightPost2);
+
+    const rightCrossbar = new THREE.Mesh(crossbarGeo, rightFrameMat);
+    rightCrossbar.position.set(2.3, 4.4, 0);
+    rightGateGroup.add(rightCrossbar);
+
+    const rightBeaconMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const rightBeacon = new THREE.Mesh(leftBeaconGeo, rightBeaconMat);
+    rightBeacon.position.set(2.3, 4.85, 0);
+    rightGateGroup.add(rightBeacon);
+
+    const rightBannerMat = new THREE.MeshBasicMaterial({
+      map: createLargeBannerTexture(gameLoopRef.current.rightBanner, '#2563eb', '#ffffff'),
+    });
+    const rightBannerMesh = new THREE.Mesh(bannerGeo, rightBannerMat);
+    rightBannerMesh.position.set(2.3, 3.5, 0.08);
+    rightGateGroup.add(rightBannerMesh);
+    gateGroup.add(rightGateGroup);
+
+    // Start gate far down the road
+    gateGroup.position.set(0, 0, SPAWN_GATE_Z);
+    scene.add(gateGroup);
+
+    // Function to dynamically update gate banners
+    const updateGateTextures = (leftText: string, rightText: string) => {
+      leftBannerMat.map?.dispose();
+      leftBannerMat.map = createLargeBannerTexture(leftText, '#dc2626', '#ffffff');
+      leftBannerMat.needsUpdate = true;
+
+      rightBannerMat.map?.dispose();
+      rightBannerMat.map = createLargeBannerTexture(rightText, '#2563eb', '#ffffff');
+      rightBannerMat.needsUpdate = true;
+    };
+
+    gameLoopRef.current.updateGateTexturesFn = updateGateTextures;
+
+    // Confetti / Particle Burst on Crossing
+    const particleCount = 45;
+    const particleGeo = new THREE.BufferGeometry();
+    const particlePos = new Float32Array(particleCount * 3);
+    const particleVels = new Float32Array(particleCount * 3);
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x34d399,
+      size: 0.35,
+      transparent: true,
+      opacity: 0,
+    });
+    const particleSystem = new THREE.Points(particleGeo, particleMat);
+    scene.add(particleSystem);
+
+    const triggerCelebrationParticles = (xPos: number) => {
+      const pos = particleGeo.attributes.position.array as Float32Array;
+      for (let i = 0; i < particleCount; i++) {
+        pos[i * 3] = xPos + (Math.random() - 0.5) * 2.5;
+        pos[i * 3 + 1] = 1.0 + Math.random() * 3.0;
+        pos[i * 3 + 2] = -1.0 + (Math.random() - 0.5) * 2.0;
+
+        particleVels[i * 3] = (Math.random() - 0.5) * 8;
+        particleVels[i * 3 + 1] = 3.5 + Math.random() * 6;
+        particleVels[i * 3 + 2] = (Math.random() - 0.5) * 4;
+      }
+      particleGeo.attributes.position.needsUpdate = true;
+      particleMat.opacity = 1.0;
+    };
+
+    // Resize Handler
+    const handleResize = () => {
+      if (!container || !renderer || !camera) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    };
+
+    const resizeObserver = new ResizeObserver(() => handleResize());
+    resizeObserver.observe(container);
+
+    // Render Loop
+    let currentGateZ = SPAWN_GATE_Z;
+    let kartX = -2.3;
+    let lastUiUpdateTime = 0;
+
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.1);
+      const elapsed = clock.getElapsedTime();
+
+      // Kart horizontal interpolation
+      const targetX = gameLoopRef.current.targetX;
+      const steerSpeed = 10.0;
+      kartX += (targetX - kartX) * Math.min(steerSpeed * delta, 1.0);
+      kart.position.x = kartX;
+
+      // Gentle roll banking
+      const dx = targetX - kartX;
+      const targetRoll = gameLoopRef.current.reducedMotion ? 0 : -dx * 0.1;
+      kart.rotation.z += (targetRoll - kart.rotation.z) * 0.15;
+      kart.rotation.y = -dx * 0.06;
+
+      // Engine subtle idle vibration
+      kart.position.y = Math.sin(elapsed * 12) * 0.02;
+
+      // Gentle wheel spin
+      const currentSpeed = gameLoopRef.current.currentSpeed;
+      wheels.forEach((w) => {
+        w.rotation.x += delta * (currentSpeed * 0.8);
+      });
+
+      // Ground stripe movement
+      centerStripesGroup.children.forEach((st) => {
+        st.position.z += delta * currentSpeed;
+        if (st.position.z > 15) {
+          st.position.z -= 240;
+        }
+      });
+
+      // Curb relative scroll
+      curbGroup.children.forEach((c) => {
+        c.position.z += delta * currentSpeed;
+        if (c.position.z > 20) {
+          c.position.z -= 270;
+        }
+      });
+
+      // Beacon lights pulse
+      const beaconIntensity = 0.5 + 0.5 * Math.sin(elapsed * 6);
+      leftBeacon.scale.setScalar(0.9 + 0.3 * beaconIntensity);
+      rightBeacon.scale.setScalar(0.9 + 0.3 * (1 - beaconIntensity));
+
+      // Approaching Gate Movement
+      currentGateZ += delta * currentSpeed;
+      gateGroup.position.z = currentGateZ;
+
+      // Calculate distance remaining & seconds to gate for HUD
+      const dist = Math.max(0, -currentGateZ);
+      const secs = Math.max(0, dist / currentSpeed);
+
+      if (elapsed - lastUiUpdateTime > 0.1) {
+        lastUiUpdateTime = elapsed;
+        setDistanceRemaining(Math.round(dist));
+        setSecondsToGate(parseFloat(secs.toFixed(1)));
+      }
+
+      // Particle update
+      if (particleMat.opacity > 0) {
+        particleMat.opacity -= delta * 1.4;
+        const pos = particleGeo.attributes.position.array as Float32Array;
+        for (let i = 0; i < particleCount; i++) {
+          pos[i * 3] += particleVels[i * 3] * delta;
+          pos[i * 3 + 1] += particleVels[i * 3 + 1] * delta;
+          pos[i * 3 + 2] += particleVels[i * 3 + 2] * delta;
+          particleVels[i * 3 + 1] -= 9.8 * delta;
+        }
+        particleGeo.attributes.position.needsUpdate = true;
+      }
+
+      // Gate Crossing Collision Check (Kart is at z = 0)
+      if (currentGateZ >= 0 && !gameLoopRef.current.isProcessingCrossing) {
+        gameLoopRef.current.isProcessingCrossing = true;
+
+        const playerLane = gameLoopRef.current.currentLane;
+        const isCorrect = playerLane === gameLoopRef.current.correctLane;
+
+        if (isCorrect) {
+          triggerSound('chime');
+          triggerCelebrationParticles(playerLane === 'left' ? -2.3 : 2.3);
+          setScore((s) => s + 100);
+          setStreak((st) => st + 1);
+          setLastFeedback({
+            isCorrect: true,
+            explanation: `Correct! ${gameLoopRef.current.explanation}`,
+            show: true,
+          });
+        } else {
+          triggerSound('thud');
+          setStreak(0);
+          setLastFeedback({
+            isCorrect: false,
+            explanation: `Notice: ${gameLoopRef.current.explanation}`,
+            show: true,
+          });
+        }
+
+        // Advance to next question after comfortable pause
+        setTimeout(() => {
+          setCurrentQuestionIndex((prev) => prev + 1);
+          currentGateZ = SPAWN_GATE_Z;
+          gameLoopRef.current.isProcessingCrossing = false;
+        }, 1600);
+      }
+
+      // Reset if passed
+      if (currentGateZ > 15) {
+        currentGateZ = SPAWN_GATE_Z;
+        gameLoopRef.current.isProcessingCrossing = false;
+      }
+
+      // Smooth camera follow
+      camera.position.x += (kartX * 0.3 - camera.position.x) * 0.08;
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      resizeObserver.disconnect();
+      renderer.dispose();
+    };
+  }, [triggerSound, SPAWN_GATE_Z]);
+
+  // Dynamic statement typography sizing (scaled for comfortable reading without blowing up)
+  const statementSizeClass = useMemo(() => {
+    switch (textSize) {
+      case 'huge':
+        return 'text-lg sm:text-xl font-black';
+      case 'large':
+        return 'text-base sm:text-lg font-extrabold';
+      case 'normal':
+      default:
+        return 'text-sm sm:text-base font-bold';
+    }
+  }, [textSize]);
+
+  // Distance progress percentage (0 to 100)
+  const approachPercentage = Math.min(
+    100,
+    Math.max(0, Math.round(((Math.abs(SPAWN_GATE_Z) - distanceRemaining) / Math.abs(SPAWN_GATE_Z)) * 100))
+  );
+
+  return (
+    <div
+      id="kart-runner-container"
+      className="relative w-full max-w-5xl mx-auto rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl select-none flex flex-col"
+    >
+      {/* --------------------------------------------------------------------- */}
+      {/* TOP HEADER: Clean, dedicated question bar positioned OUTSIDE the 3D canvas! */}
+      {/* This guarantees 100% unobstructed line-of-sight to oncoming gates! */}
+      {/* --------------------------------------------------------------------- */}
+      <div className="bg-slate-900 border-b border-slate-800 p-4 sm:p-5">
+        {/* Top Meta Strip: Category, Time, Score, and Quick Toggles */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-md bg-slate-800 text-teal-400 font-mono text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 border border-slate-700">
+              <Sparkles className="w-3.5 h-3.5" />
+              {currentQ.categoryTitle}
+            </span>
+            {currentQ.techniqueBadge && (
+              <span className="hidden sm:inline-block px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-300 font-mono text-[11px] font-semibold border border-slate-700/60">
+                Technique: {currentQ.techniqueBadge}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {streak > 1 && (
+              <div className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-xs font-bold animate-pulse">
+                🔥 {streak}x Streak
+              </div>
+            )}
+            <div className="px-3 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-teal-400" />
+              <span className="font-bold">
+                {Math.floor(timeLeft / 60)}:{timeLeft % 60 < 10 ? `0${timeLeft % 60}` : timeLeft % 60}
+              </span>
+            </div>
+            <div className="px-3 py-1 rounded-lg bg-slate-950 border border-slate-800 text-teal-400 font-mono text-xs font-black">
+              Score: {score}
+            </div>
+          </div>
+        </div>
+
+        {/* The Active Scenario Statement Box */}
+        <div className="rounded-2xl bg-white p-3.5 sm:p-4 text-slate-900 shadow-md flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <div className={`text-slate-900 tracking-tight leading-relaxed ${statementSizeClass}`}>
+              {currentQ.statement}
+            </div>
+          </div>
+
+          {/* Text Size Quick Toggle */}
+          <div className="shrink-0 flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setTextSize('normal')}
+              title="Standard text size"
+              className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                textSize === 'normal'
+                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Aa
+            </button>
+            <button
+              onClick={() => setTextSize('large')}
+              title="Large text size"
+              className={`px-2 py-1 rounded-lg text-xs font-black cursor-pointer transition-colors ${
+                textSize === 'large'
+                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Aa+
+            </button>
+            <button
+              onClick={() => setTextSize('huge')}
+              title="Extra large text size"
+              className={`px-2 py-1 rounded-lg text-xs font-black cursor-pointer transition-colors ${
+                textSize === 'huge'
+                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Aa++
+            </button>
+          </div>
+        </div>
+
+        {/* Reaction Countdown & Gate Progress Bar */}
+        <div className="mt-2.5 flex items-center justify-between gap-3 text-xs font-mono font-bold text-slate-400">
+          <div className="flex items-center gap-2 text-teal-400 shrink-0">
+            <span className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
+            <span>Approaching Gate: {secondsToGate}s to react</span>
+          </div>
+
+          <div className="flex-1 max-w-xs h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+            <div
+              className={`h-full transition-all duration-100 rounded-full ${
+                approachPercentage > 75 ? 'bg-amber-400' : 'bg-teal-400'
+              }`}
+              style={{ width: `${approachPercentage}%` }}
+            />
+          </div>
+
+          <div className="text-right text-[11px] text-slate-400 hidden sm:block">
+            Pick a lane before crossing
+          </div>
+        </div>
+      </div>
+
+      {/* --------------------------------------------------------------------- */}
+      {/* 3D WEBGL CANVAS VIEWPORT: 100% UNOBSTRUCTED HIGHWAY VIEW */}
+      {/* --------------------------------------------------------------------- */}
+      <div
+        ref={containerRef}
+        className="relative w-full h-[360px] sm:h-[440px] md:h-[480px] overflow-hidden cursor-pointer bg-slate-950"
+        onClick={(e) => {
+          // Click left half -> Left lane; Click right half -> Right lane
+          const rect = e.currentTarget.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          if (clickX < rect.width / 2) {
+            handleSteer('left');
+          } else {
+            handleSteer('right');
+          }
+        }}
+      >
+        <canvas ref={canvasRef} className="w-full h-full block" />
+
+        {/* Lane Indicator Watermarks at the top edge of canvas */}
+        <div className="absolute top-3 left-4 z-10 pointer-events-none">
+          <span className="px-3 py-1 rounded-lg bg-rose-950/80 border border-rose-500/60 text-rose-300 font-mono text-xs font-black backdrop-blur-md shadow-md">
+            ← LEFT: {currentQ.leftGateBanner}
+          </span>
+        </div>
+
+        <div className="absolute top-3 right-4 z-10 pointer-events-none">
+          <span className="px-3 py-1 rounded-lg bg-blue-950/80 border border-blue-500/60 text-blue-300 font-mono text-xs font-black backdrop-blur-md shadow-md">
+            RIGHT: {currentQ.rightGateBanner} →
+          </span>
+        </div>
+
+        {/* Dynamic Crossing Feedback Toast (Pops up at bottom center of viewport) */}
+        {lastFeedback?.show && (
+          <div
+            className={`absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-30 px-4 py-2.5 rounded-2xl border text-xs sm:text-sm font-bold backdrop-blur-md shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 ${
+              lastFeedback.isCorrect
+                ? 'bg-teal-950/95 border-teal-400 text-teal-100'
+                : 'bg-rose-950/95 border-rose-400 text-rose-100'
+            }`}
+          >
+            {lastFeedback.isCorrect ? (
+              <CheckCircle2 className="w-5 h-5 text-teal-400 shrink-0" />
+            ) : (
+              <XCircle className="w-5 h-5 text-rose-400 shrink-0" />
+            )}
+            <span className="leading-snug">{lastFeedback.explanation}</span>
+          </div>
+        )}
+      </div>
+
+      {/* --------------------------------------------------------------------- */}
+      {/* BOTTOM STEERING CONTROLS & SPEED ADJUSTMENT */}
+      {/* --------------------------------------------------------------------- */}
+      <div className="p-4 sm:p-5 bg-slate-900 border-t border-slate-800 space-y-3.5">
+        {/* Dual Lane Steering Action Buttons */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          {/* Left Lane: Trap / Story */}
+          <button
+            id="steer-left-lane-btn"
+            onClick={() => handleSteer('left')}
+            className={`p-3.5 sm:p-4 rounded-2xl border-2 transition-all cursor-pointer text-left flex flex-col justify-between ${
+              selectedLane === 'left'
+                ? 'bg-rose-950/70 border-rose-500 shadow-xl shadow-rose-950/80 scale-[1.02]'
+                : 'bg-slate-950/70 border-rose-900/40 hover:border-rose-700/60 text-slate-400'
+            }`}
+          >
+            <div className="text-xs sm:text-sm font-mono text-rose-400 font-black flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <ChevronLeft className="w-4 h-4" />
+                <span>A / LEFT LANE</span>
+              </span>
+              {selectedLane === 'left' && (
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping" />
+              )}
+            </div>
+
+            <div className="mt-1.5 space-y-0.5">
+              <div className="text-slate-100 text-base sm:text-lg font-black">
+                {currentQ.leftLaneLabel}
+              </div>
+              {currentQ.leftSubtext && (
+                <div className="text-rose-300/80 text-xs font-medium">
+                  {currentQ.leftSubtext}
+                </div>
+              )}
+            </div>
+          </button>
+
+          {/* Right Lane: Truth / Fact */}
+          <button
+            id="steer-right-lane-btn"
+            onClick={() => handleSteer('right')}
+            className={`p-3.5 sm:p-4 rounded-2xl border-2 transition-all cursor-pointer text-left flex flex-col justify-between ${
+              selectedLane === 'right'
+                ? 'bg-sky-950/70 border-sky-400 shadow-xl shadow-sky-950/80 scale-[1.02]'
+                : 'bg-slate-950/70 border-sky-900/40 hover:border-sky-700/60 text-slate-400'
+            }`}
+          >
+            <div className="text-xs sm:text-sm font-mono text-sky-400 font-black flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <span>D / RIGHT LANE</span>
+                <ChevronRight className="w-4 h-4" />
+              </span>
+              {selectedLane === 'right' && (
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping" />
+              )}
+            </div>
+
+            <div className="mt-1.5 space-y-0.5">
+              <div className="text-slate-100 text-base sm:text-lg font-black">
+                {currentQ.rightLaneLabel}
+              </div>
+              {currentQ.rightSubtext && (
+                <div className="text-sky-300/80 text-xs font-medium">
+                  {currentQ.rightSubtext}
+                </div>
+              )}
+            </div>
+          </button>
+        </div>
+
+        {/* Controls Footer: Car Speed Selector, Audio, Reduced Motion */}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 pt-1">
+          {/* Car Speed Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 font-bold flex items-center gap-1 font-mono uppercase text-[10px]">
+              <Gauge className="w-3.5 h-3.5 text-teal-400" />
+              Car Speed:
+            </span>
+            <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800">
+              <button
+                onClick={() => setSpeedPace('relaxed')}
+                className={`px-2.5 py-1 rounded-md font-bold text-xs cursor-pointer transition-colors ${
+                  speedPace === 'relaxed'
+                    ? 'bg-teal-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                🐢 Relaxed (14s)
+              </button>
+              <button
+                onClick={() => setSpeedPace('normal')}
+                className={`px-2.5 py-1 rounded-md font-bold text-xs cursor-pointer transition-colors ${
+                  speedPace === 'normal'
+                    ? 'bg-teal-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                🚗 Normal (10s)
+              </button>
+              <button
+                onClick={() => setSpeedPace('brisk')}
+                className={`px-2.5 py-1 rounded-md font-bold text-xs cursor-pointer transition-colors ${
+                  speedPace === 'brisk'
+                    ? 'bg-teal-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                ⚡ Brisk (7s)
+              </button>
+            </div>
+          </div>
+
+          {/* Motion and Audio Toggles */}
+          <div className="flex items-center gap-4 shrink-0">
+            <button
+              onClick={() => setReducedMotion(!reducedMotion)}
+              className="hover:text-slate-200 underline cursor-pointer text-[11px]"
+            >
+              {reducedMotion ? 'Enable camera tilt' : 'Reduced motion'}
+            </button>
+
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="text-slate-400 hover:text-slate-200 cursor-pointer flex items-center gap-1 text-[11px]"
+            >
+              {soundEnabled ? (
+                <>
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Sound on</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-3.5 h-3.5" />
+                  <span>Muted</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Game Over / Completion Summary Modal */}
+      {isGameOver && (
+        <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-teal-500/50 p-6 sm:p-8 text-center space-y-5 shadow-2xl">
+            <div className="w-14 h-14 rounded-2xl bg-teal-500/20 text-teal-300 flex items-center justify-center mx-auto shadow-inner">
+              <Trophy className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-mono text-teal-400 uppercase font-bold">
+                Active Recall Drill Complete
+              </span>
+              <h3 className="text-2xl font-black text-slate-100">
+                Psychological Reflexes Cemented!
+              </h3>
+              <p className="text-xs text-slate-400">
+                You steered through 3D scenario gates, converting automatic assumptions into grounded reality checks.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 py-2">
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <div className="text-[10px] text-slate-400 uppercase font-mono">Final Score</div>
+                <div className="text-2xl font-black text-teal-400">{score}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                <div className="text-[10px] text-slate-400 uppercase font-mono">Best Streak</div>
+                <div className="text-2xl font-black text-amber-400">{streak}x</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setTimeLeft(90);
+                  setScore(0);
+                  setStreak(0);
+                  setCurrentQuestionIndex(0);
+                  setIsGameOver(false);
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer border border-slate-700"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Play Again</span>
+              </button>
+
+              {onComplete && (
+                <button
+                  onClick={onComplete}
+                  className="flex-1 py-3 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-teal-950/60"
+                >
+                  <span>Return to Shift</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
