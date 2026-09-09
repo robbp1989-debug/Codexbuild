@@ -49,8 +49,8 @@ export const frameworks: Framework[] = [
     name: 'Cognitive Behavioral Therapy',
     focus: 'Test the thought',
     question: 'What is the evidence, and what is a more balanced thought?',
-    color: '#57d8c4',
-    softColor: 'rgba(87, 216, 196, 0.14)',
+    color: '#087e6c',
+    softColor: 'rgba(42, 199, 168, 0.16)',
   },
   {
     id: 'act',
@@ -58,8 +58,8 @@ export const frameworks: Framework[] = [
     name: 'Acceptance and Commitment Therapy',
     focus: 'Make room and choose',
     question: 'Can I notice this thought and still move toward what matters?',
-    color: '#b8a1ff',
-    softColor: 'rgba(184, 161, 255, 0.14)',
+    color: '#7657d4',
+    softColor: 'rgba(153, 123, 235, 0.14)',
   },
   {
     id: 'dbt',
@@ -67,8 +67,8 @@ export const frameworks: Framework[] = [
     name: 'Dialectical Behavior Therapy',
     focus: 'Regulate and respond',
     question: 'What skill lowers the intensity enough for wise action?',
-    color: '#ffbe68',
-    softColor: 'rgba(255, 190, 104, 0.14)',
+    color: '#bd6508',
+    softColor: 'rgba(255, 174, 79, 0.18)',
   },
   {
     id: 'ipt',
@@ -76,8 +76,8 @@ export const frameworks: Framework[] = [
     name: 'Interpersonal Psychotherapy',
     focus: 'Name the relationship need',
     question: 'What changed between us, and what needs to be communicated?',
-    color: '#72a7ff',
-    softColor: 'rgba(114, 167, 255, 0.14)',
+    color: '#3474cf',
+    softColor: 'rgba(103, 159, 239, 0.16)',
   },
 ];
 

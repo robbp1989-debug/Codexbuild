@@ -8,8 +8,10 @@ import {
   ClipboardList,
   Gamepad2,
   LockKeyhole,
+  Moon,
   RotateCcw,
   Sparkles,
+  Sun,
 } from 'lucide-react';
 
 import { ArcadeView } from '@/components/arcade-view';
@@ -48,12 +50,17 @@ export function ShiftApp() {
   const [revealed, setRevealed] = useState(false);
   const [records, setRecords] = useState<PracticeRecord[]>([]);
   const [ready, setReady] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     // oxlint-disable-next-line react/react-compiler -- localStorage becomes available after hydration
     setRecords(loadPracticeRecords());
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
 
   useEffect(() => {
     type ToolDefinition = {
@@ -200,6 +207,10 @@ export function ShiftApp() {
         <div className="topbar-status">
           <span className="privacy-chip"><LockKeyhole /> Saved only on this device</span>
           <span className="session-chip"><i /> {todayCount} practices today</span>
+          <button className="theme-toggle" onClick={() => setDarkMode((value) => !value)} aria-pressed={darkMode} aria-label={darkMode ? 'Switch to light theme' : 'Switch to dark theme'}>
+            {darkMode ? <Sun /> : <Moon />}
+            <span>{darkMode ? 'Light' : 'Dark'}</span>
+          </button>
         </div>
       </header>
 
