@@ -6,8 +6,10 @@ const assert = (condition, message) => {
 };
 
 const migration = read('migrations/0001_learning_memory.sql');
+const semanticMigration = read('migrations/0002_semantic_memory.sql');
 const retrieval = read('server/memoryContext.ts');
 const persistence = read('server/persistence.ts');
+const semanticMemory = read('server/semanticMemory.ts');
 const breakdownRoute = read('app/api/shift/breakdown/route.ts');
 const conversationRoute = read('app/api/shift/conversation/route.ts');
 const sourceUpload = read('app/api/shift/source/upload/route.ts');
@@ -26,19 +28,32 @@ assert(retrieval.includes("item.status !== 'archived'"), 'Archived learning must
 assert(!retrieval.includes("item.status !== 'rejected'"), 'Rejected hypotheses must not be globally filtered out.');
 assert(retrieval.includes('evidenceBonus'), 'Real-world evidence must affect memory ranking.');
 assert(retrieval.includes('confidenceBonus'), 'User confirmation must affect memory ranking.');
-assert(retrieval.includes('.filter(({ overlap }) => overlap > 0)'), 'Historical learning must require a real relevance signal before model context injection.');
-assert(retrieval.includes('if (!queryTokens.size) return []'), 'Empty or content-free situations must not trigger arbitrary memory recall.');
+assert(retrieval.includes('SEMANTIC_RELEVANCE_THRESHOLD'), 'Semantic memory recall must have an explicit relevance threshold.');
+assert(retrieval.includes('overlap > 0 || semantic >= SEMANTIC_RELEVANCE_THRESHOLD'), 'Historical learning must cross a lexical or semantic relevance gate.');
+assert(retrieval.includes('if (!queryTokens.size && !safeQueryEmbedding) return []'), 'Content-free situations must not trigger arbitrary memory recall.');
 assert(!retrieval.match(/CONFIRMED_FACT\s*:/), 'Raw confirmed-event facts must not be a reusable retrieval type.');
 assert(!retrieval.match(/USER_INTERPRETATION\s*:/), 'Raw interpretations must not be a reusable retrieval type.');
 
 for (const route of [breakdownRoute, conversationRoute]) {
   assert(route.includes('loadLearningMemories'), 'Reflection paths must retrieve durable account learning.');
   assert(route.includes('selectRelevantMemoryContext'), 'Reflection paths must select only relevant compact learning.');
+  assert(route.includes('embedMemoryQuery'), 'Reflection paths must support semantic query retrieval when vectors exist.');
+  assert(route.includes("memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical'"), 'Reflection paths must expose whether semantic retrieval actually ran.');
 }
+
+assert(semanticMigration.includes('CREATE TABLE IF NOT EXISTS learning_memory_embeddings'), 'Semantic embedding migration is missing.');
+assert(semanticMemory.includes("const EMBEDDING_MODEL = 'text-embedding-3-small'"), 'Semantic memory must use the configured embedding model.');
+assert(semanticMemory.includes('dimensions: EMBEDDING_DIMENSIONS'), 'Embedding requests must use the compact configured dimensions.');
+assert(semanticMemory.includes("https://api.openai.com/v1/embeddings"), 'Semantic memory must use the embeddings endpoint.');
+assert(semanticMemory.includes('if (!apiKey || inputs.length === 0) return null'), 'Semantic retrieval must remain optional when the model service is unavailable.');
+assert(persistence.includes('upsertMemoryEmbeddings'), 'Durable compact memories must be eligible for semantic indexing.');
+assert(persistence.includes('loadMemoryEmbeddings'), 'Durable compact memories must be able to load stored semantic vectors.');
+assert(persistence.includes('Durable memory is authoritative'), 'Embedding failures must not make durable memory saving fail.');
 
 assert(sourceUpload.includes('private-sources/'), 'Private source objects must use opaque private-source keys.');
 assert(!sourceUpload.includes('originalName: file.name,\n        objectKey: `private-sources/${user.userId}/${documentId}/${file.name}`'), 'Original filenames must not be embedded in R2 object keys.');
 assert(sourceUpload.includes('Never echo the raw document back to the browser'), 'Source upload must preserve the no-raw-echo contract.');
+assert(!semanticMemory.includes('source_documents'), 'Raw imported source documents must not be directly embedded for long-term retrieval.');
 
 assert(rememberRoute.includes('Sign in') || rememberRoute.includes('accountRequired'), 'Durable memory must be account-scoped.');
 assert(aiClient.includes('Do not save it automatically'), 'Keep Talking must not auto-save AI suggestions.');
