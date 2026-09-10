@@ -11,11 +11,11 @@ Gemini personalization requires GEMINI_API_KEY. Without it, the imported server 
 
 Production build passed after the compatibility fixes. HTTP checks: homepage 200; health endpoint reports modelActive=false; reflection endpoint returns a structured fallback; an empty reflection returns 400; game-content returns the expected built-in fallback. Browser interaction testing has not been performed.
 
-Type checking currently reports one remaining recommendation type mismatch in src/components/home/HomePage.tsx:119 (string[] versus ArcadeModeType[]). Unused imported src/main.tsx and legacy ReflectFlow.tsx are excluded from the hosted project's type check; ReflectFlow contains older API mismatches and is not mounted by App.tsx.
+Type checking now passes: the fallback recommendation output uses ArcadeModeType[]. Unused imported src/main.tsx and legacy ReflectFlow.tsx remain excluded from the hosted project's type check; ReflectFlow contains older API mismatches and is not mounted by App.tsx.
 
 Compatibility repairs include missing context actions for boundary saving, prediction updates, pattern creation, and crisis interruption; stable practice logging; persistence hydration guard; boundary persistence; and correct therapy summary emotion fields. Prior saved data is preserved under its original storage key and accessible through /previous.
 
-The imported update has NOT yet been published to Sites. The hosted URL still shows the preceding light version. Finish the remaining type check, verify final source, and publish when resuming.
+The imported update is being prepared for private publication. Check Sites deployment status for the latest published version; do not assume publication succeeded from this checkpoint alone.
 
 ## User's latest product direction
 
@@ -24,3 +24,9 @@ Preserve the first two screens: What's going on? and the editable S-H-I-F-T brea
 Next work: inspect the game content handoff; generate a single structured practice pack from confirmed observation, interpretation, emotions, needs, perspective, and choice; select a small set of relevant game engines; reuse that pack during gameplay; record skill-specific attempts tied to the source reflection; carry results to refreshers, real-world prediction/outcome review, and therapist reports. Avoid inventing facts or deciding emotions/history for the user. Reward practice rather than distress or disclosure.
 
 The original outline is saved as ORIGINAL_VISION.txt. This redesign has been requested but is not yet implemented. Save and push checkpoints regularly because the user is nearing their usage limit.
+
+## Light theme and navigation checkpoint
+
+Applied a shared white / pale-blue theme, navy readable text, blue primary action, larger small labels, keyboard focus treatment, and reduced-motion support. Simplified primary navigation to Reflect → Practice → Therapy Prep; other existing tools remain under More. Practice now defaults to recommended games from the active reflection, with the full catalog available. The first form now explains that review comes before gameplay and has an accessible input label.
+
+GitHub backup branch: codex/shift-sites-sync (main was not changed). The earlier c8beb02 checkpoint was successfully pushed; push the final light-theme commit as well. No new API key or fabricated live AI integration. No browser interaction QA performed. Deeper personalized practice-pack generation and reflection-linked performance reporting remain future work, not completed features of this visual update.

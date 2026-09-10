@@ -1,1 +1,60 @@
 @import "tailwindcss";
+
+/* Shared light surfaces for the imported arcade and reflection screens. */
+:root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; }
+body { margin: 0; background: #f6f9ff; }
+.shift-light { color: #172c4a; background: linear-gradient(180deg, #fff 0%, #f3f7ff 100%); line-height: 1.6; }
+.shift-light [class*="bg-slate-950"],
+.shift-light [class*="bg-slate-900"] { background-color: #fff; }
+.shift-light [class*="bg-slate-800"] { background-color: #edf3fc; }
+.shift-light [class*="bg-slate-700"] { background-color: #dce8f8; }
+.shift-light [class*="border-slate-"] { border-color: #d8e3f2; }
+.shift-light [class*="text-slate-1"],
+.shift-light [class*="text-slate-2"],
+.shift-light [class*="text-white"] { color: #172c4a; }
+.shift-light [class*="text-slate-3"],
+.shift-light [class*="text-slate-4"],
+.shift-light [class*="text-slate-5"] { color: #526782; }
+.shift-light [class*="text-teal-"], .shift-light [class*="text-cyan-"] { color: #087a78; }
+.shift-light [class*="text-indigo-"], .shift-light [class*="text-blue-"] { color: #275cce; }
+.shift-light [class*="text-purple-"], .shift-light [class*="text-violet-"] { color: #7243af; }
+.shift-light [class*="text-amber-"], .shift-light [class*="text-yellow-"] { color: #925700; }
+.shift-light [class*="text-emerald-"], .shift-light [class*="text-green-"] { color: #15734d; }
+.shift-light [class*="text-rose-"], .shift-light [class*="text-red-"] { color: #b33450; }
+.shift-light [class*="from-slate-"] { --tw-gradient-from: #f2f7ff; }
+.shift-light [class*="to-slate-"] { --tw-gradient-to: #fff; }
+.shift-light [class*="via-slate-"] { --tw-gradient-via: #f4f8ff; --tw-gradient-stops: var(--tw-gradient-from), #f4f8ff, var(--tw-gradient-to); }
+.shift-light [class*="from-teal-9"] { --tw-gradient-from: #e6f7f4; }
+.shift-light [class*="to-sky-9"] { --tw-gradient-to: #eaf3ff; }
+.shift-light [class*="bg-sky-9"] { background-color: #eaf3ff; }
+.shift-light [class*="text-sky-"] { color: #246294; }
+.shift-light button[class*="bg-sky-6"], .shift-light button[class*="bg-blue-6"], .shift-light button[class*="bg-indigo-6"], .shift-light button[class*="bg-emerald-6"], .shift-light button[class*="bg-red-6"] { color: white; }
+.shift-light [class*="bg-teal-950"], .shift-light [class*="bg-teal-900"] { background-color: #e6f7f4; }
+.shift-light [class*="bg-indigo-950"], .shift-light [class*="bg-indigo-900"] { background-color: #edf1ff; }
+.shift-light button { min-height: 40px; }
+.shift-light button:not(:disabled) { cursor: pointer; }
+.shift-light button:disabled { cursor: not-allowed; }
+.shift-light :focus-visible { outline: 3px solid #2e68ed; outline-offset: 4px; }
+.shift-light textarea, .shift-light input, .shift-light select { color: #172c4a; font-size: 1rem; }
+.shift-light textarea::placeholder, .shift-light input::placeholder { color: #657a94; }
+.shift-light [class*="text-[10px]"], .shift-light [class*="text-[11px]"], .shift-light .text-xs { font-size: .8125rem; }
+.shift-light .font-mono { font-family: inherit; }
+.shift-light main { padding-top: 2.5rem; padding-bottom: 3rem; }
+.shift-light h1, .shift-light h2 { letter-spacing: -.025em; line-height: 1.2; }
+.shift-light [class*="shadow-"] { --tw-shadow-color: #254d8714; }
+.shift-light .shift-primary { background: #2864ed; color: white; border-color: #2864ed; }
+.shift-light .shift-primary:hover { background: #1e51c6; color: white; }
+.shift-header { background: #ffffffed; border-bottom: 1px solid #dce6f5; backdrop-filter: blur(16px); }
+.shift-nav { max-width: 1280px; margin: auto; padding: 16px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.shift-brand { display: flex; align-items: center; gap: 12px; font-size: 1.25rem; font-weight: 800; letter-spacing: .08em; }
+.shift-brand svg { background: #2864ed; color: white; width: 42px; height: 42px; padding: 9px; border-radius: 14px; }
+.shift-nav-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.shift-nav-links button, .shift-nav-links summary { padding: 10px 14px; border-radius: 12px; font-size: .875rem; font-weight: 600; cursor: pointer; }
+.shift-nav-links button:hover, .shift-nav-links summary:hover { background: #edf3ff; }
+.shift-nav-links button[aria-current="page"] { color: #245cce; background: #eaf1ff; }
+.shift-nav-links details { position: relative; }
+.shift-more { position: absolute; right: 0; top: 100%; width: 220px; padding: 8px; background: #fff; border: 1px solid #dce6f5; border-radius: 16px; box-shadow: 0 16px 40px #183b6a20; }
+.shift-more button { display: block; width: 100%; text-align: left; }
+.shift-support { font-size: .8125rem; background: #edf4ff; color: #526782; padding: 7px 24px; text-align: center; }
+@media (max-width: 640px) { .shift-nav { gap: 12px; padding: 12px 16px; } .shift-nav-links { margin-left: 0; width: 100%; gap: 2px; } .shift-nav-links button, .shift-nav-links summary { padding: 8px 10px; } .shift-light main { padding-top: 1.5rem; } }
+@media (prefers-reduced-motion: reduce) { .shift-light *, .shift-light *::before, .shift-light *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

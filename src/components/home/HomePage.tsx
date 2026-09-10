@@ -196,13 +196,14 @@ export const HomePage: React.FC = () => {
             What’s going on?
           </h1>
           <p className="text-slate-400 text-base sm:text-lg mb-8 leading-relaxed">
-            Type naturally. Shift breaks down what happened into camera facts vs. mind stories, identifies what you are feeling, and turns your situation into a <strong className="text-teal-300 font-semibold">personalized 3D active recall game</strong> to cement resilient reflexes.
+            Start with a moment from your day. Review the facts, name your feelings, then <strong className="text-teal-300 font-semibold">practice a helpful response through play.</strong> You can edit every suggestion before you begin.
           </p>
 
           {/* Input Area */}
           <div className="space-y-4">
             <div className="relative rounded-2xl bg-slate-950/80 border border-slate-700/80 p-3 sm:p-4 focus-within:border-teal-500 transition-colors shadow-inner">
               <textarea
+                aria-label="What's going on? Describe your situation"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Describe what happened or what you're noticing inside (e.g. 'My friend hasn't replied...', 'My boss corrected me in a meeting...', 'I feel restless and want to escape...')"
@@ -212,7 +213,7 @@ export const HomePage: React.FC = () => {
 
               <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
                 <span className="text-xs text-slate-500">
-                  Feelings & Facts Breakdown → 3D Active Recall Kart Game
+                  Reflect first. Then practice at your pace.
                 </span>
                 <button
                   onClick={() => handleAnalyze()}
@@ -220,7 +221,7 @@ export const HomePage: React.FC = () => {
                   className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-lg ${
                     loading || !inputText.trim()
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      : 'bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold cursor-pointer active:scale-98 shadow-teal-900/30'
+                      : 'shift-primary font-semibold cursor-pointer active:scale-98'
                   }`}
                 >
                   {loading ? (
@@ -231,7 +232,7 @@ export const HomePage: React.FC = () => {
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 text-slate-950" />
-                      <span>Breakdown & Launch 3D Game</span>
+                      <span>Explore my situation</span>
                     </>
                   )}
                 </button>

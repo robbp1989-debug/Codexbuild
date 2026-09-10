@@ -240,7 +240,7 @@ export const ArcadeHub: React.FC = () => {
   const { practiceSessions, playSoftSound, activeGameContext, clearGameContext, activeShift } = useApp();
   const [activeMode, setActiveMode] = useState<ArcadeModeType | null>(null);
   const [isBlitzActive, setIsBlitzActive] = useState<boolean>(false);
-  const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [filterCategory, setFilterCategory] = useState<string>('For you');
 
   // If launched with an active context, open that mode automatically
   useEffect(() => {
@@ -250,7 +250,9 @@ export const ArcadeHub: React.FC = () => {
   }, [activeGameContext]);
 
   const filteredModes =
-    filterCategory === 'All'
+    filterCategory === 'For you'
+      ? MODES.filter((m) => (activeShift?.recommended_games?.length ? activeShift.recommended_games : ['fact_or_story', 'both_can_be_true', 'pause_button']).includes(m.id))
+      : filterCategory === 'All'
       ? MODES
       : filterCategory === '3D Interactive'
       ? MODES.filter((m) => m.is3D)
@@ -384,13 +386,13 @@ export const ArcadeHub: React.FC = () => {
               <div className="space-y-1.5 max-w-2xl">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 text-xs font-mono font-bold">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>5 3D PERSONALIZED SCENARIO DRILLS READY</span>
+                  <span>YOUR CURRENT REFLECTION</span>
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold text-slate-100">
                   Play Your Scenario in 3D: "{activeShift.userEditedObservation || activeShift.observation}"
                 </h3>
                 <p className="text-xs text-slate-300">
-                  No turn typing: play with the 3D Kart Runner, 3D Urge Surfer, 3D Fact vs. Fog, 3D Perspective Prism, or 3D Responsibility Balance!
+                  Start with a recommended skill below, or try the scenario kart. When you finish, bring your practice summary to your next session.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
@@ -420,7 +422,7 @@ export const ArcadeHub: React.FC = () => {
 
           {/* Category Filter Tabs */}
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-4">
-            {['All', '3D Interactive', 'Separation', 'Perspective', 'Boundaries', 'Regulation'].map((cat) => (
+            {['For you', 'All', '3D Interactive', 'Separation', 'Perspective', 'Boundaries', 'Regulation'].map((cat) => (
               <button
                 key={cat}
                 onClick={() => {
@@ -433,7 +435,7 @@ export const ArcadeHub: React.FC = () => {
                     : 'bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {cat === 'All' ? 'All 16 Engines' : cat === '3D Interactive' ? '⚡ 3D Engines (5)' : cat}
+                {cat === 'For you' ? 'Recommended practice' : cat === 'All' ? 'Explore all games' : cat === '3D Interactive' ? '3D games' : cat}
               </button>
             ))}
           </div>

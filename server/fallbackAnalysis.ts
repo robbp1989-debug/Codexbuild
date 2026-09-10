@@ -1,3 +1,5 @@
+import type { ArcadeModeType } from '../src/types';
+
 export interface ShiftBreakdownOutput {
   observation: string;
   possible_emotions: string[];
@@ -9,7 +11,7 @@ export interface ShiftBreakdownOutput {
   updated_perspective: string;
   choice: string;
   recommended_skills: string[];
-  recommended_games: string[];
+  recommended_games: ArcadeModeType[];
   real_world_experiment: string;
   follow_up_question: string;
 }
