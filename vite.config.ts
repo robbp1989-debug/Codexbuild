@@ -45,6 +45,11 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    // Discover the context controls before the first render, avoiding a late
+    // optimizer pass that can mix old and new React runtime modules in preview.
+    optimizeDeps: {
+      include: ['@base-ui/react/button', '@base-ui/react/dialog', '@base-ui/react/radio', '@base-ui/react/radio-group', 'clsx', 'tailwind-merge', 'class-variance-authority'],
+    },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }

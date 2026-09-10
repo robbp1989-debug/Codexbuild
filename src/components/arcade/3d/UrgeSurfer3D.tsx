@@ -282,7 +282,7 @@ export const UrgeSurfer3D: React.FC<UrgeSurfer3DProps> = ({
     sunLight.castShadow = true;
     scene.add(sunLight);
 
-    const oceanGlow = new THREE.DirectionalLight(0x14b8a6, 0.6);
+    const oceanGlow = new THREE.DirectionalLight(0x3b82f6, 0.6);
     oceanGlow.position.set(-20, 15, -30);
     scene.add(oceanGlow);
 
@@ -329,7 +329,7 @@ export const UrgeSurfer3D: React.FC<UrgeSurfer3DProps> = ({
     boardGeo.rotateX(Math.PI / 2);
     boardGeo.scale(1, 0.18, 1);
     const boardMat = new THREE.MeshStandardMaterial({
-      color: 0x06b6d4, // Cyan surfboard
+      color: 0x60a5fa, // Cyan surfboard
       roughness: 0.2,
       metalness: 0.1,
     });
@@ -432,12 +432,12 @@ export const UrgeSurfer3D: React.FC<UrgeSurfer3DProps> = ({
     // Update item mesh callback
     const updateItemMesh = (item: UrgeSurferItem) => {
       const isAnchor = item.type === 'anchor';
-      itemCoreMat.color.setHex(isAnchor ? 0x14b8a6 : 0xef4444);
+      itemCoreMat.color.setHex(isAnchor ? 0x3b82f6 : 0xef4444);
 
       bannerMat.map?.dispose();
       bannerMat.map = createItemTexture(
         isAnchor ? `ANCHOR:\n${item.category}` : `DODGE URGE:\n${item.category}`,
-        isAnchor ? '#0d9488' : '#dc2626',
+        isAnchor ? '#2563eb' : '#dc2626',
         '#ffffff'
       );
       bannerMat.needsUpdate = true;

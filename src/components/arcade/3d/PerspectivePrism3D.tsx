@@ -83,7 +83,7 @@ export const PerspectivePrism3D: React.FC<PerspectivePrism3DProps> = ({
         id: 'f_camera',
         title: '2. The Camera Lens',
         lensType: 'camera',
-        colorHex: 0x06b6d4,
+        colorHex: 0x60a5fa,
         tailwindBorder: 'border-cyan-500',
         tailwindBg: 'bg-cyan-950/60',
         tailwindText: 'text-cyan-300',
@@ -273,7 +273,7 @@ export const PerspectivePrism3D: React.FC<PerspectivePrism3DProps> = ({
     const pillarGeo = new THREE.CylinderGeometry(0.3, 0.4, 3.2, 16);
     const pillarData = [
       { x: 0, z: -5.5, color: 0xf43f5e }, // North (Alarm)
-      { x: 5.5, z: 0, color: 0x06b6d4 },  // East (Camera)
+      { x: 5.5, z: 0, color: 0x60a5fa },  // East (Camera)
       { x: 0, z: 5.5, color: 0xa855f7 },  // South (Other)
       { x: -5.5, z: 0, color: 0xf59e0b }, // West (Dialectical)
     ];

@@ -303,7 +303,7 @@ export const RealityTarget3D: React.FC<RealityTarget3DProps> = ({
     redLight.position.set(-8, 5, -15);
     scene.add(redLight);
 
-    const cyanLight = new THREE.PointLight(0x06b6d4, 2, 40);
+    const cyanLight = new THREE.PointLight(0x60a5fa, 2, 40);
     cyanLight.position.set(8, 5, -15);
     scene.add(cyanLight);
 
@@ -331,7 +331,7 @@ export const RealityTarget3D: React.FC<RealityTarget3DProps> = ({
 
     const rightBarrel = new THREE.Mesh(
       barrelGeo,
-      new THREE.MeshStandardMaterial({ color: 0x06b6d4, metalness: 0.9 })
+      new THREE.MeshStandardMaterial({ color: 0x60a5fa, metalness: 0.9 })
     );
     rightBarrel.position.set(0.45, 0.35, -0.6);
     cannonGroup.add(rightBarrel);
@@ -415,13 +415,13 @@ export const RealityTarget3D: React.FC<RealityTarget3DProps> = ({
     // Update target mesh
     const updateTargetMesh = (item: RealityTargetItem) => {
       const isFact = item.type === 'fact';
-      shieldMat.color.setHex(isFact ? 0x06b6d4 : 0xf43f5e);
+      shieldMat.color.setHex(isFact ? 0x60a5fa : 0xf43f5e);
 
       labelMat.map?.dispose();
       labelMat.map = createTargetTexture(
         isFact ? 'CAMERA FACT' : 'COGNITIVE FOG',
         item.category,
-        isFact ? '#0891b2' : '#e11d48'
+        isFact ? '#2563eb' : '#e11d48'
       );
       labelMat.needsUpdate = true;
     };
@@ -432,7 +432,7 @@ export const RealityTarget3D: React.FC<RealityTarget3DProps> = ({
     // Fire laser animation
     gameLoopRef.current.fireLaser = (mode: 'fog' | 'fact') => {
       const isFact = mode === 'fact';
-      laserMat.color.setHex(isFact ? 0x06b6d4 : 0xf43f5e);
+      laserMat.color.setHex(isFact ? 0x60a5fa : 0xf43f5e);
       laserMat.opacity = 1.0;
       laserMesh.position.x = isFact ? 0.45 : -0.45;
 

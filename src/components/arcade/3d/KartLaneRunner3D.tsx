@@ -535,7 +535,7 @@ export const KartLaneRunner3D: React.FC<KartLaneRunner3DProps> = ({
 
     // Spectator blocks
     const spectatorGeo = new THREE.BoxGeometry(0.4, 0.45, 0.4);
-    const specColors = [0xef4444, 0x3b82f6, 0xf59e0b, 0x10b981, 0x8b5cf6, 0xffffff];
+    const specColors = [0xef4444, 0x3b82f6, 0xf59e0b, 0x3b82f6, 0x8b5cf6, 0xffffff];
     for (let i = 0; i < 90; i++) {
       const mat = new THREE.MeshLambertMaterial({
         color: specColors[i % specColors.length],
@@ -754,7 +754,7 @@ export const KartLaneRunner3D: React.FC<KartLaneRunner3DProps> = ({
     const particleVels = new Float32Array(particleCount * 3);
     particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
     const particleMat = new THREE.PointsMaterial({
-      color: 0x34d399,
+      color: 0x60a5fa,
       size: 0.35,
       transparent: true,
       opacity: 0,

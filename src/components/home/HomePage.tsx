@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ShiftBreakdown } from '../../types';
 import { generateFallbackBreakdown } from '../../../server/fallbackAnalysis';
+import { LifeContextPicker } from '../layout/LifeContextPicker';
 
 const QUICK_EXAMPLES = [
   "My friend hasn't answered me and I keep checking my phone.",
@@ -164,7 +165,8 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-12 py-6 sm:py-10 max-w-5xl mx-auto px-4">
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <LifeContextPicker inline />
       {/* Educational & Non-Medical Disclaimer Header */}
       <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
         <div className="flex items-center gap-2">

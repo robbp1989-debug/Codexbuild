@@ -273,7 +273,7 @@ export const ArcadeHub: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto py-6 sm:py-10 px-4 space-y-8">
-      {!activeMode && !isBlitzActive && <p className="text-sm text-slate-500">Sample questions: <strong>{LIFE_CONTEXTS.find(item => item.id === lifeContext)?.title}</strong>. Change your practice context above. Games based on your own reflection keep your words.</p>}
+      {!activeMode && !isBlitzActive && <p className="text-sm text-slate-500">Life context: <strong>{LIFE_CONTEXTS.find(item => item.id === lifeContext)?.title}</strong>. Change it above. Games based on your own reflection keep your words.</p>}
       {/* Rapid Blitz Overlay */}
       {isBlitzActive ? (
         <div className="space-y-6">

@@ -278,7 +278,7 @@ export const ResponsibilityScale3D: React.FC<ResponsibilityScale3DProps> = ({
     goldKeyLight.position.set(10, 20, 15);
     scene.add(goldKeyLight);
 
-    const tealFill = new THREE.PointLight(0x14b8a6, 2, 25);
+    const tealFill = new THREE.PointLight(0x3b82f6, 2, 25);
     tealFill.position.set(-8, 6, 5);
     scene.add(tealFill);
 
@@ -321,7 +321,7 @@ export const ResponsibilityScale3D: React.FC<ResponsibilityScale3DProps> = ({
     // Left Hanging Pan ("My 50%")
     const panGeo = new THREE.CylinderGeometry(1.2, 0.9, 0.25, 24);
     const leftPanMat = new THREE.MeshStandardMaterial({
-      color: 0x0d9488, // Teal
+      color: 0x2563eb, // Teal
       metalness: 0.7,
       roughness: 0.3,
     });

@@ -22,6 +22,6 @@ export const Navbar: React.FC = () => {
         <button aria-label={audioEnabled ? 'Mute sound' : 'Enable sound'} aria-pressed={audioEnabled} onClick={() => setAudioEnabled(!audioEnabled)}>{audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
       </nav>
     </div>
-    <div className="shift-support"><LifeContextPicker /></div>
+    {!['home', 'reflect'].includes(activeTab) && <div className="shift-support"><LifeContextPicker /></div>}
   </header>;
 };

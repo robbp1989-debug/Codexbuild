@@ -1,5 +1,64 @@
 @import "tailwindcss";
 
+/* One blue accent family, including legacy utility names and their hover states. */
+@theme {
+  --color-teal-50: var(--color-blue-50);
+  --color-teal-100: var(--color-blue-100);
+  --color-teal-200: var(--color-blue-200);
+  --color-teal-300: var(--color-blue-300);
+  --color-teal-400: var(--color-blue-400);
+  --color-teal-500: var(--color-blue-500);
+  --color-teal-600: var(--color-blue-600);
+  --color-teal-700: var(--color-blue-700);
+  --color-teal-800: var(--color-blue-800);
+  --color-teal-900: var(--color-blue-900);
+  --color-teal-950: var(--color-blue-950);
+  --color-emerald-50: var(--color-blue-50);
+  --color-emerald-100: var(--color-blue-100);
+  --color-emerald-200: var(--color-blue-200);
+  --color-emerald-300: var(--color-blue-300);
+  --color-emerald-400: var(--color-blue-400);
+  --color-emerald-500: var(--color-blue-500);
+  --color-emerald-600: var(--color-blue-600);
+  --color-emerald-700: var(--color-blue-700);
+  --color-emerald-800: var(--color-blue-800);
+  --color-emerald-900: var(--color-blue-900);
+  --color-emerald-950: var(--color-blue-950);
+  --color-green-50: var(--color-blue-50);
+  --color-green-100: var(--color-blue-100);
+  --color-green-200: var(--color-blue-200);
+  --color-green-300: var(--color-blue-300);
+  --color-green-400: var(--color-blue-400);
+  --color-green-500: var(--color-blue-500);
+  --color-green-600: var(--color-blue-600);
+  --color-green-700: var(--color-blue-700);
+  --color-green-800: var(--color-blue-800);
+  --color-green-900: var(--color-blue-900);
+  --color-green-950: var(--color-blue-950);
+  --color-cyan-50: var(--color-blue-50);
+  --color-cyan-100: var(--color-blue-100);
+  --color-cyan-200: var(--color-blue-200);
+  --color-cyan-300: var(--color-blue-300);
+  --color-cyan-400: var(--color-blue-400);
+  --color-cyan-500: var(--color-blue-500);
+  --color-cyan-600: var(--color-blue-600);
+  --color-cyan-700: var(--color-blue-700);
+  --color-cyan-800: var(--color-blue-800);
+  --color-cyan-900: var(--color-blue-900);
+  --color-cyan-950: var(--color-blue-950);
+  --color-lime-50: var(--color-blue-50);
+  --color-lime-100: var(--color-blue-100);
+  --color-lime-200: var(--color-blue-200);
+  --color-lime-300: var(--color-blue-300);
+  --color-lime-400: var(--color-blue-400);
+  --color-lime-500: var(--color-blue-500);
+  --color-lime-600: var(--color-blue-600);
+  --color-lime-700: var(--color-blue-700);
+  --color-lime-800: var(--color-blue-800);
+  --color-lime-900: var(--color-blue-900);
+  --color-lime-950: var(--color-blue-950);
+}
+
 /* Shared light surfaces for the imported arcade and reflection screens. */
 :root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; }
 body { margin: 0; background: #f6f9ff; }
@@ -15,21 +74,21 @@ body { margin: 0; background: #f6f9ff; }
 .shift-light [class*="text-slate-3"],
 .shift-light [class*="text-slate-4"],
 .shift-light [class*="text-slate-5"] { color: #526782; }
-.shift-light [class*="text-teal-"], .shift-light [class*="text-cyan-"] { color: #087a78; }
+.shift-light [class*="text-teal-"], .shift-light [class*="text-cyan-"] { color: #315bb5; }
 .shift-light [class*="text-indigo-"], .shift-light [class*="text-blue-"] { color: #275cce; }
 .shift-light [class*="text-purple-"], .shift-light [class*="text-violet-"] { color: #7243af; }
 .shift-light [class*="text-amber-"], .shift-light [class*="text-yellow-"] { color: #925700; }
-.shift-light [class*="text-emerald-"], .shift-light [class*="text-green-"] { color: #15734d; }
+.shift-light [class*="text-emerald-"], .shift-light [class*="text-green-"] { color: #315bb5; }
 .shift-light [class*="text-rose-"], .shift-light [class*="text-red-"] { color: #b33450; }
 .shift-light [class*="from-slate-"] { --tw-gradient-from: #f2f7ff; }
 .shift-light [class*="to-slate-"] { --tw-gradient-to: #fff; }
 .shift-light [class*="via-slate-"] { --tw-gradient-via: #f4f8ff; --tw-gradient-stops: var(--tw-gradient-from), #f4f8ff, var(--tw-gradient-to); }
-.shift-light [class*="from-teal-9"] { --tw-gradient-from: #e6f7f4; }
+.shift-light [class*="from-teal-9"] { --tw-gradient-from: #eaf1ff; }
 .shift-light [class*="to-sky-9"] { --tw-gradient-to: #eaf3ff; }
 .shift-light [class*="bg-sky-9"] { background-color: #eaf3ff; }
 .shift-light [class*="text-sky-"] { color: #246294; }
 .shift-light button[class*="bg-sky-6"], .shift-light button[class*="bg-blue-6"], .shift-light button[class*="bg-indigo-6"], .shift-light button[class*="bg-emerald-6"], .shift-light button[class*="bg-red-6"] { color: white; }
-.shift-light [class*="bg-teal-950"], .shift-light [class*="bg-teal-900"] { background-color: #e6f7f4; }
+.shift-light [class*="bg-teal-950"], .shift-light [class*="bg-teal-900"] { background-color: #eaf1ff; }
 .shift-light [class*="bg-indigo-950"], .shift-light [class*="bg-indigo-900"] { background-color: #edf1ff; }
 .shift-light button { min-height: 40px; }
 .shift-light button:not(:disabled) { cursor: pointer; }
@@ -60,6 +119,17 @@ body { margin: 0; background: #f6f9ff; }
 @media (prefers-reduced-motion: reduce) { .shift-light *, .shift-light *::before, .shift-light *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 .life-context-trigger { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; color: #234776; }
 .life-context-change { text-decoration: underline; margin-left: 8px; }
+.life-context-home { padding: 24px; border: 1px solid #c7d9f5; border-radius: 22px; background: #f0f5ff; }
+.life-context-home-heading { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+.life-context-home h2 { font-size: 1.5rem; font-weight: 750; color: #193968; margin-bottom: 8px; }
+.life-context-home-heading p { font-size: 1rem; color: #465f83; max-width: 610px; }
+.life-context-optional { font-size: .8125rem; color: #526782; white-space: nowrap; }
+.life-context-home-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.life-context-home-choice { display: flex; align-items: center; gap: 10px; border: 1px solid #cbdaf0; border-radius: 12px; background: white; padding: 12px; font-size: .875rem; font-weight: 600; cursor: pointer; }
+.life-context-home-choice.is-selected { border-color: #376dcc; background: #dce9ff; color: #194790; }
+.life-context-home-choice:focus-within { outline: 3px solid #2864ed; outline-offset: 2px; }
+.life-context-home-note { margin-top: 14px; color: #526782; font-size: .8125rem; }
+@media(max-width: 640px) { .life-context-home { padding: 18px; } .life-context-home-heading { flex-direction: column; gap: 8px; } .life-context-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .life-context-dialog { background: #fff; color: #172c4a; width: min(850px, calc(100vw - 24px)); max-width: 850px; max-height: 90dvh; padding: 0; gap: 0; border: 1px solid #d4e2f4; border-radius: 24px; box-shadow: 0 24px 80px #142c4b30; display: flex; flex-direction: column; overflow: hidden; }
 .life-context-heading { padding: 28px 36px 22px; border-bottom: 1px solid #dce6f5; }
 .life-context-eyebrow { color: #275cce; font-size: .8125rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; margin-bottom: 10px; }
