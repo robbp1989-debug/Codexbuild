@@ -26,6 +26,8 @@ assert(retrieval.includes("item.status !== 'archived'"), 'Archived learning must
 assert(!retrieval.includes("item.status !== 'rejected'"), 'Rejected hypotheses must not be globally filtered out.');
 assert(retrieval.includes('evidenceBonus'), 'Real-world evidence must affect memory ranking.');
 assert(retrieval.includes('confidenceBonus'), 'User confirmation must affect memory ranking.');
+assert(retrieval.includes('.filter(({ overlap }) => overlap > 0)'), 'Historical learning must require a real relevance signal before model context injection.');
+assert(retrieval.includes('if (!queryTokens.size) return []'), 'Empty or content-free situations must not trigger arbitrary memory recall.');
 assert(!retrieval.match(/CONFIRMED_FACT\s*:/), 'Raw confirmed-event facts must not be a reusable retrieval type.');
 assert(!retrieval.match(/USER_INTERPRETATION\s*:/), 'Raw interpretations must not be a reusable retrieval type.');
 

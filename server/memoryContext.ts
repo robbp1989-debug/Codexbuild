@@ -115,6 +115,8 @@ export function selectRelevantMemoryContext(
   limit = 6,
 ): string[] {
   const queryTokens = tokens(query);
+  if (!queryTokens.size) return [];
+
   const memories = sanitizeMemoryItems(input)
     .filter((item) => item.status !== 'archived')
     .filter((item) => ALLOWED_CONTEXT_TYPES.has(item.type || ''));
@@ -128,11 +130,14 @@ export function selectRelevantMemoryContext(
       const recent = recencyBonus(item.updatedAt || item.createdAt);
       const evidence = evidenceBonus(item.evidenceCount);
       const confidence = confidenceBonus(item.confidence);
-      // Similarity remains dominant. Confirmation and repeated real-world evidence
-      // can strengthen a relevant memory, but cannot make an unrelated memory win.
+      // Type, recency, confidence, and repeated evidence are ranking signals only.
+      // They are never allowed to create relevance by themselves. At least one
+      // meaningful token must overlap with the current situation before historical
+      // learning is forwarded to the model.
       const score = overlap * 10 + typeWeight * 0.45 + recent + evidence + confidence;
-      return { item, score };
+      return { item, overlap, score };
     })
+    .filter(({ overlap }) => overlap > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, Math.max(0, Math.min(limit, 8)));
 
