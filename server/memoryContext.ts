@@ -3,6 +3,9 @@ export type CompactMemoryItem = {
   type?: string;
   content?: string;
   status?: string;
+  confidence?: string;
+  evidenceCount?: number;
+  sourceKind?: string;
   createdAt?: string;
   updatedAt?: string;
   sourceSessionId?: string;
@@ -69,6 +72,24 @@ function compactContent(content: string): string {
   return clean.length <= 420 ? clean : `${clean.slice(0, 417)}...`;
 }
 
+function evidenceBonus(count?: number): number {
+  if (!Number.isFinite(count) || !count || count <= 1) return 0;
+  return Math.min(1.25, Math.log2(count) * 0.35);
+}
+
+function confidenceBonus(confidence?: string): number {
+  switch ((confidence || '').toLowerCase()) {
+    case 'user_confirmed':
+      return 0.9;
+    case 'observed':
+      return 0.65;
+    case 'working':
+      return 0.1;
+    default:
+      return 0;
+  }
+}
+
 export function sanitizeMemoryItems(input: unknown): CompactMemoryItem[] {
   if (!Array.isArray(input)) return [];
   return input
@@ -78,6 +99,9 @@ export function sanitizeMemoryItems(input: unknown): CompactMemoryItem[] {
       type: normalizeText(item.type).toUpperCase(),
       content: normalizeText(item.content),
       status: normalizeText(item.status).toLowerCase(),
+      confidence: normalizeText(item.confidence).toLowerCase(),
+      evidenceCount: Number.isFinite(Number(item.evidenceCount)) ? Math.max(1, Number(item.evidenceCount)) : 1,
+      sourceKind: normalizeText(item.sourceKind).toLowerCase(),
       createdAt: normalizeText(item.createdAt),
       updatedAt: normalizeText(item.updatedAt),
       sourceSessionId: normalizeText(item.sourceSessionId),
@@ -92,7 +116,7 @@ export function selectRelevantMemoryContext(
 ): string[] {
   const queryTokens = tokens(query);
   const memories = sanitizeMemoryItems(input)
-    .filter((item) => item.status !== 'rejected' && item.status !== 'archived')
+    .filter((item) => item.status !== 'archived')
     .filter((item) => ALLOWED_CONTEXT_TYPES.has(item.type || ''));
 
   const ranked = memories
@@ -102,9 +126,11 @@ export function selectRelevantMemoryContext(
       const overlap = lexicalOverlap(queryTokens, tokens(content));
       const typeWeight = MEMORY_TYPE_WEIGHT[type] || 1;
       const recent = recencyBonus(item.updatedAt || item.createdAt);
-      // Give every high-value learning memory a small baseline, while still making
-      // lexical relevance the dominant selection signal.
-      const score = overlap * 10 + typeWeight * 0.45 + recent;
+      const evidence = evidenceBonus(item.evidenceCount);
+      const confidence = confidenceBonus(item.confidence);
+      // Similarity remains dominant. Confirmation and repeated real-world evidence
+      // can strengthen a relevant memory, but cannot make an unrelated memory win.
+      const score = overlap * 10 + typeWeight * 0.45 + recent + evidence + confidence;
       return { item, score };
     })
     .sort((a, b) => b.score - a.score)
@@ -112,7 +138,9 @@ export function selectRelevantMemoryContext(
 
   return ranked.map(({ item }) => {
     const type = item.type || 'MEMORY';
-    return `[${type}] ${compactContent(item.content || '')}`;
+    const evidence = item.evidenceCount && item.evidenceCount > 1 ? `; evidence=${item.evidenceCount}` : '';
+    const confidence = item.confidence ? `; confidence=${item.confidence}` : '';
+    return `[${type}${evidence}${confidence}] ${compactContent(item.content || '')}`;
   });
 }
 
