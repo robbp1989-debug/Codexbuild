@@ -1,4 +1,11 @@
 {
-  "buildCommand": "npx vite build",
-  "outputDirectory": ".output"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npx vite build --config vite.preview.config.ts",
+  "outputDirectory": "dist-preview",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
