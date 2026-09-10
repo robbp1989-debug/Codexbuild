@@ -35,6 +35,7 @@ export const SourceImportCard: React.FC = () => {
       const data = await response.json() as {
         error?: string;
         accountRequired?: boolean;
+        documentId?: string;
         extractionStatus?: string;
         memoriesExtracted?: number;
         sourceTruncatedForExtraction?: boolean;
@@ -51,10 +52,16 @@ export const SourceImportCard: React.FC = () => {
       if (data.extractionStatus === 'completed') {
         const extracted = Array.isArray(data.memories) ? data.memories : [];
         // Keep a compact device copy so the current session can use the new learning
-        // immediately. The authoritative account copy is already stored in D1.
+        // immediately. Tag it with the source id so later delete-source + learning
+        // controls can remove stale local copies too.
         extracted.forEach((memory) => {
           const tags = memory.tags?.length ? ` | tags: ${memory.tags.join(', ')}` : '';
-          addMemoryItem(memory.type as any, `${memory.label}: ${memory.summary}${tags}`, 'active');
+          addMemoryItem(
+            memory.type as any,
+            `${memory.label}: ${memory.summary}${tags}`,
+            'active',
+            data.documentId,
+          );
         });
         setMemories(extracted);
         setStatus('success');
