@@ -10,7 +10,9 @@ interface LearningMemoryRow {
   tags_json: string;
   epistemic_status: string;
   confidence: string;
+  source_kind: string;
   source_id: string | null;
+  evidence_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -74,7 +76,12 @@ function rowToCompactMemory(row: LearningMemoryRow): CompactMemoryItem {
     id: row.id,
     type: row.memory_type,
     content: `${row.label}: ${row.summary}${tagText}`,
-    status: row.epistemic_status === 'rejected' ? 'rejected' : 'active',
+    // REJECTED_HYPOTHESIS is an active piece of knowledge: the user rejected that
+    // explanation. It must remain retrievable so SHIFT does not keep proposing it.
+    status: row.epistemic_status === 'archived' ? 'archived' : 'active',
+    confidence: row.confidence,
+    evidenceCount: Math.max(1, Number(row.evidence_count || 1)),
+    sourceKind: row.source_kind,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     sourceSessionId: row.source_id || undefined,
@@ -88,7 +95,7 @@ export async function loadLearningMemories(userId: string, limit = 80): Promise<
   const result = await db
     .prepare(
       `SELECT id, memory_type, label, summary, tags_json, epistemic_status,
-              confidence, source_id, created_at, updated_at
+              confidence, source_kind, source_id, evidence_count, created_at, updated_at
        FROM learning_memories
        WHERE user_id = ? AND archived_at IS NULL
        ORDER BY updated_at DESC
@@ -103,8 +110,10 @@ function memoryId(): string {
   return `mem_${crypto.randomUUID()}`;
 }
 
-function normalizedStatus(memory: LearningMemoryCandidate): string {
-  return memory.type === 'REJECTED_HYPOTHESIS' ? 'rejected' : 'active';
+function normalizedStatus(_memory: LearningMemoryCandidate): string {
+  // A rejected hypothesis is not a rejected memory. The durable record should stay
+  // active precisely so it can suppress that explanation in future conversations.
+  return 'active';
 }
 
 export async function replaceLearningMemoriesForSource(
@@ -153,6 +162,7 @@ export async function saveLearningMemory(
   userId: string,
   sourceId: string | null,
   memory: LearningMemoryCandidate,
+  sourceKind: 'reflection' | 'conversation' | 'document' | 'prediction_outcome' = 'conversation',
 ): Promise<string | null> {
   const db = getDb();
   if (!db || !userId) return null;
@@ -163,7 +173,7 @@ export async function saveLearningMemory(
       `INSERT INTO learning_memories
         (id, user_id, memory_type, label, summary, tags_json, epistemic_status,
          confidence, source_kind, source_id, evidence_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'conversation', ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
     )
     .bind(
       id,
@@ -174,6 +184,7 @@ export async function saveLearningMemory(
       JSON.stringify(memory.tags?.slice(0, 8) || []),
       normalizedStatus(memory),
       memory.confidence,
+      sourceKind,
       sourceId,
     )
     .run();
