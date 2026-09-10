@@ -3,6 +3,7 @@ import { analyzeShiftReflection } from '@/server/aiClient';
 import { mergeMemoryContext, sanitizeMemoryItems, selectRelevantMemoryContext } from '@/server/memoryContext';
 import { loadLearningMemories } from '@/server/persistence';
 import { evaluateSafety } from '@/server/safetyCheck';
+import { embedMemoryQuery } from '@/server/semanticMemory';
 
 export async function POST(request: Request) {
   try {
@@ -31,10 +32,19 @@ export async function POST(request: Request) {
     }
 
     // During the migration period, authenticated D1 memory and device-local compact
-    // memory can coexist. The selector rejects raw narratives/unconfirmed
-    // interpretations and only forwards the few learned records relevant now.
+    // memory can coexist. Raw narratives/unconfirmed interpretations are excluded.
+    // Semantic recall is only attempted when this account already has stored compact
+    // memory vectors; otherwise the conservative lexical selector remains unchanged.
     const combinedMemory = [...durableMemory, ...sanitizeMemoryItems(memoryItems)];
-    const retrieved = selectRelevantMemoryContext(situation, combinedMemory, 6);
+    let queryEmbedding: number[] | null = null;
+    if (durableMemory.some((memory) => Array.isArray(memory.embedding) && memory.embedding.length > 0)) {
+      try {
+        queryEmbedding = await embedMemoryQuery(situation);
+      } catch {
+        queryEmbedding = null;
+      }
+    }
+    const retrieved = selectRelevantMemoryContext(situation, combinedMemory, 6, queryEmbedding);
     const context = mergeMemoryContext(retrieved, memoryContext);
     const breakdown = await analyzeShiftReflection(situation, context);
 
@@ -44,6 +54,7 @@ export async function POST(request: Request) {
       substanceDetails: safety.substanceDetails,
       memoryUsed: context,
       memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
+      memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
       breakdown,
     });
   } catch {

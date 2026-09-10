@@ -3,6 +3,7 @@ import { continueShiftConversation } from '@/server/aiClient';
 import { sanitizeMemoryItems, selectRelevantMemoryContext } from '@/server/memoryContext';
 import { loadLearningMemories } from '@/server/persistence';
 import { evaluateSafety } from '@/server/safetyCheck';
+import { embedMemoryQuery } from '@/server/semanticMemory';
 
 export async function POST(request: Request) {
   try {
@@ -41,7 +42,16 @@ export async function POST(request: Request) {
     }
 
     const combinedMemory = [...durableMemory, ...sanitizeMemoryItems(memoryItems)];
-    const relevantMemory = selectRelevantMemoryContext(`${observation}\n${message}`, combinedMemory, 6);
+    const retrievalQuery = `${observation}\n${message}`;
+    let queryEmbedding: number[] | null = null;
+    if (durableMemory.some((memory) => Array.isArray(memory.embedding) && memory.embedding.length > 0)) {
+      try {
+        queryEmbedding = await embedMemoryQuery(retrievalQuery);
+      } catch {
+        queryEmbedding = null;
+      }
+    }
+    const relevantMemory = selectRelevantMemoryContext(retrievalQuery, combinedMemory, 6, queryEmbedding);
     const safeHistory = Array.isArray(history)
       ? history
           .filter((turn): turn is { role: 'user' | 'assistant'; content: string } => {
@@ -63,6 +73,7 @@ export async function POST(request: Request) {
       safetyInterruption: false,
       relevantMemory,
       memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
+      memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
       ...result,
     });
   } catch {
