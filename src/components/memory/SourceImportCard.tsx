@@ -124,6 +124,9 @@ export const SourceImportCard: React.FC = () => {
           </button>
         </div>
         <p className="text-[11px] text-slate-500 mt-2">First import version: TXT, Markdown, JSON, or CSV up to 4 MB. PDF/DOCX parsing is intentionally not enabled until it has a reliable extraction path.</p>
+        <p className="text-[11px] text-slate-500 mt-2">
+          Import only information you are comfortable having processed and stored by the application. <a href="/privacy" className="text-sky-300 hover:text-sky-200 underline underline-offset-4">See how source files and extracted learning are handled.</a>
+        </p>
       </div>
 
       {status !== 'idle' && (
@@ -133,9 +136,12 @@ export const SourceImportCard: React.FC = () => {
             <div className="min-w-0">
               <p className="text-xs text-slate-300 leading-relaxed">{message}</p>
               {status === 'account' && (
-                <a href="/signin-with-chatgpt?return_to=/" className="inline-block mt-2 text-xs font-semibold text-sky-300 hover:text-sky-200 underline underline-offset-4">
-                  Sign in with ChatGPT
-                </a>
+                <div className="mt-2">
+                  <a href="/signin-with-chatgpt?return_to=/" className="text-xs font-semibold text-sky-300 hover:text-sky-200 underline underline-offset-4">
+                    Sign in with ChatGPT
+                  </a>
+                  <p className="text-[10px] text-slate-500 mt-1">Sign-in provides the Site with your authenticated email address and may provide your profile name so account records can be kept separate.</p>
+                </div>
               )}
               {memories.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">

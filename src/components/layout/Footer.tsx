@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { ShieldCheck, Lock, HeartHandshake, RefreshCw, Download } from 'lucide-react';
+import { ShieldCheck, Lock, HeartHandshake, Download } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const { setActiveTab, playSoftSound, exportDataJSON } = useApp();
@@ -20,7 +20,6 @@ export const Footer: React.FC = () => {
   return (
     <footer className="w-full border-t border-slate-800/80 bg-slate-950 text-slate-400 text-xs py-10 mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Sequence Banner */}
         <div className="mb-8 p-4 rounded-xl bg-slate-900/60 border border-slate-800/70">
           <div className="text-[11px] font-mono uppercase tracking-wider text-teal-400 mb-2 font-semibold">
             Core Sequence Order (Non-Negotiable Grounding)
@@ -61,11 +60,14 @@ export const Footer: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-slate-200 font-semibold mb-2">
               <Lock className="w-4 h-4 text-indigo-400" />
-              <span>Data Sovereignty & Privacy</span>
+              <span>Memory & Privacy</span>
             </div>
             <p className="text-slate-400 leading-relaxed text-[11px]">
-              Your reflections, predictions, rules, and outcomes are saved directly on your local device. We do not sell your personal reflections or train advertising models on your data. You maintain complete control to export or erase records anytime.
+              Working records can remain on this device. If you sign in and deliberately choose Remember or import a source, SHIFT can also store compact learning and private source files for your account. New reflections are session-only by default.
             </p>
+            <a href="/privacy" className="inline-block mt-2 text-[11px] text-sky-300 hover:text-sky-200 underline underline-offset-4">
+              How SHIFT memory works
+            </a>
           </div>
 
           <div>
