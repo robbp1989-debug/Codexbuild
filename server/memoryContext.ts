@@ -6,6 +6,7 @@ export type CompactMemoryItem = {
   confidence?: string;
   evidenceCount?: number;
   sourceKind?: string;
+  embedding?: number[];
   createdAt?: string;
   updatedAt?: string;
   sourceSessionId?: string;
@@ -28,6 +29,12 @@ const MEMORY_TYPE_WEIGHT: Record<string, number> = {
   PREDICTION: 2.2,
   THERAPY_NOTE: 1.8,
 };
+
+const MEMORY_EMBEDDING_DIMENSIONS = 256;
+// Semantic similarity can improve recall when the user describes the same theme
+// with different wording, but it must clear a conservative threshold before it is
+// allowed to create relevance on its own.
+const SEMANTIC_RELEVANCE_THRESHOLD = 0.45;
 
 // Raw event narratives and unconfirmed interpretations are intentionally not
 // reusable long-term context. They can remain in a user's private journal, but
@@ -90,6 +97,26 @@ function confidenceBonus(confidence?: string): number {
   }
 }
 
+function safeEmbedding(value: unknown): number[] | undefined {
+  if (!Array.isArray(value) || value.length !== MEMORY_EMBEDDING_DIMENSIONS) return undefined;
+  const vector = value.map(Number);
+  return vector.every(Number.isFinite) ? vector : undefined;
+}
+
+function cosineSimilarity(a?: number[], b?: number[]): number {
+  if (!a || !b || a.length !== b.length || !a.length) return 0;
+  let dot = 0;
+  let magA = 0;
+  let magB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  if (!magA || !magB) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
 export function sanitizeMemoryItems(input: unknown): CompactMemoryItem[] {
   if (!Array.isArray(input)) return [];
   return input
@@ -102,6 +129,7 @@ export function sanitizeMemoryItems(input: unknown): CompactMemoryItem[] {
       confidence: normalizeText(item.confidence).toLowerCase(),
       evidenceCount: Number.isFinite(Number(item.evidenceCount)) ? Math.max(1, Number(item.evidenceCount)) : 1,
       sourceKind: normalizeText(item.sourceKind).toLowerCase(),
+      embedding: safeEmbedding(item.embedding),
       createdAt: normalizeText(item.createdAt),
       updatedAt: normalizeText(item.updatedAt),
       sourceSessionId: normalizeText(item.sourceSessionId),
@@ -113,9 +141,11 @@ export function selectRelevantMemoryContext(
   query: string,
   input: unknown,
   limit = 6,
+  queryEmbedding?: number[] | null,
 ): string[] {
   const queryTokens = tokens(query);
-  if (!queryTokens.size) return [];
+  const safeQueryEmbedding = safeEmbedding(queryEmbedding);
+  if (!queryTokens.size && !safeQueryEmbedding) return [];
 
   const memories = sanitizeMemoryItems(input)
     .filter((item) => item.status !== 'archived')
@@ -126,18 +156,17 @@ export function selectRelevantMemoryContext(
       const type = item.type || '';
       const content = item.content || '';
       const overlap = lexicalOverlap(queryTokens, tokens(content));
+      const semantic = Math.max(0, cosineSimilarity(safeQueryEmbedding, item.embedding));
       const typeWeight = MEMORY_TYPE_WEIGHT[type] || 1;
       const recent = recencyBonus(item.updatedAt || item.createdAt);
       const evidence = evidenceBonus(item.evidenceCount);
       const confidence = confidenceBonus(item.confidence);
-      // Type, recency, confidence, and repeated evidence are ranking signals only.
-      // They are never allowed to create relevance by themselves. At least one
-      // meaningful token must overlap with the current situation before historical
-      // learning is forwarded to the model.
-      const score = overlap * 10 + typeWeight * 0.45 + recent + evidence + confidence;
-      return { item, overlap, score };
+      // Lexical or semantic similarity creates relevance. Type, recency,
+      // confirmation, and evidence only rank memories after that gate is crossed.
+      const score = overlap * 10 + semantic * 6 + typeWeight * 0.45 + recent + evidence + confidence;
+      return { item, overlap, semantic, score };
     })
-    .filter(({ overlap }) => overlap > 0)
+    .filter(({ overlap, semantic }) => overlap > 0 || semantic >= SEMANTIC_RELEVANCE_THRESHOLD)
     .sort((a, b) => b.score - a.score)
     .slice(0, Math.max(0, Math.min(limit, 8)));
 
