@@ -41,6 +41,11 @@ export const KeepTalkingScreen: React.FC = () => {
   const [memorySaved, setMemorySaved] = useState(false);
   const [memoryUsed, setMemoryUsed] = useState<string[]>([]);
 
+  const latestAssistantTurn = useMemo(
+    () => [...turns].reverse().find((turn) => turn.role === 'assistant') || null,
+    [turns],
+  );
+
   if (!activeShift) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
@@ -142,80 +147,80 @@ export const KeepTalkingScreen: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-6 sm:py-10 px-2 sm:px-4">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
-        <div>
+    <div className="keep-talking-immersive">
+      <aside className="keep-talking-perspective" aria-live="polite" aria-label="Current SHIFT perspective">
+        <div className="keep-talking-perspective__eyebrow"><Sparkles className="w-4 h-4" /> Perspective shift</div>
+        <h2>What SHIFT is hearing</h2>
+        <p className="keep-talking-perspective__note">This is a working reflection, not a verdict about you or anyone else.</p>
+
+        <div className="keep-talking-perspective__answer">
+          {loading ? (
+            <span className="keep-talking-perspective__loading"><Loader2 className="w-4 h-4 animate-spin" /> Staying with what you said…</span>
+          ) : (
+            latestAssistantTurn?.content || 'Your next SHIFT response will appear here.'
+          )}
+        </div>
+
+        {memoryUsed.length > 0 && (
+          <div className="keep-talking-perspective__memory">
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <Brain className="w-4 h-4" /> Earlier learning may be relevant
+            </div>
+            <p>Comparison evidence only — not proof that the present situation means the same thing.</p>
+            <div className="keep-talking-perspective__memory-list">
+              {memoryUsed.slice(0, 3).map((memory) => <span key={memory}>{memory}</span>)}
+            </div>
+          </div>
+        )}
+      </aside>
+
+      <section className="keep-talking-dialogue" aria-labelledby="keep-talking-title">
+        <div className="keep-talking-dialogue__header">
           <button
             onClick={() => setActiveTab('breakdown')}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-sky-300 mb-3"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-sky-600 mb-3"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to breakdown
           </button>
-          <div className="flex items-center gap-2 text-sky-300 text-xs font-mono uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-sky-600 text-xs font-mono uppercase tracking-wider">
             <MessageCircle className="w-4 h-4" /> Keep Talking
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 mt-2">Stay with this before deciding what to do.</h1>
-          <p className="text-sm text-slate-400 mt-2 max-w-2xl">
-            SHIFT keeps the current breakdown underneath the conversation and can compare it with earlier learning when that history is genuinely relevant.
+          <h1 id="keep-talking-title" className="text-2xl sm:text-3xl font-bold mt-2">Stay with this before deciding what to do.</h1>
+          <p className="text-sm mt-2 max-w-2xl text-slate-600">
+            Your conversation stays connected to this reflection while the latest SHIFT perspective has its own place in the room.
           </p>
         </div>
-      </div>
 
-      {memoryUsed.length > 0 && (
-        <div className="mb-5 rounded-2xl border border-sky-500/20 bg-sky-950/20 p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-sky-300 mb-2">
-            <Brain className="w-4 h-4" /> Earlier learning may be relevant
-          </div>
-          <p className="text-xs text-slate-400 mb-2">These are comparison points, not conclusions about the current situation.</p>
-          <div className="flex flex-wrap gap-2">
-            {memoryUsed.slice(0, 3).map((memory) => (
-              <span key={memory} className="max-w-full truncate px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] text-slate-300">
-                {memory}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="rounded-3xl border border-slate-800 bg-slate-900/80 shadow-2xl overflow-hidden">
-        <div className="min-h-[420px] max-h-[62vh] overflow-y-auto p-4 sm:p-6 space-y-4">
+        <div className="keep-talking-thread" aria-label="Conversation history">
           {turns.map((turn, index) => (
-            <div key={`${turn.role}-${index}`} className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`max-w-[88%] sm:max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                  turn.role === 'user'
-                    ? 'bg-sky-500 text-slate-950 rounded-br-md'
-                    : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-bl-md'
-                }`}
-              >
-                {turn.content}
-              </div>
+            <div key={`${turn.role}-${index}`} className={`keep-talking-turn keep-talking-turn--${turn.role}`}>
+              <div className="keep-talking-turn__label">{turn.role === 'user' ? 'You' : 'SHIFT'}</div>
+              <div className="keep-talking-turn__body">{turn.content}</div>
             </div>
           ))}
           {loading && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-950 border border-slate-800 text-slate-400 text-sm flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-sky-400" /> Staying with what you said…
-              </div>
+            <div className="keep-talking-turn keep-talking-turn--assistant keep-talking-turn--loading">
+              <div className="keep-talking-turn__label">SHIFT</div>
+              <div className="keep-talking-turn__body flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-sky-500" /> Staying with what you said…</div>
             </div>
           )}
         </div>
 
         {memorySuggestion && (
-          <div className="mx-4 sm:mx-6 mb-4 rounded-2xl border border-sky-500/30 bg-sky-950/25 p-4">
+          <div className="keep-talking-memory-suggestion">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold text-sky-300 flex items-center gap-1.5">
+                <div className="text-xs font-semibold text-sky-700 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" /> Possible learning to remember
                 </div>
-                <p className="text-sm text-slate-200 mt-1"><strong>{memorySuggestion.label}:</strong> {memorySuggestion.summary}</p>
+                <p className="text-sm mt-1"><strong>{memorySuggestion.label}:</strong> {memorySuggestion.summary}</p>
                 <p className="text-[11px] text-slate-500 mt-1">Nothing is saved unless you choose to save it.</p>
               </div>
               <button
                 type="button"
                 onClick={() => void saveSuggestedMemory()}
                 disabled={memorySaved}
-                className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:bg-emerald-500 text-slate-950 text-xs font-bold"
+                className="keep-talking-remember-button"
               >
                 {memorySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                 {memorySaved ? 'Remembered' : 'Remember this'}
@@ -224,7 +229,7 @@ export const KeepTalkingScreen: React.FC = () => {
           </div>
         )}
 
-        <div className="border-t border-slate-800 bg-slate-950/70 p-3 sm:p-4">
+        <div className="keep-talking-composer">
           <div className="flex gap-2">
             <textarea
               value={input}
@@ -238,25 +243,25 @@ export const KeepTalkingScreen: React.FC = () => {
               disabled={loading}
               rows={2}
               placeholder="Tell SHIFT what part still feels unfinished…"
-              className="flex-1 resize-none rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
+              className="keep-talking-composer__input"
             />
             <button
               type="button"
               onClick={() => void sendMessage()}
               disabled={loading || !input.trim()}
               aria-label="Send"
-              className="w-12 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 flex items-center justify-center"
+              className="keep-talking-send-button"
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={() => setActiveTab('scenario-game')} className="px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:border-sky-500/60 hover:text-sky-300">Practice this</button>
-            <button onClick={() => setActiveTab('prediction-lab')} className="px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:border-sky-500/60 hover:text-sky-300">Test a prediction</button>
-            <button onClick={() => setActiveTab('therapy-prep')} className="px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:border-sky-500/60 hover:text-sky-300">Save for therapy</button>
+            <button onClick={() => setActiveTab('scenario-game')} className="keep-talking-secondary-action">Practice this</button>
+            <button onClick={() => setActiveTab('prediction-lab')} className="keep-talking-secondary-action">Test a prediction</button>
+            <button onClick={() => setActiveTab('therapy-prep')} className="keep-talking-secondary-action">Save for therapy</button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };
