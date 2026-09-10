@@ -13,8 +13,15 @@ export type CinematicSequenceHandle = {
   scrollToProgress: (progress: number) => void;
 };
 
+type CinematicVideoSource = {
+  src: string;
+  type: string;
+};
+
 type CinematicSequenceProps = {
   frames: string[];
+  videoSources?: CinematicVideoSource[];
+  poster?: string;
   children: React.ReactNode;
 };
 
@@ -45,9 +52,10 @@ function drawImageCover(
 }
 
 export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSequenceProps>(
-  function CinematicSequence({ frames, children }, forwardedRef) {
+  function CinematicSequence({ frames, videoSources = [], poster, children }, forwardedRef) {
     const rootRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
     useImperativeHandle(forwardedRef, () => ({
       scrollToProgress(progress) {
@@ -65,6 +73,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
     useLayoutEffect(() => {
       const root = rootRef.current;
       const canvas = canvasRef.current;
+      const video = videoRef.current;
       if (!root || !canvas || frames.length === 0) return;
 
       gsap.registerPlugin(ScrollTrigger);
@@ -72,6 +81,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       const context2d = canvas.getContext('2d', { alpha: false });
       if (!context2d) return;
       const canvasElement = canvas;
+      const videoElement = video;
       const drawingContext = context2d;
       const stageElement = root.querySelector<HTMLElement>('.cinematic-stage');
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -80,22 +90,22 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       drawingContext.imageSmoothingQuality = 'high';
 
       const images: Array<HTMLImageElement | undefined> = Array.from({ length: frames.length });
-      const playhead = { frame: 0 };
+      const transport = { progress: 0 };
       let frameRequest = 0;
       let resizeRequest = 0;
       let disposed = false;
       let viewportWidth = 1;
       let viewportHeight = 1;
+      let videoReady = false;
+      let videoDuration = 0;
+      let lastVideoTarget = -1;
 
       const setResponsiveTunnelLength = () => {
         if (prefersReducedMotion) {
           root.style.height = '150vh';
           return;
         }
-
         const width = window.innerWidth;
-        // Keep the cinematic entrance compact: the user reaches the chair/workspace
-        // in roughly half the wheel travel of the previous 480vh desktop tunnel.
         root.style.height = width <= 640 ? '240vh' : width <= 900 ? '260vh' : '300vh';
       };
 
@@ -111,14 +121,11 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         return undefined;
       };
 
-      function renderFrame() {
-        if (disposed) return;
-        const target = Math.min(frames.length - 1, Math.max(0, playhead.frame));
+      function renderFallbackFrame() {
+        const target = Math.min(frames.length - 1, Math.max(0, transport.progress * (frames.length - 1)));
         const lowerIndex = Math.floor(target);
         const upperIndex = Math.min(frames.length - 1, Math.ceil(target));
         const rawBlend = target - lowerIndex;
-        // Smoothstep gives each crossfade a zero-velocity start/end so transitions
-        // between the eight source frames feel less like discrete image changes.
         const blend = rawBlend * rawBlend * (3 - 2 * rawBlend);
         const lower = images[lowerIndex];
         const upper = images[upperIndex];
@@ -135,10 +142,62 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         if (fallback) drawImageCover(drawingContext, fallback, viewportWidth, viewportHeight, 1);
       }
 
+      function renderVisual() {
+        if (disposed) return;
+
+        if (videoElement && videoReady && videoDuration > 0) {
+          const targetTime = Math.min(
+            Math.max(videoDuration - 0.001, 0),
+            Math.max(0, transport.progress * videoDuration),
+          );
+
+          // Avoid issuing redundant seeks. At 30fps, a ~1/120s threshold is already
+          // finer than the encoded frame interval and keeps wheel/trackpad scrubbing light.
+          if (Math.abs(targetTime - lastVideoTarget) > 1 / 120) {
+            lastVideoTarget = targetTime;
+            try {
+              videoElement.currentTime = targetTime;
+            } catch {
+              // Some browsers reject a seek until metadata is fully settled; the next
+              // ScrollTrigger update retries automatically.
+            }
+          }
+          return;
+        }
+
+        renderFallbackFrame();
+      }
+
       const scheduleRender = () => {
         cancelAnimationFrame(frameRequest);
-        frameRequest = requestAnimationFrame(renderFrame);
+        frameRequest = requestAnimationFrame(renderVisual);
       };
+
+      const activateVideo = () => {
+        if (!videoElement || disposed || !Number.isFinite(videoElement.duration) || videoElement.duration <= 0) return;
+        videoDuration = videoElement.duration;
+        videoReady = true;
+        videoElement.pause();
+        videoElement.style.opacity = '1';
+        canvasElement.style.opacity = '0';
+        scheduleRender();
+      };
+
+      const useFrameFallback = () => {
+        videoReady = false;
+        if (videoElement) videoElement.style.opacity = '0';
+        canvasElement.style.opacity = '1';
+        scheduleRender();
+      };
+
+      if (videoElement && videoSources.length > 0) {
+        videoElement.addEventListener('loadedmetadata', activateVideo);
+        videoElement.addEventListener('error', useFrameFallback);
+        videoElement.pause();
+        videoElement.load();
+      } else {
+        useFrameFallback();
+      }
 
       const resizeCanvas = () => {
         setResponsiveTunnelLength();
@@ -146,9 +205,6 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         viewportWidth = Math.max(1, width);
         viewportHeight = Math.max(1, height);
 
-        // Full-window 2D compositing is the hottest path in this sequence. Capping
-        // DPR keeps the image sharp while reducing the number of pixels redrawn on
-        // every scroll frame, especially on high-DPI desktop displays.
         const maxDpr = width > 1400 ? 1.25 : width > 900 ? 1.35 : 1.5;
         const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
         canvasElement.width = Math.max(1, Math.round(width * dpr));
@@ -156,7 +212,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         drawingContext.setTransform(dpr, 0, 0, dpr, 0, 0);
         drawingContext.imageSmoothingEnabled = true;
         drawingContext.imageSmoothingQuality = 'high';
-        renderFrame();
+        renderFallbackFrame();
         ScrollTrigger.refresh();
       };
 
@@ -176,7 +232,9 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           } catch {
             // onload already guarantees a usable image in browsers that reject decode().
           }
-          if (index <= 1 || Math.abs(playhead.frame - index) < 1.5) scheduleRender();
+          if (!videoReady && (index <= 1 || Math.abs(transport.progress * (frames.length - 1) - index) < 1.5)) {
+            scheduleRender();
+          }
           resolve();
         };
         image.onerror = () => resolve();
@@ -203,17 +261,16 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         const depthNear = root.querySelector<HTMLElement>('.cinematic-depth--near');
         const vignette = root.querySelector<HTMLElement>('.cinematic-vignette');
         const scrollCue = root.querySelector<HTMLElement>('.cinematic-scroll-cue');
+        const mediaTargets = [canvasElement, videoElement].filter(Boolean) as HTMLElement[];
 
         const FRAME_TRAVEL_DURATION = 7.1;
         const CHAIR_SETTLE_AT = 6.15;
         const CHAIR_SETTLE_DURATION = 1.2;
         const WORKSPACE_REVEAL_AT = 7.35;
-        // A slightly longer scrub eases coarse mouse-wheel steps into continuous motion.
-        // The tunnel itself is much shorter, so this smoothing does not make the journey feel slow.
         const SCRUB_SMOOTHING = window.innerWidth <= 640 ? 0.68 : window.innerWidth <= 900 ? 0.76 : 0.86;
 
         gsap.set(panels, { autoAlpha: 0 });
-        gsap.set(canvasElement, { transformOrigin: '48% 64%' });
+        gsap.set(mediaTargets, { transformOrigin: '48% 64%' });
         if (hero) gsap.set(hero, { autoAlpha: 1, y: 0, filter: 'blur(0px)', pointerEvents: 'auto' });
         if (workspaceArrival) {
           gsap.set(workspaceArrival, {
@@ -235,8 +292,8 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           },
         });
 
-        timeline.to(playhead, {
-          frame: frames.length - 1,
+        timeline.to(transport, {
+          progress: 1,
           duration: FRAME_TRAVEL_DURATION,
           ease: 'none',
           onUpdate: scheduleRender,
@@ -247,12 +304,12 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           if (depthMid) timeline.to(depthMid, { scale: 1.08, z: 40, duration: FRAME_TRAVEL_DURATION, ease: 'none' }, 0);
           if (depthNear) timeline.to(depthNear, { scale: 1.42, z: 170, autoAlpha: 0, duration: 5.8, ease: 'none' }, 0.3);
 
-          timeline.to(canvasElement, {
+          timeline.to(mediaTargets, {
             scale: 1.028,
             duration: CHAIR_SETTLE_AT,
             ease: 'none',
           }, 0);
-          timeline.to(canvasElement, {
+          timeline.to(mediaTargets, {
             scale: 1.11,
             duration: CHAIR_SETTLE_DURATION,
             ease: 'power1.inOut',
@@ -270,13 +327,8 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           }, 1.05);
         }
 
-        if (scrollCue) {
-          timeline.to(scrollCue, { autoAlpha: 0, duration: 0.7, ease: 'none' }, 0.8);
-        }
-
-        if (vignette) {
-          timeline.to(vignette, { autoAlpha: 0.72, duration: 0.9, ease: 'none' }, WORKSPACE_REVEAL_AT - 0.35);
-        }
+        if (scrollCue) timeline.to(scrollCue, { autoAlpha: 0, duration: 0.7, ease: 'none' }, 0.8);
+        if (vignette) timeline.to(vignette, { autoAlpha: 0.72, duration: 0.9, ease: 'none' }, WORKSPACE_REVEAL_AT - 0.35);
 
         if (workspaceArrival) {
           timeline
@@ -296,14 +348,40 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         cancelAnimationFrame(frameRequest);
         cancelAnimationFrame(resizeRequest);
         window.removeEventListener('resize', scheduleResize);
+        if (videoElement) {
+          videoElement.removeEventListener('loadedmetadata', activateVideo);
+          videoElement.removeEventListener('error', useFrameFallback);
+        }
         animationContext.revert();
       };
-    }, [frames]);
+    }, [frames, videoSources]);
 
     return (
       <div ref={rootRef} className="cinematic-scroll">
         <div className="cinematic-stage">
-          <canvas ref={canvasRef} className="cinematic-canvas" aria-hidden="true" />
+          <canvas
+            ref={canvasRef}
+            className="cinematic-canvas"
+            aria-hidden="true"
+            style={{ opacity: 1, transition: 'opacity 220ms ease' }}
+          />
+          {videoSources.length > 0 && (
+            <video
+              ref={videoRef}
+              className="cinematic-canvas cinematic-video"
+              poster={poster}
+              preload="auto"
+              muted
+              playsInline
+              disablePictureInPicture
+              aria-hidden="true"
+              style={{ opacity: 0, transition: 'opacity 220ms ease' }}
+            >
+              {videoSources.map((source) => (
+                <source key={source.src} src={source.src} type={source.type} />
+              ))}
+            </video>
+          )}
           <div className="cinematic-depth" aria-hidden="true">
             <span className="cinematic-depth-layer cinematic-depth--far" />
             <span className="cinematic-depth-layer cinematic-depth--mid" />

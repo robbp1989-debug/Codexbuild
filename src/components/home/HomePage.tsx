@@ -17,7 +17,12 @@ import {
   CinematicSequence,
   type CinematicSequenceHandle,
 } from './CinematicSequence';
-import { LANDING_FRAMES, LANDING_STOPS } from './landingSequence';
+import {
+  LANDING_FRAMES,
+  LANDING_STOPS,
+  LANDING_VIDEO_POSTER,
+  LANDING_VIDEO_SOURCES,
+} from './landingSequence';
 
 const QUICK_EXAMPLES = [
   "My friend hasn't answered me and I keep checking my phone.",
@@ -170,7 +175,12 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <CinematicSequence ref={sequenceRef} frames={LANDING_FRAMES}>
+    <CinematicSequence
+      ref={sequenceRef}
+      frames={LANDING_FRAMES}
+      videoSources={LANDING_VIDEO_SOURCES}
+      poster={LANDING_VIDEO_POSTER}
+    >
       <section className="cinematic-panel cinematic-panel--hero" aria-labelledby="hero-title">
         <header className="cinematic-nav cinematic-nav--hero">
           <button className="cinematic-brand" type="button" aria-label="SHIFT home" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.hero)}>
