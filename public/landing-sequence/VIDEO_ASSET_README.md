@@ -1,27 +1,46 @@
 # SHIFT cinematic video asset
 
-The landing renderer is video-first and automatically falls back to the existing `frame-0001.webp` through `frame-0008.webp` sequence when neither video source is available.
+The landing renderer is video-first and automatically falls back to the existing `frame-0001.webp` through `frame-0008.webp` sequence if the production movie is unavailable or cannot be decoded.
 
-## Production filenames
+## Approved production asset
 
-Place one or both of these files in this directory:
+The selected production master is the 10-second Gemini office-entry animation approved on 2026-09-10. The web encode should be saved here as:
 
-- `shift-office-entry.webm`
 - `shift-office-entry.mp4`
 
-The browser will prefer WebM and fall back to MP4/H.264.
+Optional later alternative:
 
-## Target render
+- `shift-office-entry.webm`
 
-- Duration: approximately 5–6 seconds
-- Frame rate: 30 fps minimum; 60 fps is acceptable when file size remains reasonable
-- Motion: continuous forward camera travel through the existing office environment
-- Final composition: settle on the existing chair framing used by the current last frame
-- No text or interface baked into the video; React/GSAP renders the hero and workspace independently
-- No audio required
+The browser is configured to request the MP4 first.
 
-## Encoding guidance
+## Production encode used for scroll scrubbing
 
-For smooth scroll seeking, encode with frequent keyframes and move MP4 metadata to the beginning of the file (`faststart`). A practical H.264 target is 1080p, 30 fps, CRF 20–24, `yuv420p`, with keyframes approximately every 6–15 frames. Test file size and seeking behavior on desktop and mobile before increasing resolution or bitrate.
+- Codec/container: H.264 MP4
+- Resolution: 1280×720
+- Duration: 10.0 seconds
+- Frame rate: 24 fps
+- Frames: 240
+- Pixel format: yuv420p
+- Audio: removed
+- MP4 metadata: faststart enabled
+- Seeking: short-GOP/all-intra-friendly production encoding is preferred because the page maps scroll position directly to movie time
 
-The React component maps scroll progress directly to `video.currentTime`, so the asset must remain visually coherent when paused on arbitrary frames and when scrubbed backward.
+For the finalized handoff encode, every encoded frame can be made independently seekable (`-g 1`) when the extra file size is acceptable. This produces the most reliable frame-accurate reverse/forward scroll behavior. A short GOP of 6 frames is the lighter fallback.
+
+## Runtime behavior
+
+The React/GSAP component quantizes scroll targets to the movie's real 24 fps frame boundaries instead of issuing sub-frame seeks. This reduces decoder churn and makes mouse-wheel/trackpad scrubbing more stable.
+
+The cinematic travel distance is intentionally compact:
+
+- Desktop: 210vh total section height (about 110vh of actual sticky scroll travel)
+- Tablet: 200vh
+- Mobile: 190vh
+- Reduced motion: 150vh with simplified behavior
+
+The visual sequence remains:
+
+hero → continuous office dolly → chair settles → final Life Context + “What’s going on?” workspace appears.
+
+No text or UI is baked into the movie; React/GSAP renders the interface independently over the final chair composition.

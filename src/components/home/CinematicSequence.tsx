@@ -22,6 +22,7 @@ type CinematicSequenceProps = {
   frames: string[];
   videoSources?: CinematicVideoSource[];
   poster?: string;
+  videoFps?: number;
   children: React.ReactNode;
 };
 
@@ -52,7 +53,7 @@ function drawImageCover(
 }
 
 export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSequenceProps>(
-  function CinematicSequence({ frames, videoSources = [], poster, children }, forwardedRef) {
+  function CinematicSequence({ frames, videoSources = [], poster, videoFps = 24, children }, forwardedRef) {
     const rootRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -105,8 +106,11 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           root.style.height = '150vh';
           return;
         }
+
         const width = window.innerWidth;
-        root.style.height = width <= 640 ? '240vh' : width <= 900 ? '260vh' : '300vh';
+        // The approved dense video has 240 real frames. One compact viewport-plus
+        // journey is enough to feel cinematic without making the user spin the wheel.
+        root.style.height = width <= 640 ? '190vh' : width <= 900 ? '200vh' : '210vh';
       };
 
       const nearestReadyFrame = (target: number) => {
@@ -146,20 +150,24 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         if (disposed) return;
 
         if (videoElement && videoReady && videoDuration > 0) {
-          const targetTime = Math.min(
-            Math.max(videoDuration - 0.001, 0),
-            Math.max(0, transport.progress * videoDuration),
+          // The production movie is 24fps and encoded for seeking. Quantizing the
+          // scroll target to real video frames prevents the browser from doing many
+          // useless sub-frame seeks between the same two encoded pictures.
+          const safeFps = Math.max(1, videoFps);
+          const maxFrameIndex = Math.max(0, Math.floor(videoDuration * safeFps) - 1);
+          const targetFrame = Math.min(
+            maxFrameIndex,
+            Math.max(0, Math.round(transport.progress * maxFrameIndex)),
           );
+          const targetTime = targetFrame / safeFps;
 
-          // Avoid issuing redundant seeks. At 30fps, a ~1/120s threshold is already
-          // finer than the encoded frame interval and keeps wheel/trackpad scrubbing light.
-          if (Math.abs(targetTime - lastVideoTarget) > 1 / 120) {
+          if (targetTime !== lastVideoTarget) {
             lastVideoTarget = targetTime;
             try {
               videoElement.currentTime = targetTime;
             } catch {
-              // Some browsers reject a seek until metadata is fully settled; the next
-              // ScrollTrigger update retries automatically.
+              // If a browser temporarily rejects a seek while loading, the next
+              // ScrollTrigger update will retry on the next real frame boundary.
             }
           }
           return;
@@ -191,7 +199,10 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       };
 
       if (videoElement && videoSources.length > 0) {
-        videoElement.addEventListener('loadedmetadata', activateVideo);
+        // Wait until the first decoded frame is available before fading away the
+        // still-image fallback. This prevents the brief black flash some browsers
+        // show when only metadata has loaded.
+        videoElement.addEventListener('loadeddata', activateVideo);
         videoElement.addEventListener('error', useFrameFallback);
         videoElement.pause();
         videoElement.load();
@@ -267,7 +278,9 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         const CHAIR_SETTLE_AT = 6.15;
         const CHAIR_SETTLE_DURATION = 1.2;
         const WORKSPACE_REVEAL_AT = 7.35;
-        const SCRUB_SMOOTHING = window.innerWidth <= 640 ? 0.68 : window.innerWidth <= 900 ? 0.76 : 0.86;
+        // The real 240-frame movie supplies the visual continuity now, so scrub can
+        // stay responsive instead of using a long lag to hide eight-frame stepping.
+        const SCRUB_SMOOTHING = window.innerWidth <= 640 ? 0.56 : window.innerWidth <= 900 ? 0.64 : 0.72;
 
         gsap.set(panels, { autoAlpha: 0 });
         gsap.set(mediaTargets, { transformOrigin: '48% 64%' });
@@ -349,12 +362,12 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         cancelAnimationFrame(resizeRequest);
         window.removeEventListener('resize', scheduleResize);
         if (videoElement) {
-          videoElement.removeEventListener('loadedmetadata', activateVideo);
+          videoElement.removeEventListener('loadeddata', activateVideo);
           videoElement.removeEventListener('error', useFrameFallback);
         }
         animationContext.revert();
       };
-    }, [frames, videoSources]);
+    }, [frames, videoSources, videoFps]);
 
     return (
       <div ref={rootRef} className="cinematic-scroll">
@@ -363,7 +376,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
             ref={canvasRef}
             className="cinematic-canvas"
             aria-hidden="true"
-            style={{ opacity: 1, transition: 'opacity 220ms ease' }}
+            style={{ opacity: 1, transition: 'opacity 180ms ease' }}
           />
           {videoSources.length > 0 && (
             <video
@@ -375,7 +388,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
               playsInline
               disablePictureInPicture
               aria-hidden="true"
-              style={{ opacity: 0, transition: 'opacity 220ms ease' }}
+              style={{ opacity: 0, transition: 'opacity 180ms ease' }}
             >
               {videoSources.map((source) => (
                 <source key={source.src} src={source.src} type={source.type} />
