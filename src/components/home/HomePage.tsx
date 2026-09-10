@@ -101,6 +101,8 @@ export const HomePage: React.FC = () => {
         safetyInterruption?: boolean;
         crisisType?: string;
         crisisMessage?: string;
+        memoryUsed?: string[];
+        memorySource?: string;
         breakdown?: ReturnType<typeof generateFallbackBreakdown>;
       };
 
@@ -134,6 +136,8 @@ export const HomePage: React.FC = () => {
         follow_up_question: breakdownData.follow_up_question || 'What is one camera fact about what occurred, stripped of all interpretation?',
         recommended_skills: breakdownData.recommended_skills || ['fact_vs_interpretation'],
         recommended_games: breakdownData.recommended_games || ['fact_or_story', 'prediction_lab'],
+        memoryUsed: Array.isArray(data.memoryUsed) ? data.memoryUsed : [],
+        memorySource: data.memorySource || 'device_or_none',
         isSavedToProfile: false,
         // Nothing becomes durable memory before the user deliberately chooses Remember.
         savePreference: 'session_only',
@@ -169,6 +173,8 @@ export const HomePage: React.FC = () => {
         follow_up_question: fallback.follow_up_question,
         recommended_skills: fallback.recommended_skills,
         recommended_games: fallback.recommended_games as ShiftBreakdown['recommended_games'],
+        memoryUsed: [],
+        memorySource: 'device_or_none',
         isSavedToProfile: false,
         savePreference: 'session_only',
       };

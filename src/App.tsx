@@ -12,10 +12,10 @@ import { PredictionLabScreen } from './components/predictions/PredictionLabScree
 import { TherapyPrepScreen } from './components/therapy/TherapyPrepScreen';
 import { EpistemicMemoryScreen } from './components/memory/EpistemicMemoryScreen';
 import { LearningMemorySync } from './components/memory/LearningMemorySync';
-import { SourceImportCard } from './components/memory/SourceImportCard';
 import { ShiftBreakdownScreen } from './components/reflect/ShiftBreakdownScreen';
 import { BreakdownNextStepBar } from './components/reflect/BreakdownNextStepBar';
 import { KeepTalkingScreen } from './components/reflect/KeepTalkingScreen';
+import { MemoryInfluencePanel } from './components/reflect/MemoryInfluencePanel';
 import { PersonalizedScenarioGame } from './components/arcade/modes/PersonalizedScenarioGame';
 import { SafetyPage } from './components/safety/SafetyPage';
 import { PatternsPage } from './components/patterns/PatternsPage';
@@ -48,6 +48,7 @@ const AppContent: React.FC = () => {
         {activeTab === 'scenario-game' && <PersonalizedScenarioGame />}
         {activeTab === 'breakdown' && (
           <>
+            <MemoryInfluencePanel />
             <ShiftBreakdownScreen />
             <BreakdownNextStepBar />
           </>
@@ -59,12 +60,7 @@ const AppContent: React.FC = () => {
         {activeTab === 'skills' && <SkillTreeScreen />}
         {activeTab === 'prediction-lab' && <PredictionLabScreen />}
         {activeTab === 'therapy-prep' && <TherapyPrepScreen />}
-        {activeTab === 'memory' && (
-          <div className="space-y-6">
-            <SourceImportCard />
-            <EpistemicMemoryScreen />
-          </div>
-        )}
+        {activeTab === 'memory' && <EpistemicMemoryScreen />}
         {activeTab === 'patterns' && <PatternsPage />}
         {activeTab === 'review' && <ReviewPage />}
         {activeTab === 'learn' && <LearnPage />}
