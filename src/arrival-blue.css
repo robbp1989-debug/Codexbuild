@@ -1,0 +1,561 @@
+/* Final chair-arrival treatment -------------------------------------------------
+   Imported after index.css so this file can refine the landing experience without
+   disturbing the rest of the established component styling. */
+
+.shift-experience {
+  --shift-purple: #8ecbff;
+  --shift-purple-strong: #58a7ea;
+  --shift-accent: #8ecbff;
+  --shift-accent-strong: #58a7ea;
+  --shift-accent-soft: #d9edff;
+  --shift-accent-ink: #235d8f;
+}
+
+.shift-experience :focus-visible {
+  outline-color: #a7d6ff;
+}
+
+.cinematic-brand-mark {
+  background: linear-gradient(135deg, #4e9fe4, #a7d8ff);
+  box-shadow: 0 12px 30px rgba(61, 137, 200, 0.34);
+}
+
+.cinematic-nav nav button:hover,
+.arrival-nav button:hover {
+  color: #c9e7ff;
+}
+
+.cinematic-kicker,
+.cinematic-eyebrow,
+.cinematic-framework-label {
+  color: #b8ddff;
+}
+
+.cinematic-hero-copy > i,
+.cinematic-process-copy > i {
+  background: linear-gradient(90deg, #72b9f2, #b9e0ff);
+  box-shadow: 0 0 16px rgba(114, 185, 242, 0.42);
+}
+
+.cinematic-hero-copy strong {
+  color: #a8d7ff;
+}
+
+.cinematic-primary-cta {
+  background: linear-gradient(115deg, #3f92da, #85c8ff);
+  box-shadow: 0 18px 40px rgba(31, 93, 143, 0.34);
+}
+
+.cinematic-primary-cta:hover {
+  box-shadow: 0 22px 48px rgba(31, 101, 158, 0.42);
+}
+
+.cinematic-scroll-cue i {
+  background: linear-gradient(#91cfff, transparent);
+}
+
+/* The final destination is the chair. The interface enters as a right-side
+   workspace so the chair remains visually present instead of being covered by
+   a centered destination modal. */
+.cinematic-panel--workspace-arrival {
+  padding: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cinematic-panel--workspace-arrival::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 13, 17, 0.03) 0%, rgba(8, 13, 17, 0.04) 38%, rgba(8, 15, 22, 0.24) 55%, rgba(8, 15, 22, 0.68) 100%),
+    linear-gradient(180deg, rgba(8, 14, 20, 0.28), transparent 24%, transparent 72%, rgba(8, 14, 20, 0.18));
+  pointer-events: none;
+}
+
+.arrival-header {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto minmax(14rem, 1fr) auto;
+  align-items: center;
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  min-height: 5.3rem;
+  padding: 0 clamp(1.25rem, 3.5vw, 3.75rem);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(12, 18, 24, 0.7);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px) saturate(120%);
+}
+
+.arrival-brand {
+  color: #fff;
+}
+
+.arrival-prompt {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: var(--shift-serif);
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  letter-spacing: -0.025em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.arrival-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.arrival-nav button {
+  min-height: 2.55rem;
+  padding: 0 0.85rem;
+  border: 1px solid rgba(180, 220, 250, 0.22);
+  border-radius: 0.65rem;
+  background: rgba(231, 246, 255, 0.07);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.arrival-nav button:hover {
+  border-color: rgba(151, 207, 247, 0.52);
+  background: rgba(112, 184, 237, 0.16);
+  transform: translateY(-1px);
+}
+
+.arrival-workspace {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: clamp(0.85rem, 2vw, 1.6rem) clamp(1rem, 2.4vw, 2.5rem) clamp(1rem, 2vw, 1.8rem);
+}
+
+.arrival-workspace-stack {
+  width: min(43rem, 47vw);
+  max-height: calc(100svh - 7.2rem);
+  overflow: auto;
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 185, 229, 0.45) transparent;
+}
+
+.arrival-card {
+  border: 1px solid rgba(192, 218, 238, 0.88);
+  border-radius: 1.25rem;
+  background: rgba(250, 253, 255, 0.94);
+  box-shadow: 0 22px 60px rgba(6, 18, 30, 0.2), inset 0 1px rgba(255, 255, 255, 0.84);
+  color: #162d42;
+  backdrop-filter: blur(18px) saturate(110%);
+}
+
+.arrival-card--context {
+  padding: 1rem 1.15rem 0.9rem;
+}
+
+.arrival-card--reflection {
+  padding: 1.05rem 1.15rem 1rem;
+}
+
+.arrival-card .cinematic-eyebrow,
+.arrival-card .cinematic-framework-label {
+  margin-bottom: 0.45rem;
+  color: #4f91c7;
+}
+
+.arrival-card .cinematic-life-context .life-context-home {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-heading {
+  margin-bottom: 0.65rem;
+}
+
+.arrival-card .cinematic-life-context .life-context-home h2 {
+  margin: 0 0 0.2rem;
+  color: #152f47;
+  font-family: var(--shift-serif);
+  font-size: clamp(1.65rem, 2.2vw, 2.35rem);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-heading p {
+  margin: 0;
+  color: #60768a;
+  font-size: 0.79rem;
+  line-height: 1.35;
+}
+
+.arrival-card .cinematic-life-context .life-context-optional,
+.arrival-card .cinematic-life-context .life-context-home-note {
+  color: #6a8194;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-grid {
+  gap: 0.42rem;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-choice {
+  min-height: 2.45rem;
+  padding: 0.54rem 0.68rem;
+  border-color: #cadbe8;
+  border-radius: 0.68rem;
+  background: rgba(255, 255, 255, 0.82);
+  color: #29445a;
+  font-size: 0.73rem;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-choice:hover {
+  border-color: #86bfe9;
+  background: #f2f9ff;
+  transform: translateY(-1px);
+}
+
+.arrival-card .cinematic-life-context .life-context-home-choice.is-selected {
+  border-color: #75b7e8;
+  background: #e4f3ff;
+  color: #225f8f;
+  box-shadow: inset 0 0 0 1px rgba(90, 164, 219, 0.18);
+}
+
+.arrival-card .cinematic-life-context .life-context-radio {
+  border-color: #89abc4;
+}
+
+.arrival-card .cinematic-life-context .life-context-radio[data-checked] {
+  border-color: #65aae0;
+  background: #65aae0;
+}
+
+.arrival-card .personal-context-disclosure {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top-color: #dbe7ef;
+}
+
+.arrival-card .personal-context-disclosure > summary {
+  padding: 0.36rem 0.15rem;
+  color: #526b7f;
+  font-size: 0.76rem;
+}
+
+.arrival-card .personal-context-disclosure > summary span {
+  color: #4f94c9;
+}
+
+.arrival-card .personal-context-disclosure > section {
+  border-color: #d7e6f0;
+  background: rgba(255, 255, 255, 0.92);
+  color: #253d51;
+}
+
+.arrival-card--reflection h2 {
+  margin: 0;
+  color: #142c41;
+  font-family: var(--shift-serif);
+  font-size: clamp(2rem, 3vw, 3.25rem);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.arrival-card .cinematic-intro {
+  margin: 0.48rem 0 0.7rem;
+  color: #60768a;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.arrival-card .cinematic-textarea {
+  border-color: #cddde9;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 28px rgba(31, 72, 104, 0.1);
+}
+
+.arrival-card .cinematic-textarea:focus-within {
+  border-color: #78b9e8;
+  box-shadow: 0 0 0 3px rgba(120, 185, 232, 0.2), 0 10px 28px rgba(31, 72, 104, 0.1);
+}
+
+.arrival-card .cinematic-textarea textarea {
+  min-height: 6rem;
+  color: #253d51;
+}
+
+.arrival-card .cinematic-input-footer {
+  border-top-color: #dde7ee;
+}
+
+.arrival-card .cinematic-input-footer small {
+  color: #6b7d8b;
+}
+
+.arrival-card .cinematic-input-footer button {
+  background: linear-gradient(115deg, #4f9ede, #84c7f5);
+  box-shadow: 0 8px 20px rgba(52, 122, 176, 0.18);
+}
+
+.arrival-card .cinematic-input-footer button:disabled {
+  background: #d9e2e8;
+  color: #83919c;
+}
+
+.arrival-card .cinematic-scenarios {
+  margin-top: 0.62rem;
+}
+
+.arrival-card .cinematic-scenarios > p {
+  margin-bottom: 0.4rem;
+  color: #61798c;
+  font-size: 0.66rem;
+}
+
+.arrival-card .cinematic-scenarios > p svg {
+  color: #64aee5;
+}
+
+.arrival-card .cinematic-scenarios > div {
+  gap: 0.32rem;
+}
+
+.arrival-card .cinematic-scenarios button {
+  padding: 0.34rem 0.48rem;
+  border-color: #d5e3ed;
+  background: #f7fbff;
+  color: #4a6478;
+  font-size: 0.65rem;
+}
+
+.arrival-card .cinematic-scenarios button:hover {
+  border-color: #92c6ec;
+  background: #eaf6ff;
+  color: #245f8a;
+}
+
+.arrival-card .cinematic-safety-link {
+  margin-top: 0.62rem;
+  padding: 0.48rem 0 0;
+  border-top-color: #dce8f0;
+  color: #728493;
+}
+
+.arrival-card .cinematic-safety-link svg,
+.arrival-card .cinematic-safety-link span {
+  color: #559bd0;
+}
+
+/* Remove the remaining purple treatment from the original home-state selectors. */
+.cinematic-life-context .life-context-home-choice:hover {
+  border-color: rgba(132, 197, 245, 0.72);
+}
+
+.cinematic-life-context .life-context-home-choice.is-selected {
+  border-color: #87c7f5;
+  background: rgba(83, 158, 213, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(157, 211, 250, 0.28);
+}
+
+.cinematic-life-context .life-context-radio[data-checked] {
+  border-color: #9bd2f8;
+  background: #63ace3;
+}
+
+.personal-context-disclosure > summary span {
+  color: #9ed2f7;
+}
+
+.cinematic-textarea:focus-within {
+  border-color: #7ebce8;
+  box-shadow: 0 0 0 3px rgba(126, 188, 232, 0.2), 0 18px 45px rgba(0, 0, 0, 0.24);
+}
+
+.cinematic-input-footer button {
+  background: linear-gradient(115deg, #4d9bda, #80c4f4);
+}
+
+.cinematic-scenarios > p svg,
+.cinematic-safety-link svg {
+  color: #8bc8f3;
+}
+
+.cinematic-scenarios button:hover {
+  border-color: rgba(137, 200, 244, 0.58);
+  background: rgba(81, 157, 214, 0.2);
+}
+
+.cinematic-safety-link span {
+  color: #a7d7f8;
+}
+
+.cinematic-tool-icon {
+  border-color: rgba(146, 204, 245, 0.55);
+  color: #a8d8fa;
+}
+
+.cinematic-tool-icon--featured {
+  border-color: rgba(159, 214, 250, 0.74);
+  background: rgba(83, 158, 213, 0.15);
+  box-shadow: 0 0 38px rgba(75, 151, 209, 0.2);
+}
+
+/* Carry the same light-blue accent decision onto the non-cinematic app screens. */
+.shift-light [class*='text-purple-'],
+.shift-light [class*='text-violet-'] {
+  color: #4d8fc5;
+}
+
+.shift-light [class*='border-purple-'],
+.shift-light [class*='border-violet-'] {
+  border-color: #a9d1ee;
+}
+
+.shift-light [class*='bg-purple-950'],
+.shift-light [class*='bg-purple-900'],
+.shift-light [class*='bg-violet-950'],
+.shift-light [class*='bg-violet-900'] {
+  background-color: #eaf6ff;
+}
+
+@media (max-width: 1100px) {
+  .arrival-header {
+    grid-template-columns: auto 1fr;
+  }
+
+  .arrival-prompt {
+    text-align: right;
+  }
+
+  .arrival-nav {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    padding-bottom: 0.7rem;
+  }
+
+  .arrival-workspace-stack {
+    width: min(48rem, 58vw);
+    max-height: calc(100svh - 9.8rem);
+  }
+}
+
+@media (max-width: 820px) {
+  .cinematic-panel--workspace-arrival::before {
+    background: linear-gradient(180deg, rgba(8, 15, 22, 0.22), rgba(8, 15, 22, 0.58));
+  }
+
+  .arrival-header {
+    min-height: auto;
+    padding: 0.75rem 1rem;
+    gap: 0.65rem 1rem;
+  }
+
+  .arrival-brand {
+    font-size: 1rem;
+  }
+
+  .arrival-prompt {
+    font-size: 1.1rem;
+  }
+
+  .arrival-nav {
+    justify-content: stretch;
+  }
+
+  .arrival-nav button {
+    flex: 1;
+    padding: 0 0.55rem;
+    font-size: 0.68rem;
+  }
+
+  .arrival-workspace {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0.7rem;
+  }
+
+  .arrival-workspace-stack {
+    width: min(100%, 42rem);
+    max-height: calc(100svh - 9.6rem);
+  }
+
+  .arrival-card {
+    background: rgba(250, 253, 255, 0.96);
+  }
+
+  .arrival-card .cinematic-life-context .life-context-home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .arrival-card .cinematic-scenarios {
+    display: none;
+  }
+}
+
+@media (max-width: 540px) {
+  .arrival-header {
+    grid-template-columns: auto 1fr;
+  }
+
+  .arrival-prompt {
+    font-size: 0.98rem;
+  }
+
+  .arrival-nav {
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+  }
+
+  .arrival-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .arrival-nav button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .arrival-workspace-stack {
+    max-height: calc(100svh - 10rem);
+  }
+
+  .arrival-card--context,
+  .arrival-card--reflection {
+    padding: 0.8rem;
+  }
+
+  .arrival-card .cinematic-life-context .life-context-home-heading {
+    display: block;
+  }
+
+  .arrival-card .cinematic-life-context .life-context-optional {
+    display: block;
+    margin-top: 0.3rem;
+  }
+
+  .arrival-card--reflection h2 {
+    font-size: 2rem;
+  }
+
+  .arrival-card .cinematic-input-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .arrival-card .cinematic-input-footer button {
+    justify-content: center;
+  }
+}
