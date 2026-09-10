@@ -7,6 +7,7 @@ const assert = (condition, message) => {
 
 const migration = read('migrations/0001_learning_memory.sql');
 const retrieval = read('server/memoryContext.ts');
+const persistence = read('server/persistence.ts');
 const breakdownRoute = read('app/api/shift/breakdown/route.ts');
 const conversationRoute = read('app/api/shift/conversation/route.ts');
 const sourceUpload = read('app/api/shift/source/upload/route.ts');
@@ -44,6 +45,11 @@ assert(aiClient.includes('A suggestion is not a HELPFUL_STRATEGY until a real ou
 assert(evidenceRoute.includes('rememberForFuture'), 'Prediction outcomes must remain opt-in for durable account memory.');
 assert(evidenceRoute.includes('strategyHelped && intendedAction'), 'Helpful strategies require an explicit user-reported helpful outcome.');
 assert(evidenceRoute.includes("type: 'HELPFUL_STRATEGY'"), 'Helpful strategy promotion path is missing.');
+
+assert(persistence.includes('CONSOLIDATABLE_MEMORY_TYPES'), 'Repeated durable learning must have a conservative consolidation path.');
+assert(persistence.includes('canonicalLearningText'), 'Learning consolidation must compare normalized compact learning text.');
+assert(persistence.includes('evidence_count = ?'), 'Independent confirmations must be able to strengthen an existing learning record.');
+assert(!persistence.includes("'OUTCOME',\n  'HELPFUL_STRATEGY'"), 'Distinct real-world outcomes must not be collapsed merely because they are outcomes.');
 
 assert(selfTest.includes('DELETE FROM learning_memories'), 'Storage self-test must clean up synthetic D1 records.');
 assert(selfTest.includes('bucket.delete(objectKey)'), 'Storage self-test must clean up synthetic R2 objects.');

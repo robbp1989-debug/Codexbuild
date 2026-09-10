@@ -17,6 +17,15 @@ interface LearningMemoryRow {
   updated_at: string;
 }
 
+interface ConsolidationRow {
+  id: string;
+  summary: string;
+  tags_json: string;
+  confidence: string;
+  source_id: string | null;
+  evidence_count: number;
+}
+
 export interface SourceDocumentRecord {
   id: string;
   objectKey: string;
@@ -116,6 +125,87 @@ function normalizedStatus(_memory: LearningMemoryCandidate): string {
   return 'active';
 }
 
+const CONSOLIDATABLE_MEMORY_TYPES = new Set<LearningMemoryCandidate['type']>([
+  'CONFIRMED_PATTERN',
+  'WORKING_HYPOTHESIS',
+  'REJECTED_HYPOTHESIS',
+  'UPDATED_PERSPECTIVE',
+  'USER_PREFERENCE',
+  'BOUNDARY',
+  'HELPFUL_STRATEGY',
+]);
+
+function canonicalLearningText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[“”"'`]/g, '')
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function strongerConfidence(existing: string, incoming: LearningMemoryCandidate['confidence']): string {
+  const rank: Record<string, number> = { working: 1, observed: 2, user_confirmed: 3 };
+  return (rank[incoming] || 0) > (rank[existing] || 0) ? incoming : existing || incoming;
+}
+
+function mergedTags(existingRaw: string, incoming: string[]): string[] {
+  const output: string[] = [];
+  for (const tag of [...safeTags(existingRaw), ...incoming]) {
+    const clean = tag.trim().toLowerCase().slice(0, 60);
+    if (clean && !output.includes(clean)) output.push(clean);
+    if (output.length >= 8) break;
+  }
+  return output;
+}
+
+async function consolidateExactLearning(
+  db: D1Database,
+  userId: string,
+  sourceId: string | null,
+  memory: LearningMemoryCandidate,
+): Promise<string | null> {
+  if (!CONSOLIDATABLE_MEMORY_TYPES.has(memory.type)) return null;
+  const canonicalIncoming = canonicalLearningText(memory.summary);
+  if (!canonicalIncoming) return null;
+
+  const result = await db
+    .prepare(
+      `SELECT id, summary, tags_json, confidence, source_id, evidence_count
+       FROM learning_memories
+       WHERE user_id = ? AND memory_type = ? AND archived_at IS NULL
+       ORDER BY updated_at DESC
+       LIMIT 80`,
+    )
+    .bind(userId, memory.type)
+    .all<ConsolidationRow>();
+
+  const match = (result.results || []).find(
+    (row) => canonicalLearningText(row.summary) === canonicalIncoming,
+  );
+  if (!match) return null;
+
+  // A duplicate submit from the same source is idempotent. A genuinely separate
+  // source confirming the same compact learning adds one evidence point.
+  const sameSource = Boolean(sourceId && match.source_id && sourceId === match.source_id);
+  const nextEvidenceCount = sameSource
+    ? Math.max(1, Number(match.evidence_count || 1))
+    : Math.max(1, Number(match.evidence_count || 1)) + 1;
+  const nextConfidence = strongerConfidence(match.confidence, memory.confidence);
+  const nextTags = mergedTags(match.tags_json, memory.tags || []);
+
+  await db
+    .prepare(
+      `UPDATE learning_memories
+       SET evidence_count = ?, confidence = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ?`,
+    )
+    .bind(nextEvidenceCount, nextConfidence, JSON.stringify(nextTags), match.id, userId)
+    .run();
+
+  return match.id;
+}
+
 export async function replaceLearningMemoriesForSource(
   userId: string,
   sourceId: string,
@@ -167,6 +257,10 @@ export async function saveLearningMemory(
   const db = getDb();
   if (!db || !userId) return null;
   await ensureUser(userId);
+
+  const consolidatedId = await consolidateExactLearning(db, userId, sourceId, memory);
+  if (consolidatedId) return consolidatedId;
+
   const id = memoryId();
   await db
     .prepare(
