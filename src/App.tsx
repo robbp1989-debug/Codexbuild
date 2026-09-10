@@ -23,6 +23,16 @@ import { CrisisInterruptionModal } from './components/modals/CrisisInterruptionM
 const AppContent: React.FC = () => {
   const { activeTab } = useApp();
 
+  if (activeTab === 'home' || activeTab === 'reflect') {
+    return (
+      <div className="shift-experience">
+        <HomePage />
+        <GroundingModal />
+        <CrisisInterruptionModal />
+      </div>
+    );
+  }
+
   return (
     <div className="shift-light min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-teal-500/30 selection:text-teal-200">
       <Navbar />
@@ -30,9 +40,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {activeTab === 'arcade' && <ArcadeHub />}
         {activeTab === 'scenario-game' && <PersonalizedScenarioGame />}
-        {activeTab === 'home' && <HomePage />}
         {activeTab === 'breakdown' && <ShiftBreakdownScreen />}
-        {activeTab === 'reflect' && <HomePage />}
         {(activeTab === 'dashboard' || activeTab === 'my-shift' || activeTab === 'shift-lab') && (
           <MyShiftDashboard />
         )}

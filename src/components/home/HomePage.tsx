@@ -1,23 +1,31 @@
-import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+'use client';
+
+import React, { useRef, useState } from 'react';
 import {
-  Sparkles,
+  ArrowRight,
+  ClipboardCheck,
+  FlaskConical,
   Gamepad2,
   GitBranch,
-  ArrowRight,
-  ShieldCheck,
-  Zap,
   Layers,
-  FlaskConical,
-  HeartHandshake,
-  Loader2,
-  AlertTriangle,
+  Leaf,
   Lightbulb,
+  Loader2,
+  PenLine,
+  ShieldCheck,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
-import { ShiftBreakdown } from '../../types';
 import { generateFallbackBreakdown } from '../../../server/fallbackAnalysis';
+import { ShiftBreakdown } from '../../types';
+import { useApp } from '../../context/AppContext';
 import { LifeContextPicker } from '../layout/LifeContextPicker';
 import { PersonalSummary } from './PersonalSummary';
+import {
+  CinematicSequence,
+  type CinematicSequenceHandle,
+} from './CinematicSequence';
+import { LANDING_FRAMES, LANDING_STOPS } from './landingSequence';
 
 const QUICK_EXAMPLES = [
   "My friend hasn't answered me and I keep checking my phone.",
@@ -26,6 +34,13 @@ const QUICK_EXAMPLES = [
   "I want to drink even though nothing terrible happened.",
   "I feel weird and can't put it into words.",
 ];
+
+const TOOL_LINKS = [
+  { tab: 'dashboard', title: 'Shift Lab', copy: 'Your themes, working model, active experiments, and past updates.', Icon: Layers },
+  { tab: 'arcade', title: 'Reflection Arcade', copy: 'Fast practice for separating facts, stories, feelings, and choices.', Icon: Gamepad2 },
+  { tab: 'skills', title: 'Skill Tree', copy: 'Track depth across awareness, perspective, relationships, and regulation.', Icon: GitBranch },
+  { tab: 'prediction-lab', title: 'Prediction Lab', copy: 'Compare what your old system feared with what actually happened.', Icon: FlaskConical },
+] as const;
 
 export const HomePage: React.FC = () => {
   const {
@@ -37,10 +52,16 @@ export const HomePage: React.FC = () => {
     setCrisisInterruption,
   } = useApp();
 
+  const sequenceRef = useRef<CinematicSequenceHandle>(null);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('Gathering facts...');
-  const [error, setError] = useState<string | null>(null);
+
+  const navigateToTool = (tab: string) => {
+    playSoftSound('tap');
+    setActiveTab(tab);
+    requestAnimationFrame(() => window.scrollTo({ top: 0 }));
+  };
 
   const handleAnalyze = async (textToAnalyze?: string) => {
     const text = (textToAnalyze || inputText).trim();
@@ -48,14 +69,12 @@ export const HomePage: React.FC = () => {
 
     playSoftSound('tap');
     setLoading(true);
-    setError(null);
     setLoadingStep('Observing what objectively happened...');
 
     try {
       const stepTimer1 = setTimeout(() => {
         setLoadingStep('Distinguishing known facts from added interpretations...');
       }, 700);
-
       const stepTimer2 = setTimeout(() => {
         setLoadingStep('Identifying possible needs & working hypothesis...');
       }, 1400);
@@ -68,25 +87,22 @@ export const HomePage: React.FC = () => {
 
       clearTimeout(stepTimer1);
       clearTimeout(stepTimer2);
+      if (!response.ok) throw new Error('Server returned an error status');
 
-      if (!response.ok) {
-        throw new Error('Server returned an error status');
-      }
-
-      const data = await response.json() as { safetyInterruption?: boolean; crisisType?: string; crisisMessage?: string; breakdown?: ReturnType<typeof generateFallbackBreakdown> };
+      const data = await response.json() as {
+        safetyInterruption?: boolean;
+        crisisType?: string;
+        crisisMessage?: string;
+        breakdown?: ReturnType<typeof generateFallbackBreakdown>;
+      };
 
       if (data.safetyInterruption) {
-        setCrisisInterruption({
-          isOpen: true,
-          type: data.crisisType,
-          message: data.crisisMessage,
-        });
+        setCrisisInterruption({ isOpen: true, type: data.crisisType, message: data.crisisMessage });
         setLoading(false);
         return;
       }
 
       const breakdownData = data.breakdown || generateFallbackBreakdown(text);
-
       const newShift: ShiftBreakdown = {
         id: 'shift-' + Date.now(),
         rawInput: text,
@@ -101,23 +117,13 @@ export const HomePage: React.FC = () => {
         userEditedInterpretation: breakdownData.interpretation || 'Mind anticipating an unwanted consequence.',
         possible_needs: breakdownData.possible_needs || ['predictability', 'safety'],
         confirmed_needs: [breakdownData.possible_needs?.[0] || 'predictability'],
-        protective_rule_hypothesis:
-          breakdownData.protective_rule_hypothesis ||
-          'When ambiguity occurs, I predict negative outcomes, so my system attempts to control or retreat.',
+        protective_rule_hypothesis: breakdownData.protective_rule_hypothesis || 'When ambiguity occurs, I predict negative outcomes, so my system attempts to control or retreat.',
         hypothesis_confidence: breakdownData.hypothesis_confidence || 'medium',
         hypothesisUserStatus: 'unreviewed',
-        updated_perspective:
-          breakdownData.updated_perspective ||
-          'The first thought that arrives in an activated moment is a hypothesis from an old safety program, not a verified fact about reality.',
-        choice:
-          breakdownData.choice ||
-          'Pause for 60 seconds to separate verified facts from stories before choosing any action.',
-        real_world_experiment:
-          breakdownData.real_world_experiment ||
-          'Observe the situation for 24 hours without acting on your first protective reflex.',
-        follow_up_question:
-          breakdownData.follow_up_question ||
-          'What is one camera fact about what occurred, stripped of all interpretation?',
+        updated_perspective: breakdownData.updated_perspective || 'The first thought that arrives in an activated moment is a hypothesis from an old safety program, not a verified fact about reality.',
+        choice: breakdownData.choice || 'Pause for 60 seconds to separate verified facts from stories before choosing any action.',
+        real_world_experiment: breakdownData.real_world_experiment || 'Observe the situation for 24 hours without acting on your first protective reflex.',
+        follow_up_question: breakdownData.follow_up_question || 'What is one camera fact about what occurred, stripped of all interpretation?',
         recommended_skills: breakdownData.recommended_skills || ['fact_vs_interpretation'],
         recommended_games: breakdownData.recommended_games || ['fact_or_story', 'prediction_lab'],
         isSavedToProfile: false,
@@ -128,8 +134,8 @@ export const HomePage: React.FC = () => {
       setActiveShift(newShift);
       playSoftSound('complete');
       setActiveTab('breakdown');
-    } catch (err) {
-      console.warn('Network call failed, running local clinical fallback:', err);
+    } catch (requestError) {
+      console.warn('Network call failed, running local clinical fallback:', requestError);
       const fallback = generateFallbackBreakdown(text);
       const fallbackShift: ShiftBreakdown = {
         id: 'shift-' + Date.now(),
@@ -153,7 +159,7 @@ export const HomePage: React.FC = () => {
         real_world_experiment: fallback.real_world_experiment,
         follow_up_question: fallback.follow_up_question,
         recommended_skills: fallback.recommended_skills,
-        recommended_games: fallback.recommended_games as any,
+        recommended_games: fallback.recommended_games as ShiftBreakdown['recommended_games'],
         isSavedToProfile: false,
         savePreference: 'remember',
       };
@@ -167,220 +173,117 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <LifeContextPicker inline />
-      <PersonalSummary />
-      {/* Educational & Non-Medical Disclaimer Header */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0" />
-          <span>
-            <strong>Educational Skills Tool:</strong> SHIFT helps you reflect and test real-life behavioral predictions. It is not diagnostic or medical therapy.
-          </span>
-        </div>
-        <button
-          onClick={() => setActiveTab('safety')}
-          className="text-teal-400 hover:text-teal-300 font-medium underline shrink-0 cursor-pointer"
-        >
-          Safety & Hotlines
-        </button>
-      </div>
-
-      {/* Primary Prompt Card */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 p-6 sm:p-10 shadow-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-950/60 border border-teal-500/30 text-teal-300 text-xs font-mono mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-            <span>S • H • I • F • T FRAMEWORK</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-100 mb-3">
-            What’s going on?
-          </h1>
-          <p className="text-slate-400 text-base sm:text-lg mb-8 leading-relaxed">
-            Start with a moment from your day. Review the facts, name your feelings, then <strong className="text-teal-300 font-semibold">practice a helpful response through play.</strong> You can edit every suggestion before you begin.
-          </p>
-
-          {/* Input Area */}
-          <div className="space-y-4">
-            <div className="relative rounded-2xl bg-slate-950/80 border border-slate-700/80 p-3 sm:p-4 focus-within:border-teal-500 transition-colors shadow-inner">
-              <textarea
-                aria-label="What's going on? Describe your situation"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Describe what happened or what you're noticing inside (e.g. 'My friend hasn't replied...', 'My boss corrected me in a meeting...', 'I feel restless and want to escape...')"
-                className="w-full h-32 sm:h-36 bg-transparent text-slate-100 placeholder-slate-500 text-base resize-none focus:outline-none leading-relaxed"
-                disabled={loading}
-              />
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                <span className="text-xs text-slate-500">
-                  Reflect first. Then practice at your pace.
-                </span>
-                <button
-                  onClick={() => handleAnalyze()}
-                  disabled={loading || !inputText.trim()}
-                  className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-lg ${
-                    loading || !inputText.trim()
-                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      : 'shift-primary font-semibold cursor-pointer active:scale-98'
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                      <span>{loadingStep}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-slate-950" />
-                      <span>Explore my situation</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Quick 1-Tap Preset Buttons */}
-            <div className="space-y-2 pt-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-teal-400" />
-                Or try one-tap real-life reflection scenarios:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {QUICK_EXAMPLES.map((example, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setInputText(example);
-                      handleAnalyze(example);
-                    }}
-                    disabled={loading}
-                    className="text-left text-xs bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/80 hover:border-teal-500/50 text-slate-300 hover:text-teal-200 px-3 py-2 rounded-lg transition-all cursor-pointer"
-                  >
-                    "{example}"
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+    <CinematicSequence ref={sequenceRef} frames={LANDING_FRAMES}>
+      <section className="cinematic-panel cinematic-panel--hero" aria-labelledby="hero-title">
+        <header className="cinematic-nav">
+          <button className="cinematic-brand" type="button" aria-label="SHIFT home" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.hero)}>
+            <span className="cinematic-brand-mark" aria-hidden="true">S</span><span>SHIFT</span>
+          </button>
+          <nav aria-label="Landing page navigation">
+            <button type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.discipline)}>Our Approach</button>
+            <span aria-hidden="true" />
+            <button type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.process)}>Process</button>
+          </nav>
+        </header>
+        <div className="cinematic-hero-copy">
+          <p className="cinematic-kicker">A clearer place to begin</p>
+          <h1 id="hero-title">Mind over<br />matter.</h1>
+          <i aria-hidden="true" />
+          <p>An experience designed to help you prepare for and process therapy, <strong>effectively.</strong></p>
+          <button className="cinematic-primary-cta" type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.lifeContext)}>
+            Start your shift <ArrowRight aria-hidden="true" />
+          </button>
         </div>
       </section>
 
-      {/* Quick Navigation / Modular Entry Points */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Shift Lab */}
-        <div
-          onClick={() => {
-            playSoftSound('tap');
-            setActiveTab('dashboard');
-          }}
-          className="group rounded-2xl bg-slate-900/70 border border-slate-800 p-5 hover:border-teal-500/50 hover:bg-slate-800/60 transition-all cursor-pointer shadow-md"
-        >
-          <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 mb-3 group-hover:scale-105 transition-transform">
-            <Layers className="w-5 h-5" />
-          </div>
-          <h3 className="text-base font-semibold text-slate-200 group-hover:text-teal-300 transition-colors">
-            Shift Lab
-          </h3>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            Your current theme, working model, active experiments, and past updates.
-          </p>
+      <section className="cinematic-panel cinematic-panel--context cinematic-panel--center" aria-label="Life context">
+        <div className="cinematic-surface cinematic-context-surface">
+          <p className="cinematic-eyebrow">Set the scene</p>
+          <div className="cinematic-life-context"><LifeContextPicker inline /></div>
+          <details className="personal-context-disclosure">
+            <summary>Your story, in your words <span>Optional</span></summary>
+            <PersonalSummary />
+          </details>
         </div>
+      </section>
 
-        {/* 16-Game Arcade */}
-        <div
-          onClick={() => {
-            playSoftSound('tap');
-            setActiveTab('arcade');
-          }}
-          className="group rounded-2xl bg-slate-900/70 border border-slate-800 p-5 hover:border-sky-500/50 hover:bg-slate-800/60 transition-all cursor-pointer shadow-md"
-        >
-          <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 mb-3 group-hover:scale-105 transition-transform">
-            <Gamepad2 className="w-5 h-5" />
-          </div>
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-slate-200 group-hover:text-sky-300 transition-colors">
-              Reflection Arcade
-            </h3>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-950 border border-sky-600/30 text-sky-400">
-              16 Engines (5 3D)
+      <section className="cinematic-panel cinematic-panel--reflection cinematic-panel--left" aria-labelledby="reflection-title">
+        <div className="cinematic-surface cinematic-reflection-surface">
+          <div className="cinematic-framework-label">S • H • I • F • T Framework</div>
+          <h2 id="reflection-title">What’s going on?</h2>
+          <p className="cinematic-intro">Start with a moment from your day. Review the facts, name your feelings, then practice a helpful response before you begin.</p>
+          <label className="cinematic-textarea">
+            <span className="sr-only">Describe what happened or what you are noticing inside</span>
+            <textarea value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder="Describe what happened or what you’re noticing inside…" disabled={loading} />
+            <span className="cinematic-input-footer">
+              <small>Reflect first. Then practice at your pace.</small>
+              <button type="button" onClick={() => void handleAnalyze()} disabled={loading || !inputText.trim()}>
+                {loading ? <Loader2 className="is-spinning" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
+                {loading ? loadingStep : 'Explore my situation'}
+              </button>
             </span>
+          </label>
+          <div className="cinematic-scenarios">
+            <p><Zap aria-hidden="true" /> Or try one real-life reflection:</p>
+            <div>
+              {QUICK_EXAMPLES.map((example) => (
+                <button type="button" key={example} disabled={loading} onClick={() => { setInputText(example); void handleAnalyze(example); }}>“{example}”</button>
+              ))}
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            Fast, zero-typing drills: Fact vs Story, Both Can Be True, Pause Button, and more.
-          </p>
-        </div>
-
-        {/* Skill Tree */}
-        <div
-          onClick={() => {
-            playSoftSound('tap');
-            setActiveTab('skills');
-          }}
-          className="group rounded-2xl bg-slate-900/70 border border-slate-800 p-5 hover:border-indigo-500/50 hover:bg-slate-800/60 transition-all cursor-pointer shadow-md"
-        >
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3 group-hover:scale-105 transition-transform">
-            <GitBranch className="w-5 h-5" />
-          </div>
-          <h3 className="text-base font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
-            Skill Tree
-          </h3>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            Track practice depth across Self-Awareness, Perspective, Relationships, and Regulation.
-          </p>
-        </div>
-
-        {/* Prediction Lab */}
-        <div
-          onClick={() => {
-            playSoftSound('tap');
-            setActiveTab('prediction-lab');
-          }}
-          className="group rounded-2xl bg-slate-900/70 border border-slate-800 p-5 hover:border-amber-500/50 hover:bg-slate-800/60 transition-all cursor-pointer shadow-md"
-        >
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-3 group-hover:scale-105 transition-transform">
-            <FlaskConical className="w-5 h-5" />
-          </div>
-          <h3 className="text-base font-semibold text-slate-200 group-hover:text-amber-300 transition-colors">
-            Prediction Lab
-          </h3>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            Log what your old system feared vs what actually happened in reality.
-          </p>
+          <button className="cinematic-safety-link" type="button" onClick={() => navigateToTool('safety')}>
+            <ShieldCheck aria-hidden="true" /> Educational skills tool <span>Safety & hotlines</span>
+          </button>
         </div>
       </section>
 
-      {/* Foundational Pillars */}
-      <section className="rounded-2xl bg-slate-900/40 border border-slate-800/80 p-6 sm:p-8">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-          <Lightbulb className="w-4 h-4 text-teal-400" />
-          The SHIFT Disciplines
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-          <div className="space-y-1">
-            <span className="font-semibold text-teal-300">1. Observe First, Interpret Second</span>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Camera-test what was said and done before letting automatic stories create certainty.
-            </p>
+      {TOOL_LINKS.map(({ tab, title, copy, Icon }, index) => (
+        <section className={`cinematic-panel cinematic-panel--tool-${index} cinematic-panel--center`} aria-labelledby={`tool-title-${tab}`} key={tab}>
+          <div className="cinematic-tools-wrap cinematic-tool-stage">
+            <p className="cinematic-eyebrow">Continue your practice · {String(index + 1).padStart(2, '0')}</p>
+            <span className="cinematic-tool-icon cinematic-tool-icon--featured"><Icon aria-hidden="true" /></span>
+            <h2 id={`tool-title-${tab}`}>{title}</h2>
+            <p className="cinematic-intro">{copy}</p>
+            <button className="cinematic-tool-cta" type="button" onClick={() => navigateToTool(tab)}>
+              Open {title} <ArrowRight aria-hidden="true" />
+            </button>
           </div>
-          <div className="space-y-1">
-            <span className="font-semibold text-sky-300">2. Feel Before Explaining</span>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Notice your immediate emotional impact and bodily reaction before rationalizing other people's motives.
-            </p>
-          </div>
-          <div className="space-y-1">
-            <span className="font-semibold text-indigo-300">3. Hypotheses, Not Verdicts</span>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Protective rules were clever past solutions. You control whether a hypothesis fits your life today.
-            </p>
-          </div>
+        </section>
+      ))}
+
+      <section className="cinematic-panel cinematic-panel--discipline cinematic-panel--right" aria-labelledby="discipline-title">
+        <div className="cinematic-surface cinematic-discipline-surface">
+          <p className="cinematic-eyebrow"><Lightbulb aria-hidden="true" /> The SHIFT Discipline</p>
+          <h2 id="discipline-title">Clarity before certainty.</h2>
+          <ol>
+            <li><span>01</span><div><strong>Observe First, Interpret Second</strong><p>Camera-test what was said and done before automatic stories create certainty.</p></div></li>
+            <li><span>02</span><div><strong>Feel Before Explaining</strong><p>Notice emotional impact and bodily response before explaining someone else’s motives.</p></div></li>
+            <li><span>03</span><div><strong>Hypotheses, Not Verdicts</strong><p>Protective rules are possibilities to test—not facts you have to obey.</p></div></li>
+          </ol>
         </div>
       </section>
-    </div>
+
+      <section className="cinematic-panel cinematic-panel--arrival cinematic-panel--center" aria-label="Arrival at the therapy room">
+        <div className="cinematic-arrival-copy"><span aria-hidden="true" /><p>From reflection<br />to preparation.</p></div>
+      </section>
+
+      <section className="cinematic-panel cinematic-panel--process" aria-labelledby="process-title">
+        <div className="cinematic-process-copy">
+          <h2 id="process-title">Three steps to<br />clearer sessions.</h2><i aria-hidden="true" />
+          <p>A simple, proven flow that helps you reflect, practice, and prepare—so every session moves you forward.</p>
+        </div>
+        <div className="cinematic-process-cards">
+          <button type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.reflection)}>
+            <span><Leaf aria-hidden="true" /></span><i aria-hidden="true" /><div><strong>Reflect</strong><p>Check in with yourself and bring clarity to what matters.</p></div>
+          </button>
+          <button type="button" onClick={() => navigateToTool('arcade')}>
+            <span><PenLine aria-hidden="true" /></span><i aria-hidden="true" /><div><strong>Practice</strong><p>Build insight and skills with guided exercises.</p></div>
+          </button>
+          <button type="button" onClick={() => navigateToTool('therapy-prep')}>
+            <span><ClipboardCheck aria-hidden="true" /></span><i aria-hidden="true" /><div><strong>Therapy Prep</strong><p>Organize your thoughts and get the most from each session.</p></div>
+          </button>
+        </div>
+      </section>
+    </CinematicSequence>
   );
 };

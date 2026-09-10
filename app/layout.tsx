@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import '../src/index.css';
 
 export const metadata: Metadata = {
-  title: 'SHIFT Reflection Arcade',
-  description: 'Practice CBT, ACT, DBT, and IPT skills through active recall and create a therapist-ready record of your work between sessions.',
+  title: 'SHIFT — Mind over matter',
+  description: 'Reflect, practice, and prepare for clearer therapy sessions with SHIFT.',
 };
 
 export default function RootLayout({
