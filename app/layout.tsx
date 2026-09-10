@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '../src/index.css';
 import '../src/arrival-blue.css';
+import '../src/workspace-office.css';
 
 export const metadata: Metadata = {
   title: 'SHIFT — Mind over matter',
