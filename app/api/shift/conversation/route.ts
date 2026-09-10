@@ -1,6 +1,8 @@
+import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { continueShiftConversation } from '@/server/aiClient';
+import { sanitizeMemoryItems, selectRelevantMemoryContext } from '@/server/memoryContext';
+import { loadLearningMemories } from '@/server/persistence';
 import { evaluateSafety } from '@/server/safetyCheck';
-import { selectRelevantMemoryContext } from '@/server/memoryContext';
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +29,19 @@ export async function POST(request: Request) {
       : typeof shiftRecord.observation === 'string'
         ? shiftRecord.observation
         : '';
-    const relevantMemory = selectRelevantMemoryContext(`${observation}\n${message}`, memoryItems, 6);
+
+    const user = await getChatGPTUser();
+    let durableMemory: Awaited<ReturnType<typeof loadLearningMemories>> = [];
+    if (user) {
+      try {
+        durableMemory = await loadLearningMemories(user.userId, 120);
+      } catch (error) {
+        console.info('[SHIFT Memory] Account memory unavailable in Keep Talking; using device learning.', error);
+      }
+    }
+
+    const combinedMemory = [...durableMemory, ...sanitizeMemoryItems(memoryItems)];
+    const relevantMemory = selectRelevantMemoryContext(`${observation}\n${message}`, combinedMemory, 6);
     const safeHistory = Array.isArray(history)
       ? history
           .filter((turn): turn is { role: 'user' | 'assistant'; content: string } => {
@@ -48,6 +62,7 @@ export async function POST(request: Request) {
     return Response.json({
       safetyInterruption: false,
       relevantMemory,
+      memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
       ...result,
     });
   } catch {
