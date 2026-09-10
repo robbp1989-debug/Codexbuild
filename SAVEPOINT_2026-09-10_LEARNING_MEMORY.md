@@ -2,7 +2,7 @@
 
 This checkpoint records the current completed learning-memory architecture, runtime-hardening work, and approved office-workspace transition.
 
-Known good master commit after office-workspace transition: `338f8660deeca1db899f3bdfa6095097757e2ee2`
+Known good master commit after left-side perspective workspace: `197fa0486eb3a281715b58a6893d1ab37d19f56a`
 
 Included and already merged:
 - compact reusable learning memory instead of replaying raw narratives
@@ -31,6 +31,10 @@ Included and already merged:
 - workspace keeps the warm office visual language with luminous glass surfaces and light-blue navigation accents
 - workspace primary navigation includes Reflection, Keep Talking, Prediction Lab, Memory, and Privacy, while existing secondary tools remain available
 - returning from a deep tool can return directly to the final chair arrival without forcing the intro to replay; replay remains an intentional separate action
+- Keep Talking now uses an immersive split layout on desktop: the latest SHIFT perspective appears in a dedicated left-side glass panel aligned with the painting/console zone while the active conversation remains on the right
+- the Keep Talking office veil is lighter so more of the room remains visible
+- user conversation turns use a pale light-blue surface, SHIFT turns use a soft neutral/white surface, and Send/Remember actions use the light-blue accent family
+- tablet/mobile collapse the split layout into a readable vertical stack
 
 Validation state:
 - PR #8 build passed and merged
@@ -43,6 +47,7 @@ Validation state:
 - PR #15 memory-contract checks and build passed and merged at `b1857f2e8d507b8d8d3732f7ba7f3a0fb668e4db`
 - PR #16 semantic-memory contracts and full build passed and merged at `eb771143bbe0af9375039b71364c4b400ca0352d`
 - PR #17 learning-memory contracts and full production build passed and merged at `338f8660deeca1db899f3bdfa6095097757e2ee2`
+- PR #18 learning-memory contracts and full production build passed and merged at `197fa0486eb3a281715b58a6893d1ab37d19f56a`
 
 Recovery rule: if later work becomes unstable, return to this master history and this checkpoint before attempting further changes. Do not regress the approved cinematic landing, chair destination, real AI endpoints, or learning-memory safeguards as part of visual refinements.
 
