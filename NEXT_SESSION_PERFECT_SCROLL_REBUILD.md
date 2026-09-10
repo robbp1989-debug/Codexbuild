@@ -11,6 +11,27 @@ Pinned branch/commit:
 
 This preview is the approved scroll behavior. Do not improvise a new scrolling system until this behavior has first been reproduced in the real app.
 
+## Golden workspace visual reference — `Office perfect.png`
+The user also supplied a final approved screenshot named `Office perfect.png` in the project chat on 2026-09-10 and said this was the finished workspace they were happy with and wanted to build back to. Treat this screenshot as the canonical visual target for the stationary Keep Talking workspace after the cinematic arrival.
+
+Desktop composition from the approved image:
+- warm photorealistic office remains clearly visible and is part of the interface;
+- chair remains visible in the lower-left/center-left foreground;
+- the left wall/painting zone is occupied by a tall translucent glass `Perspective Shift` panel, positioned high enough to fully cover the painting;
+- the Perspective Shift panel uses an uppercase light-blue eyebrow, a large dark-navy serif insight headline, supporting text, divider, and a small closing learning statement/icon near the bottom;
+- the main workspace is a large translucent glass panel on the right/center-right, aligned with the window side of the room rather than centered across the entire viewport;
+- top row inside the main glass shell: `SHIFT` wordmark, then pill navigation `Reflection`, `Keep Talking`, `Prediction Lab`, `Memory`, `Privacy`, with `Keep Talking` active in light blue, and a dark rounded `← Arrival` control on the far right;
+- conversation title: `Stay with this before solving it` with a softer explanatory subtitle;
+- user messages use pale light-blue cards;
+- SHIFT messages use soft white/neutral cards;
+- labels `You` and `SHIFT` are dark and readable;
+- composer sits at the bottom with a white/light input field and a light-blue `Send` button;
+- secondary actions appear beneath/near the composer as understated white pill buttons: `Practice this`, `Test a prediction`, and `Save for therapy`;
+- glass surfaces are translucent enough to see the office, trees, furniture, and warm lighting through them, but opaque enough for comfortable text contrast;
+- overall visual language is bright, premium, calm, architectural, and light-blue accented — never purple, never a dark admin dashboard, never a giant opaque white sheet.
+
+Do not substitute the washed-out full-width white breakdown/workspace look for this approved composition. The room must remain visually present.
+
 ## Critical rule
 DO NOT roll the whole repository back to this old preview commit. The current `master` contains later AI, learning-memory, semantic retrieval, D1/R2, safety, Keep Talking, Prediction Lab, and privacy work that must be preserved.
 
@@ -76,13 +97,16 @@ Phase 3 — preserve current AI/memory path.
 
 Phase 4 — reapply approved office workspace.
 - Stationary office-backed shell after arrival.
+- Reproduce the `Office perfect.png` composition closely on desktop.
 - Keep Talking left Perspective Shift panel fully covering painting zone.
+- Main conversation panel remains right/center-right so the chair and office stay visible.
 - Alternating user/SHIFT surface colors and light-blue Send button.
 
 Phase 5 — validate before merge.
 - Compare the cinematic scroll side-by-side with the golden preview.
+- Compare the Keep Talking workspace against `Office perfect.png`.
 - Run learning-memory checks and production build.
-- Only merge when the scroll visually matches the golden reference and the memory/AI architecture is unchanged.
+- Only merge when the scroll visually matches the golden reference, the workspace matches the approved image, and the memory/AI architecture is unchanged.
 
 ## Recovery priority
 If any new change breaks the cinematic feel, revert only the landing/scroll implementation on the integration branch and return to the golden preview behavior. Do not roll back the memory/backend system to repair a visual problem.
