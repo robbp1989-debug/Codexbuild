@@ -35,7 +35,7 @@ const QUICK_EXAMPLES = [
 
 export const HomePage: React.FC = () => {
   const {
-    approvedSummary,
+    memoryItems,
     setActiveTab,
     playSoftSound,
     setActiveShift,
@@ -79,13 +79,18 @@ export const HomePage: React.FC = () => {
         setLoadingStep('Distinguishing known facts from added interpretations...');
       }, 700);
       const stepTimer2 = setTimeout(() => {
-        setLoadingStep('Identifying possible needs & working hypothesis...');
+        setLoadingStep('Checking whether earlier learning is actually relevant...');
       }, 1400);
 
       const response = await fetch('/api/shift/breakdown', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ situation: text, memoryContext: approvedSummary ? [approvedSummary] : [] }),
+        body: JSON.stringify({
+          situation: text,
+          // The server selects only reusable learning types. Raw event narratives and
+          // unconfirmed interpretations are excluded from long-term context retrieval.
+          memoryItems: memoryItems.slice(0, 80),
+        }),
       });
 
       clearTimeout(stepTimer1);
@@ -130,7 +135,8 @@ export const HomePage: React.FC = () => {
         recommended_skills: breakdownData.recommended_skills || ['fact_vs_interpretation'],
         recommended_games: breakdownData.recommended_games || ['fact_or_story', 'prediction_lab'],
         isSavedToProfile: false,
-        savePreference: 'remember',
+        // Nothing becomes durable memory before the user deliberately chooses Remember.
+        savePreference: 'session_only',
       };
 
       saveShiftBreakdown(newShift);
@@ -164,7 +170,7 @@ export const HomePage: React.FC = () => {
         recommended_skills: fallback.recommended_skills,
         recommended_games: fallback.recommended_games as ShiftBreakdown['recommended_games'],
         isSavedToProfile: false,
-        savePreference: 'remember',
+        savePreference: 'session_only',
       };
       saveShiftBreakdown(fallbackShift);
       setActiveShift(fallbackShift);
