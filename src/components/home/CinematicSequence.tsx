@@ -88,7 +88,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           return;
         }
         const width = window.innerWidth;
-        root.style.height = width <= 640 ? '360vh' : width <= 900 ? '400vh' : '460vh';
+        root.style.height = width <= 640 ? '380vh' : width <= 900 ? '420vh' : '480vh';
       };
 
       const nearestReadyFrame = (target: number) => {
@@ -172,41 +172,65 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       const animationContext = gsap.context(() => {
         const panels = gsap.utils.toArray<HTMLElement>('.cinematic-panel');
         const hero = panels.find((panel) => panel.matches('.cinematic-panel--hero'));
-        const menuRise = panels.find((panel) => panel.matches('.cinematic-panel--menu-rise'));
+        const workspaceArrival = panels.find((panel) => panel.matches('.cinematic-panel--menu-rise'));
         const depthFar = root.querySelector<HTMLElement>('.cinematic-depth--far');
         const depthMid = root.querySelector<HTMLElement>('.cinematic-depth--mid');
         const depthNear = root.querySelector<HTMLElement>('.cinematic-depth--near');
-        const CAMERA_TRAVEL_DURATION = 8;
-        const MENU_RISE_AT = 7.35;
+        const vignette = root.querySelector<HTMLElement>('.cinematic-vignette');
+        const scrollCue = root.querySelector<HTMLElement>('.cinematic-scroll-cue');
+
+        const FRAME_TRAVEL_DURATION = 7.1;
+        const CHAIR_SETTLE_AT = 6.15;
+        const CHAIR_SETTLE_DURATION = 1.2;
+        const WORKSPACE_REVEAL_AT = 7.35;
 
         gsap.set(panels, { autoAlpha: 0 });
-        if (hero) gsap.set(hero, { autoAlpha: 1, y: 0, filter: 'blur(0px)' });
-        if (menuRise) gsap.set(menuRise, { autoAlpha: 0, y: '72vh', filter: 'blur(4px)' });
+        gsap.set(canvasElement, { transformOrigin: '48% 64%' });
+        if (hero) gsap.set(hero, { autoAlpha: 1, y: 0, filter: 'blur(0px)', pointerEvents: 'auto' });
+        if (workspaceArrival) {
+          gsap.set(workspaceArrival, {
+            autoAlpha: 0,
+            y: 34,
+            scale: 0.992,
+            filter: prefersReducedMotion ? 'none' : 'blur(6px)',
+            pointerEvents: 'none',
+          });
+        }
 
         const timeline = gsap.timeline({
           scrollTrigger: {
             trigger: root,
             start: 'top top',
             end: 'bottom bottom',
-            scrub: prefersReducedMotion ? false : 0.28,
+            scrub: prefersReducedMotion ? false : 0.32,
             invalidateOnRefresh: true,
           },
         });
 
         timeline.to(playhead, {
           frame: frames.length - 1,
-          duration: CAMERA_TRAVEL_DURATION,
+          duration: FRAME_TRAVEL_DURATION,
           ease: 'none',
           onUpdate: scheduleRender,
         }, 0);
 
         if (!prefersReducedMotion) {
-          // The frame sequence now carries most of the perceived travel. These layers
-          // only add gentle parallax so the movement does not feel like a digital zoom.
-          if (depthFar) timeline.to(depthFar, { scale: 1.035, z: -40, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
-          if (depthMid) timeline.to(depthMid, { scale: 1.12, z: 55, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
-          if (depthNear) timeline.to(depthNear, { scale: 1.55, z: 220, autoAlpha: 0, duration: 6.2, ease: 'none' }, 0.35);
-          timeline.to(canvasElement, { scale: 1.055, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
+          if (depthFar) timeline.to(depthFar, { scale: 1.025, z: -28, duration: FRAME_TRAVEL_DURATION, ease: 'none' }, 0);
+          if (depthMid) timeline.to(depthMid, { scale: 1.08, z: 40, duration: FRAME_TRAVEL_DURATION, ease: 'none' }, 0);
+          if (depthNear) timeline.to(depthNear, { scale: 1.42, z: 170, autoAlpha: 0, duration: 5.8, ease: 'none' }, 0.3);
+
+          // Keep the first part of the move restrained, then deliberately settle into
+          // the chair as the final visual destination of the office approach.
+          timeline.to(canvasElement, {
+            scale: 1.028,
+            duration: CHAIR_SETTLE_AT,
+            ease: 'none',
+          }, 0);
+          timeline.to(canvasElement, {
+            scale: 1.11,
+            duration: CHAIR_SETTLE_DURATION,
+            ease: 'power1.inOut',
+          }, CHAIR_SETTLE_AT);
         }
 
         if (hero) {
@@ -214,20 +238,30 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
             autoAlpha: 0,
             y: -24,
             filter: prefersReducedMotion ? 'none' : 'blur(4px)',
+            pointerEvents: 'none',
             duration: 1.15,
             ease: 'power2.out',
           }, 1.05);
         }
 
-        if (menuRise) {
+        if (scrollCue) {
+          timeline.to(scrollCue, { autoAlpha: 0, duration: 0.7, ease: 'none' }, 0.8);
+        }
+
+        if (vignette) {
+          timeline.to(vignette, { autoAlpha: 0.72, duration: 0.9, ease: 'none' }, WORKSPACE_REVEAL_AT - 0.35);
+        }
+
+        if (workspaceArrival) {
           timeline
-            .set(menuRise, { autoAlpha: 1 }, MENU_RISE_AT)
-            .to(menuRise, {
+            .set(workspaceArrival, { autoAlpha: 1, pointerEvents: 'auto' }, WORKSPACE_REVEAL_AT)
+            .to(workspaceArrival, {
               y: 0,
+              scale: 1,
               filter: 'blur(0px)',
-              duration: 1.25,
+              duration: 1.05,
               ease: prefersReducedMotion ? 'none' : 'power3.out',
-            }, MENU_RISE_AT);
+            }, WORKSPACE_REVEAL_AT);
         }
       }, root);
 
