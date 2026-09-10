@@ -15,6 +15,15 @@ interface LearningMemoryRow {
   updated_at: string;
 }
 
+export interface SourceDocumentRecord {
+  id: string;
+  objectKey: string;
+  originalName: string;
+  contentType: string;
+  byteSize: number;
+  extractionStatus: 'pending' | 'completed' | 'failed';
+}
+
 function getDb(): D1Database | null {
   try {
     return env.DB || null;
@@ -102,6 +111,7 @@ export async function replaceLearningMemoriesForSource(
   userId: string,
   sourceId: string,
   memories: LearningMemoryCandidate[],
+  sourceKind: 'reflection' | 'conversation' | 'document' = 'reflection',
 ): Promise<boolean> {
   const db = getDb();
   if (!db || !userId || !sourceId) return false;
@@ -118,7 +128,7 @@ export async function replaceLearningMemoriesForSource(
           `INSERT INTO learning_memories
             (id, user_id, memory_type, label, summary, tags_json, epistemic_status,
              confidence, source_kind, source_id, evidence_count, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'reflection', ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         )
         .bind(
           memoryId(),
@@ -129,6 +139,7 @@ export async function replaceLearningMemoriesForSource(
           JSON.stringify(memory.tags?.slice(0, 8) || []),
           normalizedStatus(memory),
           memory.confidence,
+          sourceKind,
           sourceId,
         ),
     );
@@ -179,6 +190,54 @@ export async function archiveLearningMemory(userId: string, memoryIdValue: strin
        WHERE id = ? AND user_id = ?`,
     )
     .bind(memoryIdValue, userId)
+    .run();
+  return Boolean(result.success);
+}
+
+export async function registerSourceDocument(args: {
+  userId: string;
+  documentId: string;
+  objectKey: string;
+  originalName: string;
+  contentType: string;
+  byteSize: number;
+}): Promise<boolean> {
+  const db = getDb();
+  if (!db || !args.userId) return false;
+  await ensureUser(args.userId);
+  await db
+    .prepare(
+      `INSERT INTO source_documents
+        (id, user_id, r2_object_key, original_name, content_type, byte_size,
+         encryption_version, extraction_status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'r2-aes256-managed', 'pending', CURRENT_TIMESTAMP)`,
+    )
+    .bind(
+      args.documentId,
+      args.userId,
+      args.objectKey,
+      args.originalName.slice(0, 240),
+      args.contentType.slice(0, 120),
+      args.byteSize,
+    )
+    .run();
+  return true;
+}
+
+export async function setSourceDocumentExtractionStatus(
+  userId: string,
+  documentId: string,
+  status: 'completed' | 'failed',
+): Promise<boolean> {
+  const db = getDb();
+  if (!db || !userId || !documentId) return false;
+  const result = await db
+    .prepare(
+      `UPDATE source_documents
+       SET extraction_status = ?, extracted_at = CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE extracted_at END
+       WHERE id = ? AND user_id = ?`,
+    )
+    .bind(status, status, documentId, userId)
     .run();
   return Boolean(result.success);
 }
