@@ -2,9 +2,8 @@
 
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { Navbar } from './components/layout/Navbar';
-import { Footer } from './components/layout/Footer';
 import { HomePage } from './components/home/HomePage';
+import { WorkspaceShell } from './components/layout/WorkspaceShell';
 import { ArcadeHub } from './components/arcade/ArcadeHub';
 import { MyShiftDashboard } from './components/dashboard/MyShiftDashboard';
 import { SkillTreeScreen } from './components/skills/SkillTreeScreen';
@@ -39,11 +38,9 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="shift-light min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-sky-500/30 selection:text-sky-200">
+    <>
       <LearningMemorySync />
-      <Navbar />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <WorkspaceShell>
         {activeTab === 'arcade' && <ArcadeHub />}
         {activeTab === 'scenario-game' && <PersonalizedScenarioGame />}
         {activeTab === 'breakdown' && (
@@ -65,13 +62,10 @@ const AppContent: React.FC = () => {
         {activeTab === 'review' && <ReviewPage />}
         {activeTab === 'learn' && <LearnPage />}
         {activeTab === 'safety' && <SafetyPage />}
-      </main>
-
-      <Footer />
-
+      </WorkspaceShell>
       <GroundingModal />
       <CrisisInterruptionModal />
-    </div>
+    </>
   );
 };
 
