@@ -163,86 +163,103 @@ export const HomePage: React.FC = () => {
 
   return (
     <>
-    <CinematicSequence ref={sequenceRef} frames={LANDING_FRAMES}>
-      <section className="cinematic-panel cinematic-panel--hero" aria-labelledby="hero-title">
-        <header className="cinematic-nav">
-          <button className="cinematic-brand" type="button" aria-label="SHIFT home" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.hero)}>
-            <span className="cinematic-brand-mark" aria-hidden="true">S</span><span>SHIFT</span>
-          </button>
-          <nav aria-label="Landing page navigation">
-            <button type="button" onClick={() => scrollToSection('life-context')}>Life context</button>
-            <span aria-hidden="true" />
-            <button type="button" onClick={() => scrollToSection('reflection-workspace')}>Reflection</button>
-          </nav>
-        </header>
-        <div className="cinematic-hero-copy">
-          <p className="cinematic-kicker">A clearer place to begin</p>
-          <h1 id="hero-title">Mind over<br />matter.</h1>
-          <i aria-hidden="true" />
-          <p>An experience designed to help you prepare for and process therapy, <strong>effectively.</strong></p>
-          <button className="cinematic-primary-cta" type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.menu)}>
-            Start your shift <ArrowRight aria-hidden="true" />
-          </button>
-        </div>
-      </section>
-
-    </CinematicSequence>
-
-    <main className="shift-workspace" id="shift-workspace">
-      <nav className="workspace-menu" aria-label="Shift menu">
-        <button type="button" className="workspace-menu-home" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>SHIFT</button>
-        <div className="workspace-menu-primary">
-          <button type="button" onClick={() => scrollToSection('life-context')}>Life context</button>
-          <button type="button" onClick={() => scrollToSection('reflection-workspace')}>Start a reflection</button>
-        </div>
-        <details className="workspace-menu-more">
-          <summary>More <span aria-hidden="true">+</span></summary>
-          <div>
-            <button type="button" onClick={() => navigateToTool('dashboard')}>Shift Lab</button>
-            <button type="button" onClick={() => navigateToTool('arcade')}>Reflection Arcade</button>
-            <button type="button" onClick={() => navigateToTool('skills')}>Skill Tree</button>
-            <button type="button" onClick={() => navigateToTool('prediction-lab')}>Prediction Lab</button>
-            <button type="button" onClick={() => navigateToTool('therapy-prep')}>Therapy Prep</button>
-            <button type="button" onClick={() => navigateToTool('safety')}>Safety &amp; hotlines</button>
+      <CinematicSequence ref={sequenceRef} frames={LANDING_FRAMES}>
+        <section className="cinematic-panel cinematic-panel--hero" aria-labelledby="hero-title">
+          <header className="cinematic-nav">
+            <button className="cinematic-brand" type="button" aria-label="SHIFT home" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.hero)}>
+              <span className="cinematic-brand-mark" aria-hidden="true">S</span><span>SHIFT</span>
+            </button>
+            <nav aria-label="Landing page navigation">
+              <button type="button" onClick={() => scrollToSection('life-context')}>Life context</button>
+              <span aria-hidden="true" />
+              <button type="button" onClick={() => scrollToSection('reflection-workspace')}>Reflection</button>
+            </nav>
+          </header>
+          <div className="cinematic-hero-copy">
+            <p className="cinematic-kicker">A clearer place to begin</p>
+            <h1 id="hero-title">Mind over<br />matter.</h1>
+            <i aria-hidden="true" />
+            <p>An experience designed to help you prepare for and process therapy, <strong>effectively.</strong></p>
+            <button className="cinematic-primary-cta" type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.menu)}>
+              Start your shift <ArrowRight aria-hidden="true" />
+            </button>
           </div>
-        </details>
-      </nav>
-      <section className="shift-workspace-section shift-workspace-section--context" id="life-context" aria-label="Life context">
-        <div className="cinematic-surface cinematic-context-surface">
-          <p className="cinematic-eyebrow">Set the scene</p>
-          <div className="cinematic-life-context"><LifeContextPicker inline /></div>
-          <details className="personal-context-disclosure">
-            <summary>Your story, in your words <span>Optional</span></summary>
-            <PersonalSummary />
-          </details>
-        </div>
-      </section>
+        </section>
 
-      <section className="shift-workspace-section shift-workspace-section--reflection" id="reflection-workspace" aria-labelledby="reflection-title">
-        <div className="cinematic-surface cinematic-reflection-surface">
-          <div className="cinematic-framework-label">S • H • I • F • T Framework</div>
-          <h2 id="reflection-title">What’s going on?</h2>
-          <p className="cinematic-intro">Start with a moment from your day. Review the facts, name your feelings, then practice a helpful response before you begin.</p>
-          <label className="cinematic-textarea">
-            <span className="sr-only">Describe what happened or what you are noticing inside</span>
-            <textarea value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder="Describe what happened or what you’re noticing inside…" disabled={loading} />
-            <span className="cinematic-input-footer">
-              <small>Reflect first. Then practice at your pace.</small>
-              <button type="button" onClick={() => void handleAnalyze()} disabled={loading || !inputText.trim()}>
-                {loading ? <Loader2 className="is-spinning" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
-                {loading ? loadingStep : 'Explore my situation'}
+        <section className="cinematic-panel cinematic-panel--menu-rise cinematic-panel--center" aria-labelledby="arrival-title">
+          <div className="cinematic-arrival-menu">
+            <p className="cinematic-eyebrow">You made it inside</p>
+            <h2 id="arrival-title">Where would you like to begin?</h2>
+            <p>Set the context first, go straight into a reflection, or explore the tools waiting inside Shift.</p>
+            <div>
+              <button type="button" onClick={() => scrollToSection('life-context')}>
+                Life context <ArrowRight aria-hidden="true" />
               </button>
-            </span>
-          </label>
-          <div className="cinematic-scenarios">
-            <p><Zap aria-hidden="true" /> Or try one real-life reflection:</p>
-            <div>{QUICK_EXAMPLES.map((example) => <button type="button" key={example} disabled={loading} onClick={() => { setInputText(example); void handleAnalyze(example); }}>“{example}”</button>)}</div>
+              <button type="button" onClick={() => scrollToSection('reflection-workspace')}>
+                Start a reflection <Sparkles aria-hidden="true" />
+              </button>
+              <button type="button" onClick={() => navigateToTool('dashboard')}>
+                Explore Shift <Zap aria-hidden="true" />
+              </button>
+            </div>
           </div>
-          <button className="cinematic-safety-link" type="button" onClick={() => navigateToTool('safety')}><ShieldCheck aria-hidden="true" /> Educational skills tool <span>Safety & hotlines</span></button>
-        </div>
-      </section>
+        </section>
+      </CinematicSequence>
 
-    </main>
+      <main className="shift-workspace" id="shift-workspace">
+        <nav className="workspace-menu" aria-label="Shift menu">
+          <button type="button" className="workspace-menu-home" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>SHIFT</button>
+          <div className="workspace-menu-primary">
+            <button type="button" onClick={() => scrollToSection('life-context')}>Life context</button>
+            <button type="button" onClick={() => scrollToSection('reflection-workspace')}>Start a reflection</button>
+          </div>
+          <details className="workspace-menu-more">
+            <summary>More <span aria-hidden="true">+</span></summary>
+            <div>
+              <button type="button" onClick={() => navigateToTool('dashboard')}>Shift Lab</button>
+              <button type="button" onClick={() => navigateToTool('arcade')}>Reflection Arcade</button>
+              <button type="button" onClick={() => navigateToTool('skills')}>Skill Tree</button>
+              <button type="button" onClick={() => navigateToTool('prediction-lab')}>Prediction Lab</button>
+              <button type="button" onClick={() => navigateToTool('therapy-prep')}>Therapy Prep</button>
+              <button type="button" onClick={() => navigateToTool('safety')}>Safety &amp; hotlines</button>
+            </div>
+          </details>
+        </nav>
+        <section className="shift-workspace-section shift-workspace-section--context" id="life-context" aria-label="Life context">
+          <div className="cinematic-surface cinematic-context-surface">
+            <p className="cinematic-eyebrow">Set the scene</p>
+            <div className="cinematic-life-context"><LifeContextPicker inline /></div>
+            <details className="personal-context-disclosure">
+              <summary>Your story, in your words <span>Optional</span></summary>
+              <PersonalSummary />
+            </details>
+          </div>
+        </section>
+
+        <section className="shift-workspace-section shift-workspace-section--reflection" id="reflection-workspace" aria-labelledby="reflection-title">
+          <div className="cinematic-surface cinematic-reflection-surface">
+            <div className="cinematic-framework-label">S • H • I • F • T Framework</div>
+            <h2 id="reflection-title">What’s going on?</h2>
+            <p className="cinematic-intro">Start with a moment from your day. Review the facts, name your feelings, then practice a helpful response before you begin.</p>
+            <label className="cinematic-textarea">
+              <span className="sr-only">Describe what happened or what you are noticing inside</span>
+              <textarea value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder="Describe what happened or what you’re noticing inside…" disabled={loading} />
+              <span className="cinematic-input-footer">
+                <small>Reflect first. Then practice at your pace.</small>
+                <button type="button" onClick={() => void handleAnalyze()} disabled={loading || !inputText.trim()}>
+                  {loading ? <Loader2 className="is-spinning" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
+                  {loading ? loadingStep : 'Explore my situation'}
+                </button>
+              </span>
+            </label>
+            <div className="cinematic-scenarios">
+              <p><Zap aria-hidden="true" /> Or try one real-life reflection:</p>
+              <div>{QUICK_EXAMPLES.map((example) => <button type="button" key={example} disabled={loading} onClick={() => { setInputText(example); void handleAnalyze(example); }}>“{example}”</button>)}</div>
+            </div>
+            <button className="cinematic-safety-link" type="button" onClick={() => navigateToTool('safety')}><ShieldCheck aria-hidden="true" /> Educational skills tool <span>Safety & hotlines</span></button>
+          </div>
+        </section>
+      </main>
     </>
   );
 };
