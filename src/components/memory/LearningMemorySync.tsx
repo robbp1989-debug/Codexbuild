@@ -44,12 +44,14 @@ export const LearningMemorySync: React.FC = () => {
     try {
       if (localStorage.getItem(key) === signature) return;
     } catch {
-      // If storage is unavailable, the in-flight guard still prevents duplicate work in this mount.
+      // If storage is unavailable, the in-flight guard still prevents duplicate work.
     }
     if (inFlight.current.has(signature)) return;
     inFlight.current.add(signature);
 
-    let cancelled = false;
+    // Do not cancel this one-time privacy compaction simply because another piece of
+    // app state rerenders while the request is in flight. The active Shift id and
+    // signature are captured here, and duplicate calls are guarded above.
     void fetch('/api/shift/memory/extract', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -60,10 +62,8 @@ export const LearningMemorySync: React.FC = () => {
         return response.json() as Promise<{ memories?: LearningCandidate[] }>;
       })
       .then((data) => {
-        if (cancelled || !Array.isArray(data.memories) || data.memories.length === 0) return;
+        if (!Array.isArray(data.memories) || data.memories.length === 0) return;
 
-        // Replace the earlier raw per-shift memory rows with compact learned records.
-        // The journal/reflection itself remains available separately on the user's device.
         memoryItems
           .filter((item) => item.sourceSessionId === activeShift.id)
           .forEach((item) => removeMemoryItem(item.id));
@@ -90,10 +90,6 @@ export const LearningMemorySync: React.FC = () => {
       .finally(() => {
         inFlight.current.delete(signature);
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [activeShift, memoryItems, addMemoryItem, removeMemoryItem]);
 
   return null;
