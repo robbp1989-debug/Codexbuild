@@ -18,16 +18,23 @@ type CinematicSequenceProps = {
   children: React.ReactNode;
 };
 
-function drawCover(
+function isReady(image?: HTMLImageElement) {
+  return Boolean(image?.complete && image.naturalWidth);
+}
+
+function drawImageCover(
   context: CanvasRenderingContext2D,
   image: HTMLImageElement,
   width: number,
   height: number,
+  alpha = 1,
 ) {
   const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
   const renderWidth = image.naturalWidth * scale;
   const renderHeight = image.naturalHeight * scale;
-  context.clearRect(0, 0, width, height);
+
+  context.save();
+  context.globalAlpha = alpha;
   context.drawImage(
     image,
     (width - renderWidth) / 2,
@@ -35,6 +42,7 @@ function drawCover(
     renderWidth,
     renderHeight,
   );
+  context.restore();
 }
 
 export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSequenceProps>(
@@ -67,40 +75,68 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       const canvasElement = canvas;
       const drawingContext = context2d;
       const stageElement = root.querySelector<HTMLElement>('.cinematic-stage');
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       const images: Array<HTMLImageElement | undefined> = Array.from({ length: frames.length });
       const playhead = { frame: 0 };
       let frameRequest = 0;
       let disposed = false;
 
-      const resizeCanvas = () => {
-        const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
-        const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
-        canvasElement.width = Math.max(1, Math.round(width * dpr));
-        canvasElement.height = Math.max(1, Math.round(height * dpr));
-        drawingContext.setTransform(dpr, 0, 0, dpr, 0, 0);
-        renderFrame();
+      const setResponsiveTunnelLength = () => {
+        if (prefersReducedMotion) {
+          root.style.height = '180vh';
+          return;
+        }
+        const width = window.innerWidth;
+        root.style.height = width <= 640 ? '360vh' : width <= 900 ? '400vh' : '460vh';
       };
 
       const nearestReadyFrame = (target: number) => {
-        if (images[target]?.complete && images[target]?.naturalWidth) return images[target];
+        const roundedTarget = Math.round(target);
+        if (isReady(images[roundedTarget])) return images[roundedTarget];
         for (let distance = 1; distance < images.length; distance += 1) {
-          const before = images[target - distance];
-          if (before?.complete && before.naturalWidth) return before;
-          const after = images[target + distance];
-          if (after?.complete && after.naturalWidth) return after;
+          const before = images[roundedTarget - distance];
+          if (isReady(before)) return before;
+          const after = images[roundedTarget + distance];
+          if (isReady(after)) return after;
         }
         return undefined;
       };
 
       function renderFrame() {
         if (disposed) return;
-        const target = Math.min(frames.length - 1, Math.max(0, Math.round(playhead.frame)));
-        const image = nearestReadyFrame(target);
-        if (!image) return;
         const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
-        drawCover(drawingContext, image, width, height);
+        const target = Math.min(frames.length - 1, Math.max(0, playhead.frame));
+        const lowerIndex = Math.floor(target);
+        const upperIndex = Math.min(frames.length - 1, Math.ceil(target));
+        const blend = target - lowerIndex;
+        const lower = images[lowerIndex];
+        const upper = images[upperIndex];
+
+        drawingContext.clearRect(0, 0, width, height);
+
+        if (isReady(lower) && isReady(upper)) {
+          drawImageCover(drawingContext, lower!, width, height, 1);
+          if (upperIndex !== lowerIndex && blend > 0.001) {
+            drawImageCover(drawingContext, upper!, width, height, blend);
+          }
+          return;
+        }
+
+        const fallback = nearestReadyFrame(target);
+        if (fallback) drawImageCover(drawingContext, fallback, width, height, 1);
       }
+
+      const resizeCanvas = () => {
+        setResponsiveTunnelLength();
+        const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+        canvasElement.width = Math.max(1, Math.round(width * dpr));
+        canvasElement.height = Math.max(1, Math.round(height * dpr));
+        drawingContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+        renderFrame();
+        ScrollTrigger.refresh();
+      };
 
       const scheduleRender = () => {
         cancelAnimationFrame(frameRequest);
@@ -113,7 +149,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         image.decoding = 'async';
         if (index === 0) image.fetchPriority = 'high';
         image.onload = () => {
-          if (index === 0 || Math.round(playhead.frame) === index) scheduleRender();
+          if (index <= 1 || Math.abs(playhead.frame - index) < 1.2) scheduleRender();
           resolve();
         };
         image.onerror = () => resolve();
@@ -122,13 +158,14 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
 
       const loadSequence = async () => {
         await loadFrame(0);
-        await Promise.all(frames.slice(1, 3).map((_, index) => loadFrame(index + 1)));
-        for (let index = 3; index < frames.length && !disposed; index += 1) {
+        await Promise.all(frames.slice(1, 4).map((_, index) => loadFrame(index + 1)));
+        for (let index = 4; index < frames.length && !disposed; index += 1) {
           await loadFrame(index);
         }
       };
 
       void loadSequence();
+      setResponsiveTunnelLength();
       resizeCanvas();
       window.addEventListener('resize', resizeCanvas, { passive: true });
 
@@ -139,8 +176,9 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         const depthFar = root.querySelector<HTMLElement>('.cinematic-depth--far');
         const depthMid = root.querySelector<HTMLElement>('.cinematic-depth--mid');
         const depthNear = root.querySelector<HTMLElement>('.cinematic-depth--near');
-        const CAMERA_TRAVEL_DURATION = 7.2;
-        const MENU_RISE_AT = 8.05;
+        const CAMERA_TRAVEL_DURATION = 8;
+        const MENU_RISE_AT = 7.35;
+
         gsap.set(panels, { autoAlpha: 0 });
         if (hero) gsap.set(hero, { autoAlpha: 1, y: 0, filter: 'blur(0px)' });
         if (menuRise) gsap.set(menuRise, { autoAlpha: 0, y: '72vh', filter: 'blur(4px)' });
@@ -150,7 +188,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
             trigger: root,
             start: 'top top',
             end: 'bottom bottom',
-            scrub: true,
+            scrub: prefersReducedMotion ? false : 0.28,
             invalidateOnRefresh: true,
           },
         });
@@ -159,25 +197,26 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           frame: frames.length - 1,
           duration: CAMERA_TRAVEL_DURATION,
           ease: 'none',
-          snap: 'frame',
           onUpdate: scheduleRender,
         }, 0);
 
-        // Depth layers reinforce the camera movement already present in the frame
-        // sequence. Tune these transforms without changing the image loader.
-        if (depthFar) timeline.to(depthFar, { scale: 1.08, z: -90, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
-        if (depthMid) timeline.to(depthMid, { scale: 1.32, z: 110, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
-        if (depthNear) timeline.to(depthNear, { scale: 2.2, z: 520, autoAlpha: 0, duration: 5.8, ease: 'none' }, 0.45);
-        timeline.to(canvasElement, { scale: 1.13, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
+        if (!prefersReducedMotion) {
+          // The frame sequence now carries most of the perceived travel. These layers
+          // only add gentle parallax so the movement does not feel like a digital zoom.
+          if (depthFar) timeline.to(depthFar, { scale: 1.035, z: -40, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
+          if (depthMid) timeline.to(depthMid, { scale: 1.12, z: 55, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
+          if (depthNear) timeline.to(depthNear, { scale: 1.55, z: 220, autoAlpha: 0, duration: 6.2, ease: 'none' }, 0.35);
+          timeline.to(canvasElement, { scale: 1.055, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
+        }
 
         if (hero) {
           timeline.to(hero, {
             autoAlpha: 0,
-            y: -28,
-            filter: 'blur(5px)',
-            duration: 1.1,
+            y: -24,
+            filter: prefersReducedMotion ? 'none' : 'blur(4px)',
+            duration: 1.15,
             ease: 'power2.out',
-          }, 1.25);
+          }, 1.05);
         }
 
         if (menuRise) {
@@ -186,11 +225,10 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
             .to(menuRise, {
               y: 0,
               filter: 'blur(0px)',
-              duration: 1.45,
-              ease: 'power3.out',
+              duration: 1.25,
+              ease: prefersReducedMotion ? 'none' : 'power3.out',
             }, MENU_RISE_AT);
         }
-
       }, root);
 
       return () => {
