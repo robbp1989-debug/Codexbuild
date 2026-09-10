@@ -2,7 +2,7 @@
 
 This checkpoint records the current completed learning-memory architecture and runtime-hardening work.
 
-Known good master commit after privacy hardening: `dbf47d3b3f6773fe95b8c87826b5eab767c8faf9`
+Known good master commit after evidence consolidation: `2a65c75f0b476ea6f77a73072905537dac802d14`
 
 Included and already merged:
 - compact reusable learning memory instead of replaying raw narratives
@@ -15,6 +15,7 @@ Included and already merged:
 - Prediction Lab real-world outcome capture and opt-in account evidence
 - strategies promoted to HELPFUL_STRATEGY only when the user reports that the strategy helped
 - evidence-aware memory ranking
+- conservative consolidation of exact repeated direct remembered learning and tested helpful strategies so independent confirmations can strengthen evidence counts without collapsing distinct real-world outcomes
 - per-reflection transparency showing which compact past learning was considered
 - reversible D1/R2 storage self-test using synthetic diagnostic records only
 - `/storage-check` readiness page for live authenticated persistence verification
@@ -31,6 +32,7 @@ Validation state:
 - PR #11 memory-contract checks and build passed and merged at `1f1698ea1c087d352b7015e2dc02b86a92fb133d`
 - PR #12 memory-contract checks and build passed and merged at `98dd10ed34010407eaf2bded36d18c957398560e`
 - PR #13 memory-contract checks and build passed and merged at `dbf47d3b3f6773fe95b8c87826b5eab767c8faf9`
+- PR #14 memory-contract checks and build passed and merged at `2a65c75f0b476ea6f77a73072905537dac802d14`
 
 Recovery rule: if later work becomes unstable, return to this master history and this checkpoint before attempting further changes. The approved cinematic landing should not be changed as part of memory-system work.
 
