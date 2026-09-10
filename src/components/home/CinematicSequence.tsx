@@ -33,7 +33,6 @@ function drawImageCover(
   const renderWidth = image.naturalWidth * scale;
   const renderHeight = image.naturalHeight * scale;
 
-  context.save();
   context.globalAlpha = alpha;
   context.drawImage(
     image,
@@ -42,7 +41,7 @@ function drawImageCover(
     renderWidth,
     renderHeight,
   );
-  context.restore();
+  context.globalAlpha = 1;
 }
 
 export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSequenceProps>(
@@ -77,10 +76,16 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       const stageElement = root.querySelector<HTMLElement>('.cinematic-stage');
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+      drawingContext.imageSmoothingEnabled = true;
+      drawingContext.imageSmoothingQuality = 'high';
+
       const images: Array<HTMLImageElement | undefined> = Array.from({ length: frames.length });
       const playhead = { frame: 0 };
       let frameRequest = 0;
+      let resizeRequest = 0;
       let disposed = false;
+      let viewportWidth = 1;
+      let viewportHeight = 1;
 
       const setResponsiveTunnelLength = () => {
         if (prefersReducedMotion) {
@@ -105,7 +110,6 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
 
       function renderFrame() {
         if (disposed) return;
-        const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
         const target = Math.min(frames.length - 1, Math.max(0, playhead.frame));
         const lowerIndex = Math.floor(target);
         const upperIndex = Math.min(frames.length - 1, Math.ceil(target));
@@ -113,34 +117,46 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         const lower = images[lowerIndex];
         const upper = images[upperIndex];
 
-        drawingContext.clearRect(0, 0, width, height);
-
         if (isReady(lower) && isReady(upper)) {
-          drawImageCover(drawingContext, lower!, width, height, 1);
+          drawImageCover(drawingContext, lower!, viewportWidth, viewportHeight, 1);
           if (upperIndex !== lowerIndex && blend > 0.001) {
-            drawImageCover(drawingContext, upper!, width, height, blend);
+            drawImageCover(drawingContext, upper!, viewportWidth, viewportHeight, blend);
           }
           return;
         }
 
         const fallback = nearestReadyFrame(target);
-        if (fallback) drawImageCover(drawingContext, fallback, width, height, 1);
+        if (fallback) drawImageCover(drawingContext, fallback, viewportWidth, viewportHeight, 1);
       }
-
-      const resizeCanvas = () => {
-        setResponsiveTunnelLength();
-        const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
-        const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
-        canvasElement.width = Math.max(1, Math.round(width * dpr));
-        canvasElement.height = Math.max(1, Math.round(height * dpr));
-        drawingContext.setTransform(dpr, 0, 0, dpr, 0, 0);
-        renderFrame();
-        ScrollTrigger.refresh();
-      };
 
       const scheduleRender = () => {
         cancelAnimationFrame(frameRequest);
         frameRequest = requestAnimationFrame(renderFrame);
+      };
+
+      const resizeCanvas = () => {
+        setResponsiveTunnelLength();
+        const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
+        viewportWidth = Math.max(1, width);
+        viewportHeight = Math.max(1, height);
+
+        // Full-window 2D compositing is the hottest path in this sequence. Capping
+        // DPR keeps the image sharp while reducing the number of pixels redrawn on
+        // every scroll frame, especially on high-DPI desktop displays.
+        const maxDpr = width > 1400 ? 1.25 : width > 900 ? 1.35 : 1.5;
+        const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+        canvasElement.width = Math.max(1, Math.round(width * dpr));
+        canvasElement.height = Math.max(1, Math.round(height * dpr));
+        drawingContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawingContext.imageSmoothingEnabled = true;
+        drawingContext.imageSmoothingQuality = 'high';
+        renderFrame();
+        ScrollTrigger.refresh();
+      };
+
+      const scheduleResize = () => {
+        cancelAnimationFrame(resizeRequest);
+        resizeRequest = requestAnimationFrame(resizeCanvas);
       };
 
       const loadFrame = (index: number) => new Promise<void>((resolve) => {
@@ -148,8 +164,15 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         images[index] = image;
         image.decoding = 'async';
         if (index === 0) image.fetchPriority = 'high';
-        image.onload = () => {
-          if (index <= 1 || Math.abs(playhead.frame - index) < 1.2) scheduleRender();
+        image.onload = async () => {
+          // Decode before the frame is first needed so a wheel/trackpad scroll does
+          // not pay an image-decode cost in the middle of the animation.
+          try {
+            await image.decode();
+          } catch {
+            // onload already guarantees a usable image in browsers that reject decode().
+          }
+          if (index <= 1 || Math.abs(playhead.frame - index) < 1.5) scheduleRender();
           resolve();
         };
         image.onerror = () => resolve();
@@ -158,16 +181,16 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
 
       const loadSequence = async () => {
         await loadFrame(0);
-        await Promise.all(frames.slice(1, 4).map((_, index) => loadFrame(index + 1)));
-        for (let index = 4; index < frames.length && !disposed; index += 1) {
-          await loadFrame(index);
-        }
+        if (disposed) return;
+        // There are only a handful of cinematic frames. Loading/decode in parallel
+        // prevents late-frame hitching near the chair while preserving a fast first paint.
+        await Promise.all(frames.slice(1).map((_, index) => loadFrame(index + 1)));
       };
 
       void loadSequence();
       setResponsiveTunnelLength();
       resizeCanvas();
-      window.addEventListener('resize', resizeCanvas, { passive: true });
+      window.addEventListener('resize', scheduleResize, { passive: true });
 
       const animationContext = gsap.context(() => {
         const panels = gsap.utils.toArray<HTMLElement>('.cinematic-panel');
@@ -183,6 +206,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         const CHAIR_SETTLE_AT = 6.15;
         const CHAIR_SETTLE_DURATION = 1.2;
         const WORKSPACE_REVEAL_AT = 7.35;
+        const SCRUB_SMOOTHING = window.innerWidth <= 640 ? 0.46 : window.innerWidth <= 900 ? 0.52 : 0.62;
 
         gsap.set(panels, { autoAlpha: 0 });
         gsap.set(canvasElement, { transformOrigin: '48% 64%' });
@@ -202,7 +226,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
             trigger: root,
             start: 'top top',
             end: 'bottom bottom',
-            scrub: prefersReducedMotion ? false : 0.32,
+            scrub: prefersReducedMotion ? false : SCRUB_SMOOTHING,
             invalidateOnRefresh: true,
           },
         });
@@ -268,7 +292,8 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       return () => {
         disposed = true;
         cancelAnimationFrame(frameRequest);
-        window.removeEventListener('resize', resizeCanvas);
+        cancelAnimationFrame(resizeRequest);
+        window.removeEventListener('resize', scheduleResize);
         animationContext.revert();
       };
     }, [frames]);
