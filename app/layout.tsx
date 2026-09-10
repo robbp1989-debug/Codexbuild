@@ -3,6 +3,7 @@ import '../src/index.css';
 import '../src/arrival-blue.css';
 import '../src/workspace-office.css';
 import '../src/perspective-left.css';
+import '../src/perspective-final.css';
 
 export const metadata: Metadata = {
   title: 'SHIFT — Mind over matter',
