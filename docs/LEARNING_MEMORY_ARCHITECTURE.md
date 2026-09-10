@@ -2,7 +2,7 @@
 
 ## Product objective
 
-SHIFT should become more useful because the user has lived with it. It should not merely replay old stories. It should retrieve compact, user-confirmed learning and compare that history with the present situation.
+SHIFT should become more useful because the user has lived with it. It should not merely replay old stories. It should retrieve compact learning and compare that history with the present situation.
 
 Core loop:
 
@@ -11,16 +11,15 @@ Core loop:
 ## Privacy and epistemic rules
 
 1. Raw uploaded documents and long reflection narratives are source material, not reusable prompt memory.
-2. A source document is processed once. The reusable product stores privacy-minimized themes and learning records.
+2. A source document is processed once. Future reflection prompts use privacy-minimized learning records rather than the document itself.
 3. AI inference never silently becomes a user fact.
 4. Historical learning is comparison evidence, not proof that the current event has the same meaning.
 5. Advice does not become `HELPFUL_STRATEGY` merely because SHIFT suggested it. It becomes stronger personal evidence after the user tries it and records an outcome.
 6. Rejected hypotheses are useful memory. They prevent SHIFT from repeatedly offering an explanation the user already said did not fit.
-7. Users must be able to archive/delete memories and choose session-only use.
+7. Nothing suggested in Keep Talking is saved until the user explicitly chooses **Remember this**.
+8. Raw `CONFIRMED_FACT` and `USER_INTERPRETATION` journal rows are excluded from normal long-term retrieval.
 
-## Memory categories
-
-High-value reusable categories:
+## Reusable memory categories
 
 - `BOUNDARY`
 - `USER_PREFERENCE`
@@ -33,77 +32,90 @@ High-value reusable categories:
 - `OUTCOME`
 - `HELPFUL_STRATEGY`
 
-Raw `CONFIRMED_FACT` and `USER_INTERPRETATION` journal rows are intentionally excluded from normal long-term context retrieval.
-
 ## Current implementation
 
-The current browser prototype still keeps user data device-local in `AppContext`. This branch changes the reasoning pipeline so:
+The application now has two layers during migration from the earlier device-only prototype:
 
-1. New reflections are session-only by default.
-2. The breakdown request sends the device's memory collection to the server.
-3. `server/memoryContext.ts` filters out raw narratives and ranks only compact learning records.
-4. The selected 3-6 memories become `memoryContext` for the model.
-5. When a user explicitly saves a reflection to their profile, `LearningMemorySync` runs one extraction pass and replaces per-reflection raw memory rows with privacy-minimized learning records.
-6. `Keep Talking` mode retains the current breakdown, retrieves relevant prior learning, and allows the user to continue reflecting instead of automatically entering the arcade.
-7. A new learning suggested during conversation is never saved automatically. The user must press **Remember this**.
+1. **Device layer** — existing localStorage remains a fallback and keeps the current experience usable without account storage.
+2. **Account layer** — when ChatGPT account identity and the Sites bindings are available, D1 becomes the authoritative reusable learning store.
 
-## Production persistence target
+The reasoning pipeline now works as follows:
 
-Use Cloudflare D1 as the authoritative structured store and R2 for encrypted source documents.
+1. New reflections start `session_only` instead of silently opting into memory.
+2. The server resolves the authenticated ChatGPT user when available.
+3. It loads account-backed learning records from D1 and may temporarily merge device-local compact memories during migration.
+4. `server/memoryContext.ts` excludes raw narratives and unconfirmed interpretations, ranks reusable learning by relevance/type/recency, and sends only a small set to the model.
+5. The model is explicitly told that past learning is historical evidence, not a verdict about the current event.
+6. When the user explicitly saves a reflection as **Remember**, one extraction pass creates privacy-minimized learning records and persists them to D1.
+7. `Keep Talking` retains the current breakdown and relevant earlier learning instead of forcing the user into the arcade.
+8. New learning proposed during Keep Talking is saved only after the user clicks **Remember this**; that explicit action also persists the learning to D1 when signed in.
 
-Suggested bindings:
+## OpenAI Sites bindings
 
-- D1: `SHIFT_DB`
-- R2: `SHIFT_SOURCE_DOCS`
-- server secret: `SHIFT_DOCUMENT_ENCRYPTION_KEY`
+`.openai/hosting.json` declares the standard Sites bindings:
 
-The initial D1 schema lives at `migrations/0001_learning_memory.sql`.
+- D1 binding: `DB`
+- R2 binding: `FILES`
 
-### R2 document lifecycle
+The Sites Vite plugin packages `.openai/hosting.json` and the `drizzle/**` migration directory with the deployment artifact. The production D1 schema is in `drizzle/0000_shift_learning_memory.sql`.
 
-1. Authenticated user uploads a document.
-2. Server validates type/size and encrypts bytes before durable storage.
-3. Ciphertext is written to R2 under a non-identifying object key.
-4. D1 stores object metadata and extraction status only.
-5. The extraction worker decrypts the source, extracts compact learning candidates, and writes approved/working candidates to D1.
-6. Normal SHIFT requests query D1 learning memory only; they do not re-fetch or re-send the source document.
-7. User can delete the source object independently of keeping approved learning memories, subject to explicit UI wording.
+## D1 responsibilities
 
-Do not claim end-to-end encryption unless the implemented key-management design actually provides it. Application-layer encryption at rest should use a vetted authenticated-encryption primitive and a server-side key that is never exposed to the browser bundle.
+D1 stores compact structured state:
+
+- account/user row keyed by the authenticated ChatGPT user ID
+- reusable learning memories
+- epistemic status and confidence
+- source IDs/types
+- evidence count/helpfulness fields
+- source-document metadata and extraction state
+- prediction/outcome evidence
+
+D1 should never become a dumping ground for full uploaded journals simply because structured storage is available.
+
+## R2 source-document lifecycle
+
+The first source import path accepts TXT, Markdown, JSON, and CSV up to 4 MB.
+
+1. Authenticated user uploads a source.
+2. Server validates type and size.
+3. Full bytes are stored in the private `FILES` R2 binding using a random, non-identifying object key.
+4. D1 stores metadata/extraction state; the original filename is not used as the R2 object key.
+5. The source text is sent through a one-time, prompt-injection-resistant extraction step.
+6. The extractor removes identifying details where they are not necessary and emits compact learning candidates/tags.
+7. Compact memories are persisted to D1 with `source_kind = document`.
+8. Normal SHIFT reflection/Keep Talking requests retrieve D1 learning memory only; they do not retrieve or re-send the source document.
+
+Cloudflare R2 encrypts stored objects at rest with platform-managed encryption. This is **encryption at rest**, not end-to-end encryption. SHIFT should not claim end-to-end encryption. A later customer-managed/SSE-C layer can be evaluated if the product's threat model requires it.
+
+PDF and DOCX are deliberately rejected by the first import endpoint rather than being stored without a reliable parser/extraction path.
 
 ## Retrieval design
 
-D1 is the source of truth. A semantic index (Cloudflare Vectorize or another vector store) may later accelerate retrieval, but vector results should resolve back to authoritative D1 records before entering a prompt.
+D1 is the source of truth. A semantic index such as Vectorize may later accelerate retrieval, but vector results should resolve back to authoritative D1 records before entering a prompt.
 
-Ranking should combine:
+Current ranking combines:
 
-- semantic/lexical similarity to the current event
+- lexical similarity to the current event
 - memory type value (`BOUNDARY`, `OUTCOME`, `HELPFUL_STRATEGY` rank highly)
 - recency
-- confirmation/evidence strength
-- rejected-memory suppression
+- user confirmation/evidence status
+- rejected-memory handling
 
-Prompt context should normally contain no more than 3-6 relevant memories.
+Prompt context should normally contain no more than 3–6 relevant memories.
 
-## Account migration
+## Account identity
 
-The existing device-local data is useful for prototyping, but production accounts should move memory and outcomes to authenticated server storage. After authentication exists:
+The account layer uses the OpenAI Sites/ChatGPT identity headers (`oai-authenticated-user-id` and related headers). Local development can use the Sites simulated sign-in flow. The server never accepts a user ID supplied by the browser as authoritative identity.
 
-- browser sends only the new user message/current action
-- server resolves user identity
-- server retrieves memory from D1
-- server constructs `memoryContext`
-- model receives only current input plus the few relevant compact memories
+## Remaining production hardening
 
-At that point `memoryItems` should be removed from public request bodies.
+The core path is now implemented. Remaining work before calling the persistence layer production-complete:
 
-## Next infrastructure tasks
-
-1. Provision `SHIFT_DB` D1 database.
-2. Apply `migrations/0001_learning_memory.sql`.
-3. Provision private R2 bucket `SHIFT_SOURCE_DOCS`.
-4. Add authentication and stable user IDs.
-5. Implement D1 repository adapter for learning memories/conversation turns.
-6. Implement encrypted upload + one-time document extraction endpoint.
-7. Optionally add semantic embeddings/Vectorize after the D1 path is correct.
-8. Add migration from device-local memory into authenticated account storage with explicit user approval.
+1. Deploy this branch so Sites provisions/applies `DB`, `FILES`, and the packaged migration.
+2. Verify migration execution and authenticated read/write behavior on the hosted environment.
+3. Add source-document delete/retry controls and account-backed memory management UI.
+4. Add PDF/DOCX ingestion only after a reliable Worker-compatible parser path is selected and tested.
+5. Persist Prediction Lab outcomes into `learning_evidence` and promote a strategy to `HELPFUL_STRATEGY` only when lived outcomes support that promotion.
+6. Remove device `memoryItems` from API request bodies after account migration is stable; server-side D1 retrieval is already preferred.
+7. Optionally add Vectorize once correctness and user-control semantics are proven with D1 alone.
