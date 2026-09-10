@@ -14,6 +14,7 @@ const rememberRoute = read('app/api/shift/memory/remember/route.ts');
 const evidenceRoute = read('app/api/shift/evidence/route.ts');
 const aiClient = read('server/aiClient.ts');
 const selfTest = read('server/storageSelfTest.ts');
+const chatgptAuth = read('app/chatgpt-auth.ts');
 
 for (const table of ['users', 'learning_memories', 'source_documents', 'learning_evidence']) {
   assert(migration.includes(`CREATE TABLE IF NOT EXISTS ${table}`), `Missing required D1 table: ${table}`);
@@ -37,7 +38,7 @@ assert(!sourceUpload.includes('originalName: file.name,\n        objectKey: `pri
 assert(sourceUpload.includes('Never echo the raw document back to the browser'), 'Source upload must preserve the no-raw-echo contract.');
 
 assert(rememberRoute.includes('Sign in') || rememberRoute.includes('accountRequired'), 'Durable memory must be account-scoped.');
-assert(aiClient.includes('Do not save it automatically') || aiClient.includes('Do not save it automatically.'.toLowerCase()) || aiClient.includes('Do not save it automatically'), 'Keep Talking must not auto-save AI suggestions.');
+assert(aiClient.includes('Do not save it automatically'), 'Keep Talking must not auto-save AI suggestions.');
 assert(aiClient.includes('A suggestion is not a HELPFUL_STRATEGY until a real outcome shows it helped'), 'Advice must not become a helpful strategy without outcome evidence.');
 
 assert(evidenceRoute.includes('rememberForFuture'), 'Prediction outcomes must remain opt-in for durable account memory.');
@@ -47,5 +48,12 @@ assert(evidenceRoute.includes("type: 'HELPFUL_STRATEGY'"), 'Helpful strategy pro
 assert(selfTest.includes('DELETE FROM learning_memories'), 'Storage self-test must clean up synthetic D1 records.');
 assert(selfTest.includes('bucket.delete(objectKey)'), 'Storage self-test must clean up synthetic R2 objects.');
 assert(selfTest.includes('Synthetic diagnostic record. Not user learning.'), 'Storage self-test must use synthetic, non-user content.');
+
+// Sites documents authenticated email as the required identity signal. An opaque
+// user-id header may exist in some runtimes, but SHIFT must not require it.
+assert(chatgptAuth.includes("const rawEmail = requestHeaders.get(USER_EMAIL_HEADER)"), 'Sites auth must accept the documented authenticated email header.');
+assert(chatgptAuth.includes('explicitUserId || (await pseudonymousUserId(email))'), 'Sites auth must fall back to a pseudonymous email-derived account key.');
+assert(chatgptAuth.includes("crypto.subtle.digest('SHA-256'"), 'Fallback account identity must not use the raw email as the D1 primary key.');
+assert(!chatgptAuth.includes('if (!userId || !email) return null'), 'Sites auth must not require an undocumented user-id header.');
 
 console.log('SHIFT learning-memory architecture checks passed.');
