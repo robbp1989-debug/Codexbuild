@@ -89,11 +89,14 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
 
       const setResponsiveTunnelLength = () => {
         if (prefersReducedMotion) {
-          root.style.height = '180vh';
+          root.style.height = '150vh';
           return;
         }
+
         const width = window.innerWidth;
-        root.style.height = width <= 640 ? '380vh' : width <= 900 ? '420vh' : '480vh';
+        // Keep the cinematic entrance compact: the user reaches the chair/workspace
+        // in roughly half the wheel travel of the previous 480vh desktop tunnel.
+        root.style.height = width <= 640 ? '240vh' : width <= 900 ? '260vh' : '300vh';
       };
 
       const nearestReadyFrame = (target: number) => {
@@ -113,7 +116,10 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         const target = Math.min(frames.length - 1, Math.max(0, playhead.frame));
         const lowerIndex = Math.floor(target);
         const upperIndex = Math.min(frames.length - 1, Math.ceil(target));
-        const blend = target - lowerIndex;
+        const rawBlend = target - lowerIndex;
+        // Smoothstep gives each crossfade a zero-velocity start/end so transitions
+        // between the eight source frames feel less like discrete image changes.
+        const blend = rawBlend * rawBlend * (3 - 2 * rawBlend);
         const lower = images[lowerIndex];
         const upper = images[upperIndex];
 
@@ -165,8 +171,6 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         image.decoding = 'async';
         if (index === 0) image.fetchPriority = 'high';
         image.onload = async () => {
-          // Decode before the frame is first needed so a wheel/trackpad scroll does
-          // not pay an image-decode cost in the middle of the animation.
           try {
             await image.decode();
           } catch {
@@ -182,8 +186,6 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       const loadSequence = async () => {
         await loadFrame(0);
         if (disposed) return;
-        // There are only a handful of cinematic frames. Loading/decode in parallel
-        // prevents late-frame hitching near the chair while preserving a fast first paint.
         await Promise.all(frames.slice(1).map((_, index) => loadFrame(index + 1)));
       };
 
@@ -206,7 +208,9 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         const CHAIR_SETTLE_AT = 6.15;
         const CHAIR_SETTLE_DURATION = 1.2;
         const WORKSPACE_REVEAL_AT = 7.35;
-        const SCRUB_SMOOTHING = window.innerWidth <= 640 ? 0.46 : window.innerWidth <= 900 ? 0.52 : 0.62;
+        // A slightly longer scrub eases coarse mouse-wheel steps into continuous motion.
+        // The tunnel itself is much shorter, so this smoothing does not make the journey feel slow.
+        const SCRUB_SMOOTHING = window.innerWidth <= 640 ? 0.68 : window.innerWidth <= 900 ? 0.76 : 0.86;
 
         gsap.set(panels, { autoAlpha: 0 });
         gsap.set(canvasElement, { transformOrigin: '48% 64%' });
@@ -243,8 +247,6 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           if (depthMid) timeline.to(depthMid, { scale: 1.08, z: 40, duration: FRAME_TRAVEL_DURATION, ease: 'none' }, 0);
           if (depthNear) timeline.to(depthNear, { scale: 1.42, z: 170, autoAlpha: 0, duration: 5.8, ease: 'none' }, 0.3);
 
-          // Keep the first part of the move restrained, then deliberately settle into
-          // the chair as the final visual destination of the office approach.
           timeline.to(canvasElement, {
             scale: 1.028,
             duration: CHAIR_SETTLE_AT,
