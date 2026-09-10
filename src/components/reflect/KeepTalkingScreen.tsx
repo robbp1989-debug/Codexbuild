@@ -172,6 +172,8 @@ export const KeepTalkingScreen: React.FC = () => {
             </div>
           </div>
         )}
+
+        <div className="keep-talking-perspective__footer">Greater understanding creates more choice.</div>
       </aside>
 
       <section className="keep-talking-dialogue" aria-labelledby="keep-talking-title">
@@ -185,9 +187,9 @@ export const KeepTalkingScreen: React.FC = () => {
           <div className="flex items-center gap-2 text-sky-600 text-xs font-mono uppercase tracking-wider">
             <MessageCircle className="w-4 h-4" /> Keep Talking
           </div>
-          <h1 id="keep-talking-title" className="text-2xl sm:text-3xl font-bold mt-2">Stay with this before deciding what to do.</h1>
+          <h1 id="keep-talking-title" className="text-2xl sm:text-3xl font-bold mt-2">Stay with this before solving it.</h1>
           <p className="text-sm mt-2 max-w-2xl text-slate-600">
-            Your conversation stays connected to this reflection while the latest SHIFT perspective has its own place in the room.
+            This is a space to explore what’s underneath. There’s no rush — we can look at this together.
           </p>
         </div>
 
@@ -242,7 +244,7 @@ export const KeepTalkingScreen: React.FC = () => {
               }}
               disabled={loading}
               rows={2}
-              placeholder="Tell SHIFT what part still feels unfinished…"
+              placeholder="What’s on your mind right now?"
               className="keep-talking-composer__input"
             />
             <button
@@ -252,7 +254,8 @@ export const KeepTalkingScreen: React.FC = () => {
               aria-label="Send"
               className="keep-talking-send-button"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4" aria-hidden="true" />
+              <span>Send</span>
             </button>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
