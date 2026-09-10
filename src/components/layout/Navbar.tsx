@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pause, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Pause, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { LifeContextPicker } from './LifeContextPicker';
 
@@ -81,6 +81,15 @@ export const Navbar: React.FC = () => {
           ))}
 
           <a className="workspace-privacy-link" href="/privacy">Privacy</a>
+
+          <button
+            onClick={returnToArrival}
+            className="workspace-arrival-action"
+            aria-label="Return to the final office arrival screen"
+          >
+            <ArrowLeft size={15} aria-hidden="true" />
+            <span>Arrival</span>
+          </button>
 
           <details className="workspace-more">
             <summary>More</summary>
