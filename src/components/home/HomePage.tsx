@@ -20,6 +20,7 @@ import {
 import {
   LANDING_FRAMES,
   LANDING_STOPS,
+  LANDING_VIDEO_FPS,
   LANDING_VIDEO_POSTER,
   LANDING_VIDEO_SOURCES,
 } from './landingSequence';
@@ -180,6 +181,7 @@ export const HomePage: React.FC = () => {
       frames={LANDING_FRAMES}
       videoSources={LANDING_VIDEO_SOURCES}
       poster={LANDING_VIDEO_POSTER}
+      videoFps={LANDING_VIDEO_FPS}
     >
       <section className="cinematic-panel cinematic-panel--hero" aria-labelledby="hero-title">
         <header className="cinematic-nav cinematic-nav--hero">
