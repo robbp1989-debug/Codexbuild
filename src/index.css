@@ -177,7 +177,8 @@ body { margin: 0; background: #f6f9ff; }
 
 .cinematic-scroll {
   position: relative;
-  height: 1400vh;
+  /* Primary tunnel distance. Raise this toward 600vh for a slower passage. */
+  height: 560vh;
   background: #181612;
 }
 
@@ -188,6 +189,9 @@ body { margin: 0; background: #f6f9ff; }
   height: 100svh;
   overflow: hidden;
   isolation: isolate;
+  perspective: 1000px;
+  perspective-origin: 52% 50%;
+  transform-style: preserve-3d;
   background: #1b1814;
 }
 
@@ -199,10 +203,16 @@ body { margin: 0; background: #f6f9ff; }
   height: 100%;
 }
 
-.cinematic-canvas { object-fit: cover; }
+.cinematic-canvas { object-fit: cover; transform-origin: 52% 50%; will-change: transform; }
+
+.cinematic-depth { position: absolute; z-index: 1; inset: 0; overflow: hidden; pointer-events: none; transform-style: preserve-3d; }
+.cinematic-depth-layer { position: absolute; display: block; inset: 0; transform-style: preserve-3d; will-change: transform, opacity; }
+.cinematic-depth--far { background: radial-gradient(ellipse at 52% 47%, transparent 34%, rgba(8, 7, 6, 0.16) 70%, rgba(8, 7, 6, 0.46)); transform: translate3d(0, 0, -120px) scale(1.03); }
+.cinematic-depth--mid { border: clamp(1rem, 2.2vw, 2.8rem) solid rgba(9, 8, 7, 0.24); box-shadow: inset 0 0 0 1px rgba(238, 217, 183, 0.08); transform: translate3d(0, 0, 40px) scale(1.08); }
+.cinematic-depth--near { inset: -8%; border: clamp(1.25rem, 3vw, 4rem) solid rgba(7, 7, 6, 0.64); box-shadow: inset 0 0 6rem rgba(0, 0, 0, 0.48), 0 0 4rem rgba(0, 0, 0, 0.45); transform: translate3d(0, 0, 180px) scale(1.06); }
 
 .cinematic-vignette {
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
   background:
     linear-gradient(90deg, rgba(12, 11, 9, 0.7) 0%, rgba(12, 11, 9, 0.24) 42%, rgba(12, 11, 9, 0.06) 70%, rgba(12, 11, 9, 0.2) 100%),
@@ -211,7 +221,7 @@ body { margin: 0; background: #f6f9ff; }
 
 .cinematic-panel {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   inset: 0;
   display: flex;
   padding: clamp(1.5rem, 4vw, 4.5rem);
@@ -541,7 +551,7 @@ body { margin: 0; background: #f6f9ff; }
 
 .cinematic-scroll-cue {
   position: absolute;
-  z-index: 3;
+  z-index: 4;
   right: clamp(1.2rem, 3vw, 3rem);
   bottom: clamp(1rem, 2.6vw, 2.6rem);
   display: flex;
@@ -555,3 +565,122 @@ body { margin: 0; background: #f6f9ff; }
 }
 
 .cinematic-scroll-cue i { display: block; width: 1px; height: 2.8rem; background: linear-gradient(#c096ff, transparent); }
+
+/* The office is the opening; the usable product continues beneath it. */
+.cinematic-arrival-menu {
+  width: min(56rem, 92vw);
+  margin-top: auto;
+  padding: clamp(2rem, 4vw, 4rem);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 2rem 2rem 0 0;
+  background: linear-gradient(145deg, rgba(28, 25, 22, 0.96), rgba(19, 17, 15, 0.92));
+  box-shadow: 0 -26px 70px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.cinematic-arrival-menu h2 { font-size: clamp(2.5rem, 5vw, 4.7rem); line-height: 0.95; }
+.cinematic-arrival-menu > p:not(.cinematic-eyebrow) { max-width: 37rem; margin: 1rem auto 1.8rem; color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; line-height: 1.6; }
+.cinematic-arrival-menu > div { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.7rem; }
+.cinematic-arrival-menu button { display: inline-flex; align-items: center; gap: 0.65rem; min-height: 3.25rem; padding: 0 1rem; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 0.7rem; background: rgba(255, 255, 255, 0.07); color: #fff; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; transition: background 180ms ease, transform 180ms ease; }
+.cinematic-arrival-menu button:hover { background: rgba(150, 86, 235, 0.27); transform: translateY(-2px); }
+.cinematic-arrival-menu button svg { width: 1rem; }
+
+.shift-workspace {
+  position: relative;
+  z-index: 4;
+  overflow: clip;
+  padding: 1.25rem 0 6rem;
+  background: radial-gradient(circle at 80% 0%, rgba(119, 68, 192, 0.14), transparent 28rem), #181612;
+}
+
+.workspace-menu {
+  position: sticky;
+  z-index: 5;
+  top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(64rem, calc(100% - 10vw));
+  min-height: 3.75rem;
+  margin: 0 auto 1.5rem;
+  padding: 0.4rem 0.55rem 0.4rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.85rem;
+  background: rgba(24, 22, 18, 0.86);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.workspace-menu button, .workspace-menu summary { color: rgba(255, 255, 255, 0.88); font-size: 0.76rem; font-weight: 750; letter-spacing: 0.07em; text-transform: uppercase; }
+.workspace-menu button { border: 0; background: transparent; cursor: pointer; }
+.workspace-menu-home { padding: 0.55rem 0.35rem; color: #d0adff !important; font-size: 0.93rem !important; letter-spacing: 0.2em !important; }
+.workspace-menu-primary { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.workspace-menu-primary button { padding: 0.65rem 0.75rem; border-radius: 0.55rem; }
+.workspace-menu-primary button:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+.workspace-menu-more { position: relative; margin-left: 0.35rem; }
+.workspace-menu-more summary { display: flex; align-items: center; gap: 0.45rem; padding: 0.65rem 0.8rem; border: 1px solid rgba(204, 165, 255, 0.36); border-radius: 0.55rem; background: rgba(136, 75, 220, 0.16); cursor: pointer; list-style: none; }
+.workspace-menu-more summary::-webkit-details-marker { display: none; }
+.workspace-menu-more[open] summary span { transform: rotate(45deg); }
+.workspace-menu-more > div { position: absolute; right: 0; top: calc(100% + 0.5rem); display: grid; width: 13.5rem; padding: 0.45rem; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 0.75rem; background: rgba(29, 26, 22, 0.98); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36); }
+.workspace-menu-more > div button { padding: 0.75rem 0.7rem; border-radius: 0.45rem; text-align: left; }
+.workspace-menu-more > div button:hover { background: rgba(145, 84, 231, 0.24); color: #fff; }
+
+.shift-workspace-section { width: min(64rem, calc(100% - 10vw)); margin: 0 auto; padding: 2.25rem 0; }
+.shift-workspace-section--context { padding-top: 0.5rem; padding-bottom: 1.25rem; }
+.shift-workspace-section--reflection { padding-top: 1.25rem; }
+.shift-workspace-section--split { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); align-items: center; gap: clamp(3rem, 8vw, 9rem); }
+.shift-workspace .cinematic-context-surface, .shift-workspace .cinematic-reflection-surface { width: 100%; max-height: none; box-sizing: border-box; }
+.shift-workspace .cinematic-reflection-surface { margin-left: 0; }
+.shift-workspace .cinematic-process-copy { width: auto; padding: 0; }
+.shift-workspace .cinematic-process-cards { width: 100%; margin-top: 2rem; }
+
+/* Keep the first decision lightweight, then place the reflection directly after it. */
+.shift-workspace .cinematic-context-surface { width: min(58rem, 100%); padding: 1.15rem 1.25rem; }
+.shift-workspace .cinematic-context-surface > .cinematic-eyebrow { margin-bottom: 0.45rem; font-size: 0.62rem; }
+.shift-workspace .cinematic-life-context .life-context-home-heading { margin-bottom: 0.65rem; }
+.shift-workspace .cinematic-life-context .life-context-home h2 { font-size: clamp(1.8rem, 2.5vw, 2.45rem); }
+.shift-workspace .cinematic-life-context .life-context-home-heading p { font-size: 0.78rem; }
+.shift-workspace .cinematic-life-context .life-context-home-grid { gap: 0.38rem; }
+.shift-workspace .cinematic-life-context .life-context-home-choice { min-height: 2.25rem; padding: 0.48rem 0.65rem; border-radius: 0.6rem; font-size: 0.68rem; }
+.shift-workspace .cinematic-life-context .life-context-home-note { margin-top: 0.55rem; font-size: 0.66rem; }
+.shift-workspace .personal-context-disclosure { margin-top: 0.6rem; padding-top: 0.45rem; }
+.shift-workspace .personal-context-disclosure > summary { padding: 0.4rem 0.1rem; font-size: 0.72rem; }
+
+.shift-section-heading { max-width: 42rem; }
+.shift-section-heading h2 { margin: 0; font-family: var(--shift-serif); font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 400; letter-spacing: -0.045em; line-height: 0.9; }
+.shift-tool-list { display: grid; gap: 0.85rem; margin-top: 2.25rem; }
+.shift-tool-list > button { display: grid; grid-template-columns: 2.5rem 3.4rem 1fr auto; align-items: center; gap: 1.1rem; width: 100%; min-height: 7.2rem; padding: 1.1rem 1.35rem; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 1rem; background: linear-gradient(100deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)); color: #fff; text-align: left; transition: transform 180ms ease, border-color 180ms ease, background 180ms ease; }
+.shift-tool-list > button:hover { transform: translateX(5px); border-color: rgba(201, 165, 255, 0.54); background: linear-gradient(100deg, rgba(139, 78, 223, 0.19), rgba(255, 255, 255, 0.06)); }
+.shift-tool-list > button > span { color: #c79cff; font-family: var(--shift-serif); font-size: 1.1rem; }
+.shift-tool-list > button > i { display: grid; place-items: center; width: 2.85rem; height: 2.85rem; border: 1px solid rgba(201, 165, 255, 0.45); border-radius: 999px; color: #d7b7ff; }
+.shift-tool-list > button > i svg, .shift-tool-list > button > svg { width: 1.15rem; }
+.shift-tool-list strong { display: block; font-family: var(--shift-serif); font-size: 1.65rem; font-weight: 400; }
+.shift-tool-list p { margin: 0.25rem 0 0; color: rgba(255, 255, 255, 0.63); font-size: 0.9rem; line-height: 1.45; }
+.shift-tool-list > button > svg { color: #cba7ff; }
+
+@media (max-width: 900px) {
+  .cinematic-scroll { height: 420vh; }
+  .cinematic-hero-copy { width: min(31rem, 88vw); }
+  .cinematic-arrival-menu { width: 100%; padding: 1.6rem 1.25rem 2rem; border-radius: 1.5rem 1.5rem 0 0; }
+  .shift-workspace-section { width: min(100% - 2.5rem, 44rem); padding: 4rem 0; }
+  .shift-workspace-section--split { grid-template-columns: 1fr; gap: 4rem; }
+}
+
+@media (max-width: 640px) {
+  .cinematic-scroll { height: 380vh; }
+  .cinematic-nav { inset: 1.25rem 1.25rem auto; }
+  .cinematic-brand { font-size: 1rem; letter-spacing: 0.25em; }
+  .cinematic-nav nav { gap: 1rem; }
+  .cinematic-nav nav button { font-size: 0.8rem; }
+  .cinematic-hero-copy h1 { font-size: clamp(3.7rem, 16vw, 5.25rem); }
+  .cinematic-arrival-menu > div { display: grid; }
+  .cinematic-arrival-menu button { justify-content: space-between; }
+  .shift-tool-list > button { grid-template-columns: 1.8rem 2.8rem 1fr; gap: 0.7rem; min-height: 6.5rem; padding: 1rem; }
+  .shift-tool-list > button > svg { display: none; }
+  .shift-tool-list strong { font-size: 1.35rem; }
+  .shift-tool-list p { font-size: 0.82rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-arrival-menu button, .shift-tool-list > button, .cinematic-primary-cta { transition: none; }
+}

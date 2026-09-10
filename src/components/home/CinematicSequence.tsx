@@ -66,6 +66,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       if (!context2d) return;
       const canvasElement = canvas;
       const drawingContext = context2d;
+      const stageElement = root.querySelector<HTMLElement>('.cinematic-stage');
 
       const images: Array<HTMLImageElement | undefined> = Array.from({ length: frames.length });
       const playhead = { frame: 0 };
@@ -73,7 +74,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       let disposed = false;
 
       const resizeCanvas = () => {
-        const { width, height } = canvasElement.getBoundingClientRect();
+        const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
         const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
         canvasElement.width = Math.max(1, Math.round(width * dpr));
         canvasElement.height = Math.max(1, Math.round(height * dpr));
@@ -97,7 +98,7 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
         const target = Math.min(frames.length - 1, Math.max(0, Math.round(playhead.frame)));
         const image = nearestReadyFrame(target);
         if (!image) return;
-        const { width, height } = canvasElement.getBoundingClientRect();
+        const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
         drawCover(drawingContext, image, width, height);
       }
 
@@ -133,42 +134,16 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
 
       const animationContext = gsap.context(() => {
         const panels = gsap.utils.toArray<HTMLElement>('.cinematic-panel');
-        // All panels are controlled by this single scrubbed timeline. Using discrete
-        // hand-offs instead of overlapping opacity tweens guarantees that reversing
-        // through a boundary cannot leave two stages visible at the same time.
-        const panelState = { autoAlpha: 0, y: 30, filter: 'blur(8px)' };
-        const stages = [
-          ['.cinematic-panel--hero', 0],
-          ['.cinematic-panel--context', 1.1],
-          ['.cinematic-panel--reflection', 2.5],
-          ['.cinematic-panel--tool-0', 4.1],
-          ['.cinematic-panel--tool-1', 5.5],
-          ['.cinematic-panel--tool-2', 6.9],
-          ['.cinematic-panel--tool-3', 8.3],
-          ['.cinematic-panel--discipline', 9.7],
-          ['.cinematic-panel--arrival', 11.1],
-          ['.cinematic-panel--process', 11.7],
-        ] as const;
-        const stagePanels = stages.reduce<Array<{ panel: HTMLElement; at: number }>>((available, [selector, at]) => {
-          const panel = panels.find((candidate) => candidate.matches(selector));
-          if (panel) available.push({ panel, at });
-          return available;
-        }, []);
-        let activeStage = -1;
-
-        const updateStage = (time: number) => {
-          const nextStage = stagePanels.reduce((active, stage, index) => (
-            time >= stage.at ? index : active
-          ), 0);
-          if (nextStage === activeStage) return;
-          const nextPanel = stagePanels[nextStage]?.panel;
-          if (!nextPanel) return;
-          gsap.set(panels, panelState);
-          gsap.set(nextPanel, { autoAlpha: 1, y: 0, filter: 'blur(0px)' });
-          activeStage = nextStage;
-        };
-
-        updateStage(0);
+        const hero = panels.find((panel) => panel.matches('.cinematic-panel--hero'));
+        const menuRise = panels.find((panel) => panel.matches('.cinematic-panel--menu-rise'));
+        const depthFar = root.querySelector<HTMLElement>('.cinematic-depth--far');
+        const depthMid = root.querySelector<HTMLElement>('.cinematic-depth--mid');
+        const depthNear = root.querySelector<HTMLElement>('.cinematic-depth--near');
+        const CAMERA_TRAVEL_DURATION = 7.2;
+        const MENU_RISE_AT = 8.05;
+        gsap.set(panels, { autoAlpha: 0 });
+        if (hero) gsap.set(hero, { autoAlpha: 1, y: 0, filter: 'blur(0px)' });
+        if (menuRise) gsap.set(menuRise, { autoAlpha: 0, y: '72vh', filter: 'blur(4px)' });
 
         const timeline = gsap.timeline({
           scrollTrigger: {
@@ -177,18 +152,44 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
             end: 'bottom bottom',
             scrub: true,
             invalidateOnRefresh: true,
-            onRefresh: (trigger) => updateStage(trigger.progress * 13),
-            onUpdate: (trigger) => updateStage(trigger.progress * 13),
           },
         });
 
         timeline.to(playhead, {
           frame: frames.length - 1,
-          duration: 13,
+          duration: CAMERA_TRAVEL_DURATION,
           ease: 'none',
           snap: 'frame',
           onUpdate: scheduleRender,
         }, 0);
+
+        // Depth layers reinforce the camera movement already present in the frame
+        // sequence. Tune these transforms without changing the image loader.
+        if (depthFar) timeline.to(depthFar, { scale: 1.08, z: -90, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
+        if (depthMid) timeline.to(depthMid, { scale: 1.32, z: 110, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
+        if (depthNear) timeline.to(depthNear, { scale: 2.2, z: 520, autoAlpha: 0, duration: 5.8, ease: 'none' }, 0.45);
+        timeline.to(canvasElement, { scale: 1.13, duration: CAMERA_TRAVEL_DURATION, ease: 'none' }, 0);
+
+        if (hero) {
+          timeline.to(hero, {
+            autoAlpha: 0,
+            y: -28,
+            filter: 'blur(5px)',
+            duration: 1.1,
+            ease: 'power2.out',
+          }, 1.25);
+        }
+
+        if (menuRise) {
+          timeline
+            .set(menuRise, { autoAlpha: 1 }, MENU_RISE_AT)
+            .to(menuRise, {
+              y: 0,
+              filter: 'blur(0px)',
+              duration: 1.45,
+              ease: 'power3.out',
+            }, MENU_RISE_AT);
+        }
 
       }, root);
 
@@ -204,6 +205,11 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       <div ref={rootRef} className="cinematic-scroll">
         <div className="cinematic-stage">
           <canvas ref={canvasRef} className="cinematic-canvas" aria-hidden="true" />
+          <div className="cinematic-depth" aria-hidden="true">
+            <span className="cinematic-depth-layer cinematic-depth--far" />
+            <span className="cinematic-depth-layer cinematic-depth--mid" />
+            <span className="cinematic-depth-layer cinematic-depth--near" />
+          </div>
           <div className="cinematic-vignette" aria-hidden="true" />
           {children}
           <div className="cinematic-scroll-cue" aria-hidden="true">

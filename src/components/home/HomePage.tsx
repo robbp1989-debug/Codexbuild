@@ -3,15 +3,7 @@
 import React, { useRef, useState } from 'react';
 import {
   ArrowRight,
-  ClipboardCheck,
-  FlaskConical,
-  Gamepad2,
-  GitBranch,
-  Layers,
-  Leaf,
-  Lightbulb,
   Loader2,
-  PenLine,
   ShieldCheck,
   Sparkles,
   Zap,
@@ -35,13 +27,6 @@ const QUICK_EXAMPLES = [
   "I feel weird and can't put it into words.",
 ];
 
-const TOOL_LINKS = [
-  { tab: 'dashboard', title: 'Shift Lab', copy: 'Your themes, working model, active experiments, and past updates.', Icon: Layers },
-  { tab: 'arcade', title: 'Reflection Arcade', copy: 'Fast practice for separating facts, stories, feelings, and choices.', Icon: Gamepad2 },
-  { tab: 'skills', title: 'Skill Tree', copy: 'Track depth across awareness, perspective, relationships, and regulation.', Icon: GitBranch },
-  { tab: 'prediction-lab', title: 'Prediction Lab', copy: 'Compare what your old system feared with what actually happened.', Icon: FlaskConical },
-] as const;
-
 export const HomePage: React.FC = () => {
   const {
     approvedSummary,
@@ -61,6 +46,10 @@ export const HomePage: React.FC = () => {
     playSoftSound('tap');
     setActiveTab(tab);
     requestAnimationFrame(() => window.scrollTo({ top: 0 }));
+  };
+
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleAnalyze = async (textToAnalyze?: string) => {
@@ -173,6 +162,7 @@ export const HomePage: React.FC = () => {
   };
 
   return (
+    <>
     <CinematicSequence ref={sequenceRef} frames={LANDING_FRAMES}>
       <section className="cinematic-panel cinematic-panel--hero" aria-labelledby="hero-title">
         <header className="cinematic-nav">
@@ -180,9 +170,9 @@ export const HomePage: React.FC = () => {
             <span className="cinematic-brand-mark" aria-hidden="true">S</span><span>SHIFT</span>
           </button>
           <nav aria-label="Landing page navigation">
-            <button type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.discipline)}>Our Approach</button>
+            <button type="button" onClick={() => scrollToSection('life-context')}>Life context</button>
             <span aria-hidden="true" />
-            <button type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.process)}>Process</button>
+            <button type="button" onClick={() => scrollToSection('reflection-workspace')}>Reflection</button>
           </nav>
         </header>
         <div className="cinematic-hero-copy">
@@ -190,13 +180,34 @@ export const HomePage: React.FC = () => {
           <h1 id="hero-title">Mind over<br />matter.</h1>
           <i aria-hidden="true" />
           <p>An experience designed to help you prepare for and process therapy, <strong>effectively.</strong></p>
-          <button className="cinematic-primary-cta" type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.lifeContext)}>
+          <button className="cinematic-primary-cta" type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.menu)}>
             Start your shift <ArrowRight aria-hidden="true" />
           </button>
         </div>
       </section>
 
-      <section className="cinematic-panel cinematic-panel--context cinematic-panel--center" aria-label="Life context">
+    </CinematicSequence>
+
+    <main className="shift-workspace" id="shift-workspace">
+      <nav className="workspace-menu" aria-label="Shift menu">
+        <button type="button" className="workspace-menu-home" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>SHIFT</button>
+        <div className="workspace-menu-primary">
+          <button type="button" onClick={() => scrollToSection('life-context')}>Life context</button>
+          <button type="button" onClick={() => scrollToSection('reflection-workspace')}>Start a reflection</button>
+        </div>
+        <details className="workspace-menu-more">
+          <summary>More <span aria-hidden="true">+</span></summary>
+          <div>
+            <button type="button" onClick={() => navigateToTool('dashboard')}>Shift Lab</button>
+            <button type="button" onClick={() => navigateToTool('arcade')}>Reflection Arcade</button>
+            <button type="button" onClick={() => navigateToTool('skills')}>Skill Tree</button>
+            <button type="button" onClick={() => navigateToTool('prediction-lab')}>Prediction Lab</button>
+            <button type="button" onClick={() => navigateToTool('therapy-prep')}>Therapy Prep</button>
+            <button type="button" onClick={() => navigateToTool('safety')}>Safety &amp; hotlines</button>
+          </div>
+        </details>
+      </nav>
+      <section className="shift-workspace-section shift-workspace-section--context" id="life-context" aria-label="Life context">
         <div className="cinematic-surface cinematic-context-surface">
           <p className="cinematic-eyebrow">Set the scene</p>
           <div className="cinematic-life-context"><LifeContextPicker inline /></div>
@@ -207,7 +218,7 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      <section className="cinematic-panel cinematic-panel--reflection cinematic-panel--left" aria-labelledby="reflection-title">
+      <section className="shift-workspace-section shift-workspace-section--reflection" id="reflection-workspace" aria-labelledby="reflection-title">
         <div className="cinematic-surface cinematic-reflection-surface">
           <div className="cinematic-framework-label">S • H • I • F • T Framework</div>
           <h2 id="reflection-title">What’s going on?</h2>
@@ -225,65 +236,13 @@ export const HomePage: React.FC = () => {
           </label>
           <div className="cinematic-scenarios">
             <p><Zap aria-hidden="true" /> Or try one real-life reflection:</p>
-            <div>
-              {QUICK_EXAMPLES.map((example) => (
-                <button type="button" key={example} disabled={loading} onClick={() => { setInputText(example); void handleAnalyze(example); }}>“{example}”</button>
-              ))}
-            </div>
+            <div>{QUICK_EXAMPLES.map((example) => <button type="button" key={example} disabled={loading} onClick={() => { setInputText(example); void handleAnalyze(example); }}>“{example}”</button>)}</div>
           </div>
-          <button className="cinematic-safety-link" type="button" onClick={() => navigateToTool('safety')}>
-            <ShieldCheck aria-hidden="true" /> Educational skills tool <span>Safety & hotlines</span>
-          </button>
+          <button className="cinematic-safety-link" type="button" onClick={() => navigateToTool('safety')}><ShieldCheck aria-hidden="true" /> Educational skills tool <span>Safety & hotlines</span></button>
         </div>
       </section>
 
-      {TOOL_LINKS.map(({ tab, title, copy, Icon }, index) => (
-        <section className={`cinematic-panel cinematic-panel--tool-${index} cinematic-panel--center`} aria-labelledby={`tool-title-${tab}`} key={tab}>
-          <div className="cinematic-tools-wrap cinematic-tool-stage">
-            <p className="cinematic-eyebrow">Continue your practice · {String(index + 1).padStart(2, '0')}</p>
-            <span className="cinematic-tool-icon cinematic-tool-icon--featured"><Icon aria-hidden="true" /></span>
-            <h2 id={`tool-title-${tab}`}>{title}</h2>
-            <p className="cinematic-intro">{copy}</p>
-            <button className="cinematic-tool-cta" type="button" onClick={() => navigateToTool(tab)}>
-              Open {title} <ArrowRight aria-hidden="true" />
-            </button>
-          </div>
-        </section>
-      ))}
-
-      <section className="cinematic-panel cinematic-panel--discipline cinematic-panel--right" aria-labelledby="discipline-title">
-        <div className="cinematic-surface cinematic-discipline-surface">
-          <p className="cinematic-eyebrow"><Lightbulb aria-hidden="true" /> The SHIFT Discipline</p>
-          <h2 id="discipline-title">Clarity before certainty.</h2>
-          <ol>
-            <li><span>01</span><div><strong>Observe First, Interpret Second</strong><p>Camera-test what was said and done before automatic stories create certainty.</p></div></li>
-            <li><span>02</span><div><strong>Feel Before Explaining</strong><p>Notice emotional impact and bodily response before explaining someone else’s motives.</p></div></li>
-            <li><span>03</span><div><strong>Hypotheses, Not Verdicts</strong><p>Protective rules are possibilities to test—not facts you have to obey.</p></div></li>
-          </ol>
-        </div>
-      </section>
-
-      <section className="cinematic-panel cinematic-panel--arrival cinematic-panel--center" aria-label="Arrival at the therapy room">
-        <div className="cinematic-arrival-copy"><span aria-hidden="true" /><p>From reflection<br />to preparation.</p></div>
-      </section>
-
-      <section className="cinematic-panel cinematic-panel--process" aria-labelledby="process-title">
-        <div className="cinematic-process-copy">
-          <h2 id="process-title">Three steps to<br />clearer sessions.</h2><i aria-hidden="true" />
-          <p>A simple, proven flow that helps you reflect, practice, and prepare—so every session moves you forward.</p>
-        </div>
-        <div className="cinematic-process-cards">
-          <button type="button" onClick={() => sequenceRef.current?.scrollToProgress(LANDING_STOPS.reflection)}>
-            <span><Leaf aria-hidden="true" /></span><i aria-hidden="true" /><div><strong>Reflect</strong><p>Check in with yourself and bring clarity to what matters.</p></div>
-          </button>
-          <button type="button" onClick={() => navigateToTool('arcade')}>
-            <span><PenLine aria-hidden="true" /></span><i aria-hidden="true" /><div><strong>Practice</strong><p>Build insight and skills with guided exercises.</p></div>
-          </button>
-          <button type="button" onClick={() => navigateToTool('therapy-prep')}>
-            <span><ClipboardCheck aria-hidden="true" /></span><i aria-hidden="true" /><div><strong>Therapy Prep</strong><p>Organize your thoughts and get the most from each session.</p></div>
-          </button>
-        </div>
-      </section>
-    </CinematicSequence>
+    </main>
+    </>
   );
 };

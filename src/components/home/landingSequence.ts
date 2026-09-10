@@ -28,10 +28,5 @@ export const LANDING_FRAMES = buildNumberedFrameSequence({
 
 export const LANDING_STOPS = {
   hero: 0,
-  lifeContext: 0.085,
-  reflection: 0.192,
-  tools: 0.315,
-  discipline: 0.746,
-  arrival: 0.854,
-  process: 0.9,
+  menu: 0.82,
 } as const;
