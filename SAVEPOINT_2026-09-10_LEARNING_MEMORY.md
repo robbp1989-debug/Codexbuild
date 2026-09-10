@@ -1,8 +1,8 @@
 # SHIFT learning-memory save point — 2026-09-10
 
-This checkpoint records the current completed learning-memory architecture, runtime-hardening work, and approved office-workspace transition.
+This checkpoint records the current completed learning-memory architecture, runtime-hardening work, approved office-workspace transition, and final approved Keep Talking painting-zone composition.
 
-Known good master commit after left-side perspective workspace: `197fa0486eb3a281715b58a6893d1ab37d19f56a`
+Known good master commit after final Keep Talking visual polish: `d9412e3d379ec545ef903dbb6ce72d5a5af9b2e1`
 
 Included and already merged:
 - compact reusable learning memory instead of replaying raw narratives
@@ -27,14 +27,18 @@ Included and already merged:
 - plain-language `/privacy` disclosure covering device memory, account learning, imported sources, AI context use, and deletion controls
 - source-import privacy disclosure before private files are attached
 - approved cinematic scroll-scrub landing and chair destination preserved
-- cinematic chair/intake screen is the final scroll destination; deeper tools now render in a separate stationary office-backed workspace
+- cinematic chair/intake screen is the final scroll destination; deeper tools render in a separate stationary office-backed workspace
 - workspace keeps the warm office visual language with luminous glass surfaces and light-blue navigation accents
 - workspace primary navigation includes Reflection, Keep Talking, Prediction Lab, Memory, and Privacy, while existing secondary tools remain available
 - returning from a deep tool can return directly to the final chair arrival without forcing the intro to replay; replay remains an intentional separate action
-- Keep Talking now uses an immersive split layout on desktop: the latest SHIFT perspective appears in a dedicated left-side glass panel aligned with the painting/console zone while the active conversation remains on the right
-- the Keep Talking office veil is lighter so more of the room remains visible
-- user conversation turns use a pale light-blue surface, SHIFT turns use a soft neutral/white surface, and Send/Remember actions use the light-blue accent family
-- tablet/mobile collapse the split layout into a readable vertical stack
+- Keep Talking uses an immersive split layout on large desktop screens: the Perspective Shift panel is fixed high in the left painting zone so it visually replaces the painting, while the active conversation remains on the window side
+- the Keep Talking navigation is visually attached to the right-side workspace on large screens, leaving the left wall available for the perspective panel
+- the office veil is intentionally light so the room remains clearly visible behind the interface
+- user conversation turns use a pale light-blue surface and SHIFT turns use a soft neutral/white surface
+- Send is now an explicit labeled light-blue primary action; Remember uses the same accent family
+- an explicit Arrival action returns to the final chair/intake screen without replaying the intro
+- the Perspective Shift panel retains an epistemic disclaimer and adds the line “Greater understanding creates more choice.”
+- tablet/mobile collapse the immersive composition into the existing readable vertical layout rather than forcing a desktop wall-aligned arrangement
 
 Validation state:
 - PR #8 build passed and merged
@@ -48,7 +52,8 @@ Validation state:
 - PR #16 semantic-memory contracts and full build passed and merged at `eb771143bbe0af9375039b71364c4b400ca0352d`
 - PR #17 learning-memory contracts and full production build passed and merged at `338f8660deeca1db899f3bdfa6095097757e2ee2`
 - PR #18 learning-memory contracts and full production build passed and merged at `197fa0486eb3a281715b58a6893d1ab37d19f56a`
+- PR #19 learning-memory contracts and full production build passed and merged at `d9412e3d379ec545ef903dbb6ce72d5a5af9b2e1`
 
-Recovery rule: if later work becomes unstable, return to this master history and this checkpoint before attempting further changes. Do not regress the approved cinematic landing, chair destination, real AI endpoints, or learning-memory safeguards as part of visual refinements.
+Recovery rule: if later work becomes unstable, return to this master history and this checkpoint before attempting further changes. Do not regress the approved cinematic landing, chair destination, real AI endpoints, learning-memory safeguards, or final Keep Talking painting-zone composition as part of later refinements.
 
 Remaining production-readiness step: deploy/save the current Sites version, open `/storage-check` while signed in with ChatGPT, run the reversible storage test, then perform a real end-to-end opt-in memory test (remember → reload → retrieve in a related reflection → delete → verify it no longer influences future reflections). Do not describe D1/R2 account persistence as live-verified until those hosted checks pass.
