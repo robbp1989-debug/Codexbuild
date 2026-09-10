@@ -73,7 +73,7 @@ export const Navbar: React.FC = () => {
           {WORKSPACE_NAV.map((item) => (
             <button
               key={item.id}
-              aria-current={item.tabs.includes(activeTab as never) ? 'page' : undefined}
+              aria-current={(item.tabs as readonly string[]).includes(activeTab) ? 'page' : undefined}
               onClick={() => navigatePrimary(item.id)}
             >
               {item.label}
