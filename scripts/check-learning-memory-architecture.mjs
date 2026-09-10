@@ -1,0 +1,51 @@
+import fs from 'node:fs';
+
+const read = (path) => fs.readFileSync(path, 'utf8');
+const assert = (condition, message) => {
+  if (!condition) throw new Error(message);
+};
+
+const migration = read('migrations/0001_learning_memory.sql');
+const retrieval = read('server/memoryContext.ts');
+const breakdownRoute = read('app/api/shift/breakdown/route.ts');
+const conversationRoute = read('app/api/shift/conversation/route.ts');
+const sourceUpload = read('app/api/shift/source/upload/route.ts');
+const rememberRoute = read('app/api/shift/memory/remember/route.ts');
+const evidenceRoute = read('app/api/shift/evidence/route.ts');
+const aiClient = read('server/aiClient.ts');
+const selfTest = read('server/storageSelfTest.ts');
+
+for (const table of ['users', 'learning_memories', 'source_documents', 'learning_evidence']) {
+  assert(migration.includes(`CREATE TABLE IF NOT EXISTS ${table}`), `Missing required D1 table: ${table}`);
+}
+
+assert(retrieval.includes('REJECTED_HYPOTHESIS'), 'Rejected hypotheses must remain available as negative evidence.');
+assert(retrieval.includes("item.status !== 'archived'"), 'Archived learning must be excluded from retrieval.');
+assert(!retrieval.includes("item.status !== 'rejected'"), 'Rejected hypotheses must not be globally filtered out.');
+assert(retrieval.includes('evidenceBonus'), 'Real-world evidence must affect memory ranking.');
+assert(retrieval.includes('confidenceBonus'), 'User confirmation must affect memory ranking.');
+assert(!retrieval.match(/CONFIRMED_FACT\s*:/), 'Raw confirmed-event facts must not be a reusable retrieval type.');
+assert(!retrieval.match(/USER_INTERPRETATION\s*:/), 'Raw interpretations must not be a reusable retrieval type.');
+
+for (const route of [breakdownRoute, conversationRoute]) {
+  assert(route.includes('loadLearningMemories'), 'Reflection paths must retrieve durable account learning.');
+  assert(route.includes('selectRelevantMemoryContext'), 'Reflection paths must select only relevant compact learning.');
+}
+
+assert(sourceUpload.includes('private-sources/'), 'Private source objects must use opaque private-source keys.');
+assert(!sourceUpload.includes('originalName: file.name,\n        objectKey: `private-sources/${user.userId}/${documentId}/${file.name}`'), 'Original filenames must not be embedded in R2 object keys.');
+assert(sourceUpload.includes('Never echo the raw document back to the browser'), 'Source upload must preserve the no-raw-echo contract.');
+
+assert(rememberRoute.includes('Sign in') || rememberRoute.includes('accountRequired'), 'Durable memory must be account-scoped.');
+assert(aiClient.includes('Do not save it automatically') || aiClient.includes('Do not save it automatically.'.toLowerCase()) || aiClient.includes('Do not save it automatically'), 'Keep Talking must not auto-save AI suggestions.');
+assert(aiClient.includes('A suggestion is not a HELPFUL_STRATEGY until a real outcome shows it helped'), 'Advice must not become a helpful strategy without outcome evidence.');
+
+assert(evidenceRoute.includes('rememberForFuture'), 'Prediction outcomes must remain opt-in for durable account memory.');
+assert(evidenceRoute.includes('strategyHelped && intendedAction'), 'Helpful strategies require an explicit user-reported helpful outcome.');
+assert(evidenceRoute.includes("type: 'HELPFUL_STRATEGY'"), 'Helpful strategy promotion path is missing.');
+
+assert(selfTest.includes('DELETE FROM learning_memories'), 'Storage self-test must clean up synthetic D1 records.');
+assert(selfTest.includes('bucket.delete(objectKey)'), 'Storage self-test must clean up synthetic R2 objects.');
+assert(selfTest.includes('Synthetic diagnostic record. Not user learning.'), 'Storage self-test must use synthetic, non-user content.');
+
+console.log('SHIFT learning-memory architecture checks passed.');
