@@ -12,6 +12,7 @@ import { PredictionLabScreen } from './components/predictions/PredictionLabScree
 import { TherapyPrepScreen } from './components/therapy/TherapyPrepScreen';
 import { EpistemicMemoryScreen } from './components/memory/EpistemicMemoryScreen';
 import { LearningMemorySync } from './components/memory/LearningMemorySync';
+import { SourceImportCard } from './components/memory/SourceImportCard';
 import { ShiftBreakdownScreen } from './components/reflect/ShiftBreakdownScreen';
 import { BreakdownNextStepBar } from './components/reflect/BreakdownNextStepBar';
 import { KeepTalkingScreen } from './components/reflect/KeepTalkingScreen';
@@ -58,7 +59,12 @@ const AppContent: React.FC = () => {
         {activeTab === 'skills' && <SkillTreeScreen />}
         {activeTab === 'prediction-lab' && <PredictionLabScreen />}
         {activeTab === 'therapy-prep' && <TherapyPrepScreen />}
-        {activeTab === 'memory' && <EpistemicMemoryScreen />}
+        {activeTab === 'memory' && (
+          <div className="space-y-6">
+            <SourceImportCard />
+            <EpistemicMemoryScreen />
+          </div>
+        )}
         {activeTab === 'patterns' && <PatternsPage />}
         {activeTab === 'review' && <ReviewPage />}
         {activeTab === 'learn' && <LearnPage />}
