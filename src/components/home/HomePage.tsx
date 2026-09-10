@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   Loader2,
@@ -47,6 +47,22 @@ export const HomePage: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('Gathering facts...');
+
+  useEffect(() => {
+    let entry: string | null = null;
+    try {
+      entry = sessionStorage.getItem('shift_home_entry_v1');
+      sessionStorage.removeItem('shift_home_entry_v1');
+    } catch {
+      entry = null;
+    }
+
+    if (entry !== 'arrival') return;
+    const timer = window.setTimeout(() => {
+      sequenceRef.current?.scrollToProgress(LANDING_STOPS.workspace);
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const navigateToTool = (tab: string) => {
     playSoftSound('tap');
