@@ -37,6 +37,9 @@ interface GamePersonalizationContext {
 type PracticeInput = Omit<PracticeSession, 'id' | 'date'> | { gameId: ArcadeModeType; score: number; durationSeconds: number; theme: string };
 
 interface AppContextType {
+  approvedSummary: string;
+  summaryRemembered: boolean;
+  approveSummary: (text: string, remember: boolean) => boolean;
   lifeContext: LifeContextId;
   setLifeContext: (context: LifeContextId) => void;
   setShifts: React.Dispatch<React.SetStateAction<ShiftBreakdown[]>>;
@@ -129,6 +132,24 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const STORAGE_KEY = 'shift_platform_storage_v2';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [approvedSummary, setApprovedSummary] = useState('');
+  const [summaryRemembered, setSummaryRemembered] = useState(false);
+  const approveSummary = (text: string, remember: boolean): boolean => {
+    const summary = text.trim().slice(0, 4000);
+    try {
+      if (remember && summary) localStorage.setItem('shift_approved_summary_v1', summary);
+      else localStorage.removeItem('shift_approved_summary_v1');
+    } catch { return false; }
+    setApprovedSummary(summary);
+    setSummaryRemembered(Boolean(remember && summary));
+    return true;
+  };
+  useEffect(() => {
+    try {
+      const summary = localStorage.getItem('shift_approved_summary_v1');
+      if (summary) { setApprovedSummary(summary.slice(0, 4000)); setSummaryRemembered(true); }
+    } catch { /* Session-only use remains available. */ }
+  }, []);
   const [activeTab, setActiveTab] = useState<string>('home');
   const [lifeContext, setLifeContext] = useState<LifeContextId>('everyday');
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
@@ -486,6 +507,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetToDefaults = () => {
+    approveSummary('', false);
     setLifeContext('everyday');
     setShifts(INITIAL_DEMO_SHIFTS);
     setActiveShift(INITIAL_DEMO_SHIFTS[0]);
@@ -497,6 +519,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const clearAllData = () => {
+    approveSummary('', false);
     setLifeContext('everyday');
     setShifts([]);
     setActiveShift(null);
@@ -619,7 +642,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider
-      value={{
+        value={{
+          approvedSummary,
+          summaryRemembered,
+          approveSummary,
         lifeContext,
         setLifeContext,
         setShifts,

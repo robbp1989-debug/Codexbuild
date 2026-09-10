@@ -1,5 +1,5 @@
 import { evaluateSafety } from '@/server/safetyCheck';
-import { analyzeShiftReflection } from '@/server/gemini';
+import { analyzeShiftReflection } from '@/server/aiClient';
 
 export async function POST(request: Request) {
   try {

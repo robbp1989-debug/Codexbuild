@@ -1,4 +1,4 @@
-import { generatePersonalizedGameContent } from '@/server/gemini';
+import { generatePersonalizedGameContent } from '@/server/aiClient';
 
 export async function POST(request: Request) {
   try {

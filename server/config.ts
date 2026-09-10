@@ -1,11 +1,12 @@
 // Centralized Model Routing Configuration for SHIFT
-// Primary lightweight model with automated fallback sequence during high-demand periods
-export const PRIMARY_MODEL = 'gemini-3.8-flash';
-export const FALLBACK_MODELS = ['gemini-flash-latest', 'gemini-3.1-flash-lite'];
+// Primary lightweight model with automated fallback sequence during high-demand periods.
+// Swapping AI providers later only requires changing server/aiClient.ts + these names.
+export const PRIMARY_MODEL = 'gpt-5-mini';
+export const FALLBACK_MODELS = ['gpt-4o-mini', 'gpt-5-nano'];
 export const ALL_MODELS = [PRIMARY_MODEL, ...FALLBACK_MODELS];
 export const DEFAULT_MODEL = PRIMARY_MODEL;
-export const DEEP_ANALYSIS_MODEL = 'gemini-3.8-flash';
-export const SAFETY_MODEL = 'gemini-3.8-flash';
+export const DEEP_ANALYSIS_MODEL = 'gpt-5-mini';
+export const SAFETY_MODEL = 'gpt-5-mini';
 
 export const SHIFT_SYSTEM_INSTRUCTION = `You are SHIFT, a personalized perspective-shifting and behavioral-learning platform.
 You are NOT an AI therapist, diagnostic service, or medical provider.

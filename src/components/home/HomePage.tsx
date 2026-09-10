@@ -17,6 +17,7 @@ import {
 import { ShiftBreakdown } from '../../types';
 import { generateFallbackBreakdown } from '../../../server/fallbackAnalysis';
 import { LifeContextPicker } from '../layout/LifeContextPicker';
+import { PersonalSummary } from './PersonalSummary';
 
 const QUICK_EXAMPLES = [
   "My friend hasn't answered me and I keep checking my phone.",
@@ -28,6 +29,7 @@ const QUICK_EXAMPLES = [
 
 export const HomePage: React.FC = () => {
   const {
+    approvedSummary,
     setActiveTab,
     playSoftSound,
     setActiveShift,
@@ -61,7 +63,7 @@ export const HomePage: React.FC = () => {
       const response = await fetch('/api/shift/breakdown', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ situation: text }),
+        body: JSON.stringify({ situation: text, memoryContext: approvedSummary ? [approvedSummary] : [] }),
       });
 
       clearTimeout(stepTimer1);
@@ -167,6 +169,7 @@ export const HomePage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <LifeContextPicker inline />
+      <PersonalSummary />
       {/* Educational & Non-Medical Disclaimer Header */}
       <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
         <div className="flex items-center gap-2">
