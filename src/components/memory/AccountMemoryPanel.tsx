@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Brain, FileLock2, Loader2, RefreshCw, Trash2 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 interface AccountMemory {
   id: string;
@@ -11,6 +12,7 @@ interface AccountMemory {
   tags: string[];
   confidence: string;
   sourceKind: string;
+  sourceId: string | null;
   evidenceCount: number;
   updatedAt: string;
 }
@@ -25,6 +27,7 @@ interface AccountSource {
 }
 
 export const AccountMemoryPanel: React.FC = () => {
+  const { memoryItems, removeMemoryItem } = useApp();
   const [memories, setMemories] = useState<AccountMemory[]>([]);
   const [sources, setSources] = useState<AccountSource[]>([]);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
@@ -40,7 +43,9 @@ export const AccountMemoryPanel: React.FC = () => {
         fetch('/api/shift/memory/account', { cache: 'no-store' }),
         fetch('/api/shift/source/manage', { cache: 'no-store' }),
       ]);
-      if (!memoryResponse.ok || !sourceResponse.ok) throw new Error('Account memory is not available on this deployment yet.');
+      if (!memoryResponse.ok || !sourceResponse.ok) {
+        throw new Error('Account memory is not available on this deployment yet.');
+      }
       const memoryData = await memoryResponse.json() as { signedIn?: boolean; memories?: AccountMemory[] };
       const sourceData = await sourceResponse.json() as { signedIn?: boolean; sources?: AccountSource[] };
       const accountSignedIn = Boolean(memoryData.signedIn || sourceData.signedIn);
@@ -58,9 +63,21 @@ export const AccountMemoryPanel: React.FC = () => {
     void load();
   }, []);
 
+  const removeMatchingDeviceCopy = (memory: AccountMemory) => {
+    const compactPrefix = `${memory.label}: ${memory.summary}`;
+    memoryItems
+      .filter((item) => {
+        const sameCompactText = item.content === compactPrefix || item.content.startsWith(`${compactPrefix} | tags:`);
+        const sameSourceAndText = Boolean(memory.sourceId && item.sourceSessionId === memory.sourceId && item.content.includes(memory.summary));
+        return sameCompactText || sameSourceAndText;
+      })
+      .forEach((item) => removeMemoryItem(item.id));
+  };
+
   const archiveMemory = async (memory: AccountMemory) => {
     if (!window.confirm(`Remove “${memory.label}” from future SHIFT memory?`)) return;
     setBusyId(memory.id);
+    setError('');
     try {
       const response = await fetch('/api/shift/memory/account', {
         method: 'DELETE',
@@ -68,7 +85,10 @@ export const AccountMemoryPanel: React.FC = () => {
         body: JSON.stringify({ memoryId: memory.id }),
       });
       if (!response.ok) throw new Error('Could not remove this memory.');
+      const data = await response.json() as { archived?: boolean };
+      if (!data.archived) throw new Error('Could not remove this memory.');
       setMemories((current) => current.filter((item) => item.id !== memory.id));
+      removeMatchingDeviceCopy(memory);
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Could not remove this memory.');
     } finally {
@@ -82,15 +102,26 @@ export const AccountMemoryPanel: React.FC = () => {
       : `Delete the private source file “${source.originalName}”? Its already-extracted compact learning will remain.`;
     if (!window.confirm(warning)) return;
     setBusyId(source.id);
+    setError('');
     try {
       const response = await fetch('/api/shift/source/manage', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentId: source.id, deleteLearning }),
       });
-      if (!response.ok) throw new Error('Could not delete this private source.');
+      const data = await response.json() as { deleted?: boolean; error?: string };
+      if (!response.ok || !data.deleted) throw new Error(data.error || 'Could not delete this private source.');
+
       setSources((current) => current.filter((item) => item.id !== source.id));
-      if (deleteLearning) await load();
+      if (deleteLearning) {
+        // Imported compact copies are tagged with the document id. Remove those from
+        // the current device too so a deleted source cannot keep influencing prompts
+        // merely because this browser still has a stale local copy.
+        memoryItems
+          .filter((item) => item.sourceSessionId === source.id)
+          .forEach((item) => removeMemoryItem(item.id));
+        await load();
+      }
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Could not delete this private source.');
     } finally {
@@ -105,7 +136,7 @@ export const AccountMemoryPanel: React.FC = () => {
           <p className="text-[11px] font-mono uppercase tracking-[0.15em] text-sky-300">What SHIFT can carry forward</p>
           <h2 className="text-xl font-bold text-slate-100 mt-1">Account learning memory</h2>
           <p className="text-xs text-slate-400 mt-2 max-w-3xl leading-relaxed">
-            These are compact learning records used to personalize future reflections. You can remove any record without deleting your entire account or journal.
+            These compact learning records can personalize later reflections. You can remove any record without deleting your journal, and imported source files can be deleted separately from the learning extracted from them.
           </p>
         </div>
         <button
@@ -124,7 +155,7 @@ export const AccountMemoryPanel: React.FC = () => {
       {!loading && signedIn === false && (
         <div className="mt-5 rounded-2xl border border-sky-500/25 bg-sky-950/20 p-4">
           <p className="text-sm text-slate-200 font-semibold">Sign in to carry learning across devices.</p>
-          <p className="text-xs text-slate-400 mt-1">SHIFT can still use device-local memory without an account.</p>
+          <p className="text-xs text-slate-400 mt-1">SHIFT can still use device-local learning without an account.</p>
           <a href="/signin-with-chatgpt?return_to=/" className="inline-block mt-3 text-xs font-semibold text-sky-300 hover:text-sky-200 underline underline-offset-4">
             Sign in with ChatGPT
           </a>
@@ -140,7 +171,7 @@ export const AccountMemoryPanel: React.FC = () => {
               <span className="text-[10px] text-slate-500">{memories.length}</span>
             </div>
             <div className="space-y-2.5 max-h-[30rem] overflow-y-auto pr-1">
-              {memories.length === 0 && <p className="text-xs text-slate-500 py-4">No account-backed learning yet. Save a reflection or import previous context.</p>}
+              {memories.length === 0 && <p className="text-xs text-slate-500 py-4">No account-backed learning yet. Save a reflection, test an outcome, or import previous context.</p>}
               {memories.map((memory) => (
                 <article key={memory.id} className="rounded-2xl border border-slate-800 bg-slate-950/55 p-3.5">
                   <div className="flex items-start justify-between gap-3">
@@ -148,6 +179,7 @@ export const AccountMemoryPanel: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[9px] font-mono uppercase tracking-wider text-sky-300">{memory.type.replaceAll('_', ' ')}</span>
                         <span className="text-[9px] text-slate-600">• {memory.confidence.replaceAll('_', ' ')}</span>
+                        {memory.evidenceCount > 1 && <span className="text-[9px] text-emerald-400">• {memory.evidenceCount} evidence points</span>}
                       </div>
                       <h4 className="text-sm font-semibold text-slate-200 mt-1">{memory.label}</h4>
                       <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{memory.summary}</p>
