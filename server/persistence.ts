@@ -1,6 +1,11 @@
 import { env } from 'cloudflare:workers';
 import type { LearningMemoryCandidate } from './aiClient';
 import type { CompactMemoryItem } from './memoryContext';
+import {
+  deleteMemoryEmbedding,
+  loadMemoryEmbeddings,
+  upsertMemoryEmbeddings,
+} from './semanticMemory';
 
 interface LearningMemoryRow {
   id: string;
@@ -78,7 +83,23 @@ function safeTags(raw: string): string[] {
   }
 }
 
-function rowToCompactMemory(row: LearningMemoryRow): CompactMemoryItem {
+function memoryEmbeddingText(memory: Pick<LearningMemoryCandidate, 'type' | 'label' | 'summary' | 'tags'>): string {
+  return [memory.type, memory.label, memory.summary, ...(memory.tags || [])]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function rowEmbeddingText(row: Pick<LearningMemoryRow, 'memory_type' | 'label' | 'summary' | 'tags_json'>): string {
+  return [row.memory_type, row.label, row.summary, ...safeTags(row.tags_json)]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function rowToCompactMemory(row: LearningMemoryRow, embedding?: number[]): CompactMemoryItem {
   const tags = safeTags(row.tags_json);
   const tagText = tags.length ? ` | tags: ${tags.join(', ')}` : '';
   return {
@@ -91,6 +112,7 @@ function rowToCompactMemory(row: LearningMemoryRow): CompactMemoryItem {
     confidence: row.confidence,
     evidenceCount: Math.max(1, Number(row.evidence_count || 1)),
     sourceKind: row.source_kind,
+    embedding,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     sourceSessionId: row.source_id || undefined,
@@ -112,7 +134,16 @@ export async function loadLearningMemories(userId: string, limit = 80): Promise<
     )
     .bind(userId, Math.max(1, Math.min(limit, 200)))
     .all<LearningMemoryRow>();
-  return (result.results || []).map(rowToCompactMemory);
+
+  const rows = result.results || [];
+  let embeddings = new Map<string, number[]>();
+  try {
+    embeddings = await loadMemoryEmbeddings(userId, rows.map((row) => row.id));
+  } catch {
+    // Semantic retrieval is optional. The same memories remain available to the
+    // lexical selector if vector storage is unavailable.
+  }
+  return rows.map((row) => rowToCompactMemory(row, embeddings.get(row.id)));
 }
 
 function memoryId(): string {
@@ -164,7 +195,7 @@ async function consolidateExactLearning(
   userId: string,
   sourceId: string | null,
   memory: LearningMemoryCandidate,
-): Promise<string | null> {
+): Promise<{ id: string; tags: string[] } | null> {
   if (!CONSOLIDATABLE_MEMORY_TYPES.has(memory.type)) return null;
   const canonicalIncoming = canonicalLearningText(memory.summary);
   if (!canonicalIncoming) return null;
@@ -186,8 +217,9 @@ async function consolidateExactLearning(
   if (!match) return null;
 
   // A duplicate submit from the same source is idempotent. A genuinely separate
-  // source confirming the same compact learning adds one evidence point.
-  const sameSource = Boolean(sourceId && match.source_id && sourceId === match.source_id);
+  // source confirming the same compact learning adds one evidence point. A missing
+  // source id is treated as idempotent rather than inventing independent evidence.
+  const sameSource = !sourceId || !match.source_id || sourceId === match.source_id;
   const nextEvidenceCount = sameSource
     ? Math.max(1, Number(match.evidence_count || 1))
     : Math.max(1, Number(match.evidence_count || 1)) + 1;
@@ -203,7 +235,7 @@ async function consolidateExactLearning(
     .bind(nextEvidenceCount, nextConfidence, JSON.stringify(nextTags), match.id, userId)
     .run();
 
-  return match.id;
+  return { id: match.id, tags: nextTags };
 }
 
 export async function replaceLearningMemoriesForSource(
@@ -219,8 +251,11 @@ export async function replaceLearningMemoriesForSource(
   const statements: D1PreparedStatement[] = [
     db.prepare('DELETE FROM learning_memories WHERE user_id = ? AND source_id = ?').bind(userId, sourceId),
   ];
+  const embeddingEntries: Array<{ memoryId: string; text: string }> = [];
 
   for (const memory of memories.slice(0, 8)) {
+    const id = memoryId();
+    embeddingEntries.push({ memoryId: id, text: memoryEmbeddingText(memory) });
     statements.push(
       db
         .prepare(
@@ -230,7 +265,7 @@ export async function replaceLearningMemoriesForSource(
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         )
         .bind(
-          memoryId(),
+          id,
           userId,
           memory.type,
           memory.label.slice(0, 100),
@@ -245,6 +280,11 @@ export async function replaceLearningMemoriesForSource(
   }
 
   await db.batch(statements);
+  try {
+    await upsertMemoryEmbeddings(userId, embeddingEntries);
+  } catch {
+    // Durable memory is authoritative. Vector indexing must never make saving fail.
+  }
   return true;
 }
 
@@ -258,8 +298,18 @@ export async function saveLearningMemory(
   if (!db || !userId) return null;
   await ensureUser(userId);
 
-  const consolidatedId = await consolidateExactLearning(db, userId, sourceId, memory);
-  if (consolidatedId) return consolidatedId;
+  const consolidated = await consolidateExactLearning(db, userId, sourceId, memory);
+  if (consolidated) {
+    try {
+      await upsertMemoryEmbeddings(userId, [{
+        memoryId: consolidated.id,
+        text: memoryEmbeddingText({ ...memory, tags: consolidated.tags }),
+      }]);
+    } catch {
+      // Exact durable learning remains valid without a refreshed vector.
+    }
+    return consolidated.id;
+  }
 
   const id = memoryId();
   await db
@@ -282,6 +332,12 @@ export async function saveLearningMemory(
       sourceId,
     )
     .run();
+
+  try {
+    await upsertMemoryEmbeddings(userId, [{ memoryId: id, text: memoryEmbeddingText(memory) }]);
+  } catch {
+    // Durable memory is still saved and remains lexically retrievable.
+  }
   return id;
 }
 
@@ -296,6 +352,13 @@ export async function archiveLearningMemory(userId: string, memoryIdValue: strin
     )
     .bind(memoryIdValue, userId)
     .run();
+  if (result.success) {
+    try {
+      await deleteMemoryEmbedding(userId, memoryIdValue);
+    } catch {
+      // An orphaned optional vector cannot be loaded after the memory is archived.
+    }
+  }
   return Boolean(result.success);
 }
 
