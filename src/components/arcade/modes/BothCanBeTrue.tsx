@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { CheckCircle2, ArrowRight, GitFork, AlertCircle, Heart, Shield } from 'lucide-react';
@@ -11,44 +12,15 @@ interface DialecticalScenario {
   synthesis: string;
 }
 
-const SCENARIOS: DialecticalScenario[] = [
-  {
-    id: 'bcbt-1',
-    context: 'Your partner snapped at you after arriving home late.',
-    sideA: 'They had an agonizing 12-hour shift and are physically drained.',
-    sideB: 'Their sharp tone felt hurtful and disrespectful to you.',
-    correctAnswer: 'both',
-    synthesis:
-      'Both can be true. Understanding someone’s fatigue explains their irritability, but it does not erase your legitimate emotional impact or require you to accept mistreatment.',
-  },
-  {
-    id: 'bcbt-2',
-    context: 'A coworker declined to help you with an urgent project sprint.',
-    sideA: 'They have strict deadlines on their own assigned queue.',
-    sideB: 'You feel isolated and stressed under the current workload.',
-    correctAnswer: 'both',
-    synthesis:
-      'Both can be true. Their boundary is legitimate, and your stress is also real. One does not invalidate the other.',
-  },
-  {
-    id: 'bcbt-3',
-    context: 'Your parent gave unsolicited critical advice about your career.',
-    sideA: 'They genuinely desire your financial safety and stability.',
-    sideB: 'Their delivery felt intrusive, undermining, and invalidating.',
-    correctAnswer: 'both',
-    synthesis:
-      'Both can be true. Love and anxiety can motivate advice while the boundary violation remains genuine. You can recognize their intent without adopting their critique.',
-  },
-];
-
 export const BothCanBeTrue: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { playSoftSound, logPracticeSession, activeShift } = useApp();
+  const SCENARIOS = usePracticeContent().both;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
 
   const scenarioList = React.useMemo(() => {
-    if (!activeShift) return SCENARIOS;
+    if (!activeShift || activeShift.id.startsWith('demo-')) return SCENARIOS;
 
     const obs = activeShift.userEditedObservation || activeShift.observation;
     const emotions = activeShift.confirmed_emotions.length > 0

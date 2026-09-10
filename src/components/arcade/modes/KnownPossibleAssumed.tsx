@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { CheckCircle2, XCircle, ArrowRight, Check, HelpCircle, Eye, AlertCircle } from 'lucide-react';
@@ -11,47 +12,9 @@ interface Item {
   explanation: string;
 }
 
-const DEFAULT_ITEMS: Item[] = [
-  {
-    id: 'kpa-1',
-    statement: 'They read my text at 2:14 PM according to read receipts.',
-    correctCategory: 'known',
-    explanation: 'A timestamped read receipt is directly verifiable recorded data.',
-  },
-  {
-    id: 'kpa-2',
-    statement: 'They might be in a meeting or dealing with a personal emergency.',
-    correctCategory: 'possible',
-    explanation: 'This is a plausible hypothesis among several alternative explanations.',
-  },
-  {
-    id: 'kpa-3',
-    statement: 'They found my message annoying and are ignoring me on purpose.',
-    correctCategory: 'assumed',
-    explanation: 'Attributing deliberate malice or irritation without evidence is an unverified assumption.',
-  },
-  {
-    id: 'kpa-4',
-    statement: 'The supervisor frowned while reviewing slide 3.',
-    correctCategory: 'known',
-    explanation: 'A facial expression is an observable camera fact, even if the motive is unverified.',
-  },
-  {
-    id: 'kpa-5',
-    statement: 'My project will probably be cancelled by the end of Q3.',
-    correctCategory: 'assumed',
-    explanation: 'Catastrophizing about future administrative decisions is an anxiety-generated assumption.',
-  },
-  {
-    id: 'kpa-6',
-    statement: 'The supervisor might have been squinting to read the small font size on slide 3.',
-    correctCategory: 'possible',
-    explanation: 'A competing, benign physical explanation that accounts for the observed fact.',
-  },
-];
-
 export const KnownPossibleAssumed: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const DEFAULT_ITEMS = usePracticeContent().known;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [score, setScore] = useState(0);

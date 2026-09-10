@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { CheckCircle2, XCircle, ArrowRight, Sparkles } from 'lucide-react';
@@ -13,85 +14,11 @@ interface CueMatchItem {
   }[];
 }
 
-const DEFAULT_CUE_ITEMS: CueMatchItem[] = [
-  {
-    id: 'cue-1',
-    cue: 'Someone takes longer than usual to reply to an important personal text.',
-    options: [
-      {
-        text: 'Assume they are angry, send multiple clarifying texts, or obsessively monitor their status.',
-        isAdaptive: false,
-        type: 'reactive_anxious',
-        rationale: 'Anxious appeasement attempts to relieve internal uncertainty by demanding an immediate external response.',
-      },
-      {
-        text: 'Pause, name the internal uncertainty, and engage in your own day until a reasonable time passes.',
-        isAdaptive: true,
-        type: 'grounded_adaptive',
-        rationale: 'Holds space for uncertainty without projecting negative intent. Other people have complex schedules and bandwidth limits.',
-      },
-      {
-        text: 'Conclude they never respected you, delete the thread, and permanently withdraw.',
-        isAdaptive: false,
-        type: 'avoidant_shutdown',
-        rationale: 'Premature defensive withdrawal protects against rejection but destroys relationships based on unverified assumptions.',
-      },
-    ],
-  },
-  {
-    id: 'cue-2',
-    cue: 'A colleague critiques your slide deck in front of a project team.',
-    options: [
-      {
-        text: 'Immediately over-explain and get defensive to prove you did not make a mistake.',
-        isAdaptive: false,
-        type: 'reactive_anxious',
-        rationale: 'Defensiveness treats feedback as an attack on personal worth rather than a technical detail.',
-      },
-      {
-        text: 'Shut down completely, remain silent, and assume your credibility is permanently ruined.',
-        isAdaptive: false,
-        type: 'avoidant_shutdown',
-        rationale: 'Catastrophizing turns a single critique into a permanent global defect.',
-      },
-      {
-        text: 'Take a breath, acknowledge the specific point, and ask: "What specific change would clarify that for the stakeholders?"',
-        isAdaptive: true,
-        type: 'grounded_adaptive',
-        rationale: 'Anchors in professional clarity and collaboration while keeping personal safety intact.',
-      },
-    ],
-  },
-  {
-    id: 'cue-3',
-    cue: 'A friend asks you for a weekend favor during a week you feel completely depleted.',
-    options: [
-      {
-        text: 'Say "I would love to help another time, but this weekend I need to rest and recharge."',
-        isAdaptive: true,
-        type: 'grounded_adaptive',
-        rationale: 'Honors your real capacity with kindness. Saying no to an activity is not saying no to the person.',
-      },
-      {
-        text: 'Say yes enthusiastically, then secretly feel bitter and exhausted all weekend.',
-        isAdaptive: false,
-        type: 'reactive_anxious',
-        rationale: 'People-pleasing sacrifices personal sustainability to manage another person’s momentary impression.',
-      },
-      {
-        text: 'Ghost their message and make up a dramatic excuse two days later.',
-        isAdaptive: false,
-        type: 'avoidant_shutdown',
-        rationale: 'Avoidance creates anxiety and erodes trust.',
-      },
-    ],
-  },
-];
-
 export const CueResponseMatchMode: React.FC<{ onCompleteSession?: () => void }> = ({
   onCompleteSession,
 }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const DEFAULT_CUE_ITEMS = usePracticeContent().cues;
   const [index, setIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 

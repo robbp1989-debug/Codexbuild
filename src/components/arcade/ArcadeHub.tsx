@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ArcadeModeType } from '../../types';
+import { LIFE_CONTEXTS } from '../../data/lifeContexts';
 import {
   Brain,
   Zap,
@@ -237,7 +238,7 @@ const MODES: ModeMetadata[] = [
 ];
 
 export const ArcadeHub: React.FC = () => {
-  const { practiceSessions, playSoftSound, activeGameContext, clearGameContext, activeShift } = useApp();
+  const { practiceSessions, playSoftSound, activeGameContext, clearGameContext, activeShift, lifeContext } = useApp();
   const [activeMode, setActiveMode] = useState<ArcadeModeType | null>(null);
   const [isBlitzActive, setIsBlitzActive] = useState<boolean>(false);
   const [filterCategory, setFilterCategory] = useState<string>('For you');
@@ -272,6 +273,7 @@ export const ArcadeHub: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto py-6 sm:py-10 px-4 space-y-8">
+      {!activeMode && !isBlitzActive && <p className="text-sm text-slate-500">Sample questions: <strong>{LIFE_CONTEXTS.find(item => item.id === lifeContext)?.title}</strong>. Change your practice context above. Games based on your own reflection keep your words.</p>}
       {/* Rapid Blitz Overlay */}
       {isBlitzActive ? (
         <div className="space-y-6">
@@ -381,7 +383,7 @@ export const ArcadeHub: React.FC = () => {
           </div>
 
           {/* Featured Active Scenario Game Card */}
-          {activeShift && (
+          {activeShift && !activeShift.id.startsWith('demo-') && (
             <div className="rounded-2xl bg-gradient-to-r from-teal-950/90 via-slate-900 to-sky-950/80 border-2 border-teal-500/60 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
               <div className="space-y-1.5 max-w-2xl">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 text-xs font-mono font-bold">

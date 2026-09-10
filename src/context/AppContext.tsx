@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { normalizeLifeContext, type LifeContextId } from '../data/lifeContexts';
 import {
   ProtectiveRule,
   ReflectionRecord,
@@ -36,6 +37,8 @@ interface GamePersonalizationContext {
 type PracticeInput = Omit<PracticeSession, 'id' | 'date'> | { gameId: ArcadeModeType; score: number; durationSeconds: number; theme: string };
 
 interface AppContextType {
+  lifeContext: LifeContextId;
+  setLifeContext: (context: LifeContextId) => void;
   setShifts: React.Dispatch<React.SetStateAction<ShiftBreakdown[]>>;
   distressInterrupted: boolean;
   setDistressInterrupted: (open: boolean) => void;
@@ -127,6 +130,7 @@ const STORAGE_KEY = 'shift_platform_storage_v2';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<string>('home');
+  const [lifeContext, setLifeContext] = useState<LifeContextId>('everyday');
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
 
   // Core state
@@ -189,6 +193,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        setLifeContext(normalizeLifeContext(parsed.lifeContext));
         if (parsed.shifts) setShifts(parsed.shifts);
         if (parsed.memoryItems) setMemoryItems(parsed.memoryItems);
         if (parsed.skillNodes) setSkillNodes(parsed.skillNodes);
@@ -209,6 +214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!storageLoaded) return;
     try {
       const dataToSave = {
+        lifeContext,
         boundaries,
         shifts,
         memoryItems,
@@ -222,7 +228,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.warn('Could not persist data to localStorage', e);
     }
-  }, [storageLoaded, boundaries, shifts, memoryItems, skillNodes, predictions, practiceSessions, rules, reflections]);
+  }, [storageLoaded, lifeContext, boundaries, shifts, memoryItems, skillNodes, predictions, practiceSessions, rules, reflections]);
 
   // Audio synthesizer
   const playSoftSound = (type: 'chime' | 'tap' | 'ground' | 'complete' = 'tap') => {
@@ -450,6 +456,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const exportDataJSON = () => {
     const data = {
       version: '2.0.0',
+      lifeContext,
       exportedAt: new Date().toISOString(),
       shifts,
       memoryItems,
@@ -466,6 +473,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const importDataJSON = (jsonStr: string): boolean => {
     try {
       const data = JSON.parse(jsonStr);
+      setLifeContext(normalizeLifeContext(data.lifeContext));
       if (data.shifts) setShifts(data.shifts);
       if (data.memoryItems) setMemoryItems(data.memoryItems);
       if (data.skillNodes) setSkillNodes(data.skillNodes);
@@ -478,6 +486,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetToDefaults = () => {
+    setLifeContext('everyday');
     setShifts(INITIAL_DEMO_SHIFTS);
     setActiveShift(INITIAL_DEMO_SHIFTS[0]);
     setMemoryItems(INITIAL_EPISTEMIC_MEMORY);
@@ -488,6 +497,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const clearAllData = () => {
+    setLifeContext('everyday');
     setShifts([]);
     setActiveShift(null);
     setMemoryItems([]);
@@ -610,6 +620,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        lifeContext,
+        setLifeContext,
         setShifts,
         distressInterrupted: crisisInterruption.isOpen,
         setDistressInterrupted: (isOpen) => setCrisisInterruption((current) => ({ ...current, isOpen })),

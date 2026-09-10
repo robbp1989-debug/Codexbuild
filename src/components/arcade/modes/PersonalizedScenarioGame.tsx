@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { usePracticeSource } from '../../../context/usePracticeSource';
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import { useApp } from '../../../context/AppContext';
 import { ShiftBreakdown } from '../../../types';
 import { KartLaneRunner3D, LaneGateQuestion } from '../3d/KartLaneRunner3D';
@@ -33,7 +35,8 @@ export const PersonalizedScenarioGame: React.FC<PersonalizedScenarioGameProps> =
     playSoftSound,
   } = useApp();
 
-  const currentShift = scenarioOverride || activeShift || shifts[0] || null;
+  const currentShift = usePracticeSource(scenarioOverride);
+  const sample = usePracticeContent().scenes[1];
   const [selectedCourse, setSelectedCourse] = useState<'all' | 'trap_vs_truth' | 'fact_vs_story' | 'pause_reflex'>('all');
 
   const handleBackToBreakdown = () => {
@@ -86,7 +89,7 @@ export const PersonalizedScenarioGame: React.FC<PersonalizedScenarioGameProps> =
         {
           id: 'fvs-3',
           categoryTitle: 'CAMERA FACT OR MIND STORY?',
-          statement: '“They read my message at 2:15 PM and haven\'t typed a response.”',
+          statement: `Separate fictional example: “${sample.fact}”`,
           leftLaneLabel: 'Mind Story',
           leftGateBanner: 'STORY',
           leftSubtext: 'Added interpretation',
@@ -94,13 +97,13 @@ export const PersonalizedScenarioGame: React.FC<PersonalizedScenarioGameProps> =
           rightGateBanner: 'FACT',
           rightSubtext: 'Verifiable physical proof',
           correctLane: 'right',
-          explanation: 'Camera fact: The delivery timestamp is objective data.',
+          explanation: 'This is the stated observation in a separate practice example, not an added detail about your situation.',
           techniqueBadge: 'Camera Proof',
         },
         {
           id: 'fvs-4',
           categoryTitle: 'CAMERA FACT OR MIND STORY?',
-          statement: '“Their delay means our friendship is quietly ending.”',
+          statement: `Separate fictional example: “${sample.story}”`,
           leftLaneLabel: 'Mind Story',
           leftGateBanner: 'STORY',
           leftSubtext: 'Added interpretation',
@@ -262,7 +265,7 @@ export const PersonalizedScenarioGame: React.FC<PersonalizedScenarioGameProps> =
         techniqueBadge: 'Cognitive Defusion',
       },
     ];
-  }, [currentShift, selectedCourse]);
+  }, [currentShift, selectedCourse, sample]);
 
   return (
     <div className="max-w-5xl mx-auto py-4 sm:py-8 space-y-6">
@@ -283,7 +286,7 @@ export const PersonalizedScenarioGame: React.FC<PersonalizedScenarioGameProps> =
             </div>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-100 tracking-tight">
-            Personalized 3D Scenario Kart Game
+            {currentShift.id.startsWith('context-example-') ? 'Life-context practice kart' : 'Personalized 3D Scenario Kart Game'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
             Steer your kart in real-time 3D through the correct psychological gates to cement non-reactive neural responses.

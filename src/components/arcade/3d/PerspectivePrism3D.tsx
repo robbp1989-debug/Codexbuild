@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { usePracticeSource } from '../../../context/usePracticeSource';
 import * as THREE from 'three';
 import { useApp } from '../../../context/AppContext';
 import { ShiftBreakdown } from '../../../types';
@@ -41,7 +42,7 @@ export const PerspectivePrism3D: React.FC<PerspectivePrism3DProps> = ({
   scenario,
 }) => {
   const { activeShift, playSoftSound, logPracticeSession, shifts } = useApp();
-  const currentShift = scenario || activeShift || shifts[0] || null;
+  const currentShift = usePracticeSource(scenario);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);

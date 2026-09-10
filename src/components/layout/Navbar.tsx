@@ -1,6 +1,7 @@
 import React from 'react';
 import { Gamepad2, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { LifeContextPicker } from './LifeContextPicker';
 
 export const Navbar: React.FC = () => {
   const { activeTab, setActiveTab, audioEnabled, setAudioEnabled, playSoftSound, setGroundingModalOpen } = useApp();
@@ -21,6 +22,6 @@ export const Navbar: React.FC = () => {
         <button aria-label={audioEnabled ? 'Mute sound' : 'Enable sound'} aria-pressed={audioEnabled} onClick={() => setAudioEnabled(!audioEnabled)}>{audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
       </nav>
     </div>
-    <div className="shift-support">A little practice between sessions. Educational support, not a replacement for therapy.</div>
+    <div className="shift-support"><LifeContextPicker /></div>
   </header>;
 };

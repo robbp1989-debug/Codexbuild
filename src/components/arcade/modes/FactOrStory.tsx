@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { StatementClassification } from '../../../types';
@@ -10,76 +11,18 @@ interface StatementItem {
   explanation: string;
 }
 
-const DEFAULT_STATEMENTS: StatementItem[] = [
-  {
-    id: 's-1',
-    text: 'They did not respond to my text message for six hours.',
-    correctCategory: 'observation',
-    explanation:
-      'Time elapsed without a reply is an objective, verifiable event that a digital clock or video camera could record without guessing.',
-  },
-  {
-    id: 's-2',
-    text: 'They don’t respect my time or care about our project.',
-    correctCategory: 'interpretation',
-    explanation:
-      'Respect and care are internal motives. Attributing indifference is an interpretation and mind-reading, not a recorded fact.',
-  },
-  {
-    id: 's-3',
-    text: 'I felt a sudden clenching in my chest and a surge of panic.',
-    correctCategory: 'feeling',
-    explanation:
-      'Internal somatic sensations and discrete emotional experiences are immediate first-person experiences.',
-  },
-  {
-    id: 's-4',
-    text: 'The meeting started at 9:05 AM instead of 9:00 AM.',
-    correctCategory: 'observation',
-    explanation:
-      'Start time is an objective, observable fact.',
-  },
-  {
-    id: 's-5',
-    text: 'Whether they saw my email before the presentation.',
-    correctCategory: 'unknown',
-    explanation:
-      'Unless confirmed with read receipts or verbal confirmation, whether they saw it is genuinely unknown.',
-  },
-  {
-    id: 's-6',
-    text: 'My manager was passive-aggressive during the sprint retro.',
-    correctCategory: 'interpretation',
-    explanation:
-      '"Passive-aggressive" is an evaluative label. Observable facts would be: "She sighed and looked down when I presented slide 4."',
-  },
-  {
-    id: 's-7',
-    text: 'I noticed an impulse to shut down and avoid speaking for the rest of the day.',
-    correctCategory: 'feeling',
-    explanation:
-      'First-person reaction urge noticed directly within one’s own consciousness.',
-  },
-  {
-    id: 's-8',
-    text: 'What other deadlines my teammate was balancing this afternoon.',
-    correctCategory: 'unknown',
-    explanation:
-      'Another person’s invisible workload is unknown data unless asked directly.',
-  },
-];
-
 export const FactOrStoryMode: React.FC<{ onCompleteSession?: () => void }> = ({
   onCompleteSession,
 }) => {
   const { playSoftSound, logPracticeSession, activeShift } = useApp();
+  const DEFAULT_STATEMENTS = usePracticeContent().facts;
   const [index, setIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<StatementClassification | null>(null);
   const [score, setScore] = useState(0);
 
   // Derive dynamic personalized statements from activeShift if present
   const statements: StatementItem[] = React.useMemo(() => {
-    if (!activeShift) return DEFAULT_STATEMENTS;
+    if (!activeShift || activeShift.id.startsWith('demo-')) return DEFAULT_STATEMENTS;
 
     const obs = activeShift.userEditedObservation || activeShift.observation;
     const interp = activeShift.userEditedInterpretation || activeShift.interpretation;
@@ -108,7 +51,7 @@ export const FactOrStoryMode: React.FC<{ onCompleteSession?: () => void }> = ({
       },
       {
         id: 'user-unknown',
-        text: 'What other external crises, deadlines, or fatigue the other party was navigating at that moment.',
+        text: 'Information about this situation that I have not yet confirmed.',
         correctCategory: 'unknown',
         explanation: 'Your Scenario Unknown: Missing information that cannot be determined without direct inquiry.',
       },

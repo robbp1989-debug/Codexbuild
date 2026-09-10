@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { Play, Pause, CheckCircle2, ArrowRight, Activity, Zap, HelpCircle, Navigation } from 'lucide-react';
@@ -9,89 +10,37 @@ interface PauseStep {
   options: { label: string; isAdaptive: boolean; note: string }[];
 }
 
-const PAUSE_SCENARIO = {
-  title: 'Urgent After-Hours Email',
-  situation: 'At 8:45 PM on a Thursday, an executive sends an all-caps subject email: "URGENT: THIS NUMBER IS WRONG ON THE DECK. CALL ME ASAP."',
-  steps: [
-    {
-      title: '1. NOTICE REACTION (Somatic Activation)',
-      question: 'What immediate physiological reaction occurred in your system?',
-      icon: Activity,
-      options: [
-        {
-          label: 'Immediate adrenaline rush, dry mouth, heart rate jump, feeling of being caught.',
-          isAdaptive: true,
-          note: 'Recognizing this physical state prevents acting purely on sympathetic nervous activation.',
-        },
-        {
-          label: 'Total intellectual calm with zero physical sensations.',
-          isAdaptive: false,
-          note: 'Denying body cues usually leads to subconscious reactive behavior.',
-        },
-      ],
-    },
-    {
-      title: '2. IDENTIFY URGE (Behavioral Impulse)',
-      question: 'What is your knee-jerk procedural urge right now?',
-      icon: Zap,
-      options: [
-        {
-          label: 'Call immediately in a scramble, profusely apologize before even opening the spreadsheet.',
-          isAdaptive: true,
-          note: 'Spotting this appeasement urge allows you to pause before executing it.',
-        },
-        {
-          label: 'Throw your laptop across the room and quit your job on the spot.',
-          isAdaptive: false,
-          note: 'A fight-or-flight fantasy, but not the grounded procedural urge.',
-        },
-      ],
-    },
-    {
-      title: '3. INFORMATION NEEDED (Missing Evidence)',
-      question: 'What verified information is actually missing right now?',
-      icon: HelpCircle,
-      options: [
-        {
-          label: 'Which exact slide/cell they are referencing, what their source data is, and whether it impacts a live meeting tonight.',
-          isAdaptive: true,
-          note: 'Without these facts, rushing to apologize or explain is premature and unfocused.',
-        },
-        {
-          label: 'Whether the executive personally dislikes you.',
-          isAdaptive: false,
-          note: 'Mind-reading motive is not actionable data.',
-        },
-      ],
-    },
-    {
-      title: '4. DELIBERATE CHOICE (Values-Aligned Move)',
-      question: 'What is a calibrated, grounded response?',
-      icon: Navigation,
-      options: [
-        {
-          label: 'Take three diaphragmatic breaths, open the file, locate the slide, and reply: "Checking the model against the raw source now. I will send the reconciled line within 20 minutes."',
-          isAdaptive: true,
-          note: 'Composed, professional, acknowledges urgency without self-berating.',
-        },
-        {
-          label: 'Call them breathlessly and say "I am so sorry I ruined the presentation!"',
-          isAdaptive: false,
-          note: 'Reinforces the unverified story of catastrophe.',
-        },
-      ],
-    },
-  ],
-};
-
 export const PauseButton: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { playSoftSound, logPracticeSession, activeShift } = useApp();
+  const sample = usePracticeContent().scenes[0];
+  const PAUSE_SCENARIO = {
+    title: 'Pause before choosing a response',
+    situation: sample.fact,
+    steps: [
+      { title: '1. Notice', question: 'Which approach helps you notice your own response?', icon: Activity, options: [
+        { label: 'Notice any feeling or sensation, including not being sure yet.', isAdaptive: true, note: 'No particular feeling or physical response is required.' },
+        { label: 'Decide what I must be feeling based on what other people would feel.', isAdaptive: false, note: 'Come back to your own experience rather than prescribing a response.' },
+      ] },
+      { title: '2. Separate', question: 'Which statement adds an interpretation?', icon: Zap, options: [
+        { label: sample.story, isAdaptive: true, note: 'This conclusion goes beyond the stated event.' },
+        { label: sample.fact, isAdaptive: false, note: 'This is the stated observation in this fictional example.' },
+      ] },
+      { title: '3. Make room for uncertainty', question: 'Which response leaves room for missing information?', icon: HelpCircle, options: [
+        { label: sample.possible, isAdaptive: true, note: 'A possibility is not a certainty. You can consider it without dismissing your feelings.' },
+        { label: 'I already know the reason, so there is nothing to ask.', isAdaptive: false, note: 'The facts provided do not establish a motive.' },
+      ] },
+      { title: '4. Choose', question: sample.request, icon: Navigation, options: [
+        { label: sample.response, isAdaptive: true, note: 'This is a concrete request. Adapt it to your circumstances and safety.' },
+        { label: 'Assume the worst and respond as if it is proven.', isAdaptive: false, note: 'Check the facts before choosing your next step.' },
+      ] },
+    ],
+  };
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [selectedOpt, setSelectedOpt] = useState<number | null>(null);
   const [finished, setFinished] = useState(false);
 
   const scenarioData = React.useMemo(() => {
-    if (!activeShift) return PAUSE_SCENARIO;
+    if (!activeShift || activeShift.id.startsWith('demo-')) return PAUSE_SCENARIO;
 
     const obs = activeShift.userEditedObservation || activeShift.observation;
     const emotions = activeShift.confirmed_emotions.length > 0

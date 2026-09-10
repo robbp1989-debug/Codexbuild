@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../context/usePracticeContent';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -26,118 +27,9 @@ interface BlitzQuestion {
   }[];
 }
 
-const BLITZ_POOL: BlitzQuestion[] = [
-  {
-    id: 'b1',
-    category: 'The Camera Test',
-    badge: 'Fact vs Story',
-    prompt: '"Jordan didn’t reply to my question in Slack for 4 hours."',
-    options: [
-      {
-        label: 'Observable Fact (Camera Test passed)',
-        isCorrect: true,
-        explanation: 'A video camera or screen log could verify the timestamp and lack of reply.',
-      },
-      {
-        label: 'Mental Interpretation / Story',
-        isCorrect: false,
-        explanation: 'This is an objective, observable fact without speculation.',
-      },
-    ],
-  },
-  {
-    id: 'b2',
-    category: 'Reflex vs Response',
-    badge: 'Cue → Move Match',
-    prompt: 'Trigger Cue: Your manager sends "Do you have 5 minutes to chat?" with no context.',
-    options: [
-      {
-        label: 'Assume you did something wrong and frantically review recent mistakes',
-        isCorrect: false,
-        explanation: 'That is the old knee-jerk anxiety reflex.',
-      },
-      {
-        label: 'Take a breath, note uncertainty, and reply: "Yes! What’s the topic so I can prep?"',
-        isCorrect: true,
-        explanation: 'Adaptive grounded move: creates clarity without assuming catastrophe.',
-      },
-      {
-        label: 'Ignore the message until the end of the day',
-        isCorrect: false,
-        explanation: 'Avoidant freeze behavior increases long-term anxiety.',
-      },
-    ],
-  },
-  {
-    id: 'b3',
-    category: 'Clear Communication',
-    badge: 'Boundary Builder',
-    prompt: 'Which boundary is firm, kind, and non-blaming for an evening work request?',
-    options: [
-      {
-        label: '"You always dump tasks on me right as I am trying to leave."',
-        isCorrect: false,
-        explanation: 'Blaming and accusatory language sparks defensiveness.',
-      },
-      {
-        label: '"I am wrapping up for today. I will review this first thing tomorrow at 9 AM."',
-        isCorrect: true,
-        explanation: 'Clean 4-part boundary: states current limit and positive next action clearly.',
-      },
-      {
-        label: '"Sorry sorry sorry, I guess I can stay up late tonight if you really need it."',
-        isCorrect: false,
-        explanation: 'Appeasement sacrifices legitimate rest and builds hidden resentment.',
-      },
-    ],
-  },
-  {
-    id: 'b4',
-    category: 'Empirical Evidence',
-    badge: 'Evidence Sort',
-    prompt:
-      'Old Rule: "If I express disagreement, people will reject me."\nReal Event: "I suggested an alternative design. The lead said ‘Good catch, let’s test that.’"',
-    options: [
-      {
-        label: 'Supports the Old Rule',
-        isCorrect: false,
-        explanation: 'They agreed and welcomed the input!',
-      },
-      {
-        label: 'Challenges the Old Rule (Direct Disconfirming Evidence)',
-        isCorrect: true,
-        explanation: 'Directly disproves the catastrophic prediction of rejection.',
-      },
-    ],
-  },
-  {
-    id: 'b5',
-    category: 'Present-Day Heuristics',
-    badge: 'Rule Recall',
-    prompt:
-      'Trigger Cue: A close friend looks quiet and tired during dinner.\nWhich present-day rule protects your peace?',
-    options: [
-      {
-        label: 'Ask once with care, then let them be; their quietness is not my failure to fix.',
-        isCorrect: true,
-        explanation: 'Compassionate differentiation: caring without codependent over-responsibility.',
-      },
-      {
-        label: 'Immediately over-perform, make jokes, and apologize repeatedly for boring them.',
-        isCorrect: false,
-        explanation: 'Exhausting appeasement reflex based on old childhood vigilance.',
-      },
-      {
-        label: 'Get irritated that they are ruining the mood and withdraw coldly.',
-        isCorrect: false,
-        explanation: 'Protective aggression masking underlying vulnerability.',
-      },
-    ],
-  },
-];
-
 export const RapidBlitz: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const BLITZ_POOL = usePracticeContent().blitz;
   const [currentIdx, setCurrentIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);

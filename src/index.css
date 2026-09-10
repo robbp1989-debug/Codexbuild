@@ -58,3 +58,22 @@ body { margin: 0; background: #f6f9ff; }
 .shift-support { font-size: .8125rem; background: #edf4ff; color: #526782; padding: 7px 24px; text-align: center; }
 @media (max-width: 640px) { .shift-nav { gap: 12px; padding: 12px 16px; } .shift-nav-links { margin-left: 0; width: 100%; gap: 2px; } .shift-nav-links button, .shift-nav-links summary { padding: 8px 10px; } .shift-light main { padding-top: 1.5rem; } }
 @media (prefers-reduced-motion: reduce) { .shift-light *, .shift-light *::before, .shift-light *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+.life-context-trigger { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; color: #234776; }
+.life-context-change { text-decoration: underline; margin-left: 8px; }
+.life-context-dialog { background: #fff; color: #172c4a; width: min(850px, calc(100vw - 24px)); max-width: 850px; max-height: 90dvh; padding: 0; gap: 0; border: 1px solid #d4e2f4; border-radius: 24px; box-shadow: 0 24px 80px #142c4b30; display: flex; flex-direction: column; overflow: hidden; }
+.life-context-heading { padding: 28px 36px 22px; border-bottom: 1px solid #dce6f5; }
+.life-context-eyebrow { color: #275cce; font-size: .8125rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; margin-bottom: 10px; }
+.life-context-body { overflow-y: auto; padding: 24px 36px; }
+.life-context-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.life-context-card { border: 1px solid #dce6f5; border-radius: 16px; padding: 16px; background: #fff; cursor: pointer; }
+.life-context-card.is-selected { border-color: #2864ed; background: #f0f6ff; box-shadow: inset 0 0 0 1px #2864ed; }
+.life-context-card:focus-within { outline: 3px solid #2864ed; outline-offset: 3px; }
+.life-context-radio { border-color: #7292bf; min-height: 18px; width: 18px; }
+.life-context-radio[data-checked] { background: #2864ed; }
+.life-context-radio [data-slot="radio-group-indicator"] span { background: #fff; }
+.life-context-example { padding: 18px; margin-top: 20px; background: #edf5ff; border-radius: 14px; font-size: 1rem; }
+.life-context-footer { border-top: 1px solid #dce6f5; padding: 18px 36px; display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.life-context-footer button { padding: 10px 14px; border-radius: 10px; cursor: pointer; font-size: .875rem; }
+.life-context-footer .life-context-apply { background: #2864ed; color: #fff; font-weight: 700; }
+.life-context-dialog button:focus-visible { outline: 3px solid #2864ed; outline-offset: 3px; }
+@media(max-width: 640px) { .life-context-grid { grid-template-columns: 1fr; } .life-context-heading, .life-context-body, .life-context-footer { padding: 20px; } .life-context-dialog { max-height: 94dvh; } }

@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { ReflectionRecord } from '../../../types';
+import { INITIAL_REFLECTIONS } from '../../../data/initialData';
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import { Eye, ArrowRight, BookmarkCheck, Scale, CheckCircle2, Zap, Brain } from 'lucide-react';
 
 export const PredictionCheckMode: React.FC<{ onCompleteSession?: () => void }> = ({
   onCompleteSession,
 }) => {
   const { reflections, rules, playSoftSound, logPracticeSession } = useApp();
+  const practice = usePracticeContent();
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [userRating, setUserRating] = useState<string | null>(null);
 
   // Filter reflections that have BOTH prediction and outcome
-  const pairedReflections = reflections.filter((r) => r.prediction && r.outcome);
+  const personalPairs = reflections.filter((r) => r.prediction && r.outcome && !INITIAL_REFLECTIONS.some(demo => JSON.stringify(demo) === JSON.stringify(r)));
+  const samplePairs: ReflectionRecord[] = practice.scenes.map((scene, i) => ({
+    id: `context-prediction-${i}`, title: 'Fictional practice: a request and its outcome',
+    createdAt: '', updatedAt: '', observedEvent: scene.fact, emotions: [],
+    prediction: { id: `sample-pred-${i}`, cueContext: scene.fact, intendedAction: scene.response, fearedConsequence: scene.story, predictedOutcome: scene.story, confidencePercent: 60, committedAt: '2026-01-01T00:00:00Z' },
+    outcome: { id: `sample-outcome-${i}`, predictionId: `sample-pred-${i}`, reflectionId: `context-prediction-${i}`, whatActuallyHappened: 'In this fictional follow-up, the other person asked for more detail and we agreed on a next step.', outcomeRating: 'better_than_expected', didFearedOutcomeHappen: 'no', discrepancySummary: 'This fictional outcome differs from the feared conclusion. It does not guarantee the outcome of a real request.', evidenceSupportsOldRule: '', evidenceChallengesOldRule: 'The request led to a discussion rather than the feared response.', recordedAt: '' },
+  }));
+  const [pairedReflections] = useState(() => personalPairs.length ? personalPairs : samplePairs);
 
   if (pairedReflections.length === 0) {
     return (
@@ -36,7 +46,7 @@ export const PredictionCheckMode: React.FC<{ onCompleteSession?: () => void }> =
   // Tap-to-match fear options
   const fearOptions = [
     pred.fearedConsequence,
-    'They would cut me off and exclude me from the team permanently',
+    'They would refuse to discuss any next step',
     'Total emotional collapse and inability to function',
   ].sort((a, b) => a.localeCompare(b));
 
@@ -109,7 +119,7 @@ export const PredictionCheckMode: React.FC<{ onCompleteSession?: () => void }> =
       {!revealed ? (
         <div className="space-y-4">
           <label className="text-xs font-mono text-teal-300 font-semibold block">
-            Before taking that step, which feared prediction did you lock in?
+            {currentRef.id.startsWith('context-') ? 'Which interpretation appears in this fictional example? Read the example, then compare it with the outcome.' : 'Before taking that step, which feared prediction did you lock in?'}
           </label>
 
           {/* 1-Tap Multiple Choice Buttons */}
@@ -151,15 +161,14 @@ export const PredictionCheckMode: React.FC<{ onCompleteSession?: () => void }> =
                 "{pred.predictedOutcome || pred.fearedConsequence}"
               </p>
               <div className="text-[10px] font-mono text-slate-500">
-                Belief confidence: {pred.confidencePercent}% • Committed{' '}
-                {new Date(pred.committedAt).toLocaleDateString()}
+                {currentRef.id.startsWith('context-') ? 'Illustrative prediction—not a saved personal outcome.' : <>Belief confidence: {pred.confidencePercent}% • Committed {new Date(pred.committedAt).toLocaleDateString()}</>}
               </div>
             </div>
 
             {/* Actual Outcome */}
             <div className="p-4 rounded-xl bg-slate-950 border border-teal-500/30 space-y-2">
               <span className="text-[11px] font-mono uppercase tracking-wider text-teal-400 font-bold block">
-                Actual Real-World Outcome
+                {currentRef.id.startsWith('context-') ? 'Fictional practice outcome' : 'Actual Real-World Outcome'}
               </span>
               <p className="text-xs text-slate-200 leading-relaxed font-medium">
                 "{out.whatActuallyHappened}"

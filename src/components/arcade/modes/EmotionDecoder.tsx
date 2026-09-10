@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { Heart, CheckCircle2, ArrowRight, Activity, Brain } from 'lucide-react';
@@ -10,35 +11,9 @@ interface EmotionScenario {
   options: { label: string; plausible: boolean; note: string }[];
 }
 
-const DECODER_SCENARIOS: EmotionScenario[] = [
-  {
-    id: 'ed-1',
-    situation: 'You are waiting alone at a restaurant table. Your dinner companion is 25 minutes late and has not answered your message.',
-    bodySensations: ['Hollow drop in stomach', 'Heat in the face', 'Fidgeting with cutlery'],
-    mindThoughts: ['"Everyone in the restaurant is looking at me pityingly."', '"I bet they forgot completely."'],
-    options: [
-      { label: 'Vulnerability / Embarrassment', plausible: true, note: 'Very natural when waiting alone in public.' },
-      { label: 'Abandonment fear', plausible: true, note: 'Taps directly into old fears of not mattering.' },
-      { label: 'Irritation / Resentment', plausible: true, note: 'Your time is valuable; feeling irritated is completely valid.' },
-      { label: 'Euphoria', plausible: false, note: 'Rarely fits this activating social exposure context.' },
-    ],
-  },
-  {
-    id: 'ed-2',
-    situation: 'A colleague receives a promotion you quietly hoped to be considered for.',
-    bodySensations: ['Tightness across the throat', 'Sudden fatigue', 'Numb chest'],
-    mindThoughts: ['"I work twice as hard and remain completely invisible."', '"I should smile and say congratulations."'],
-    options: [
-      { label: 'Grief / Unmet Longing', plausible: true, note: 'Recognizing lost opportunity is a form of grief.' },
-      { label: 'Professional Envy', plausible: true, note: 'Envy is honest data pointing to what you desire.' },
-      { label: 'Self-Doubt / Inadequacy', plausible: true, note: 'Comparing yourself triggers automatic unworthiness scripts.' },
-      { label: 'Apathy', plausible: false, note: 'Numbness here is likely defense against pain, not true apathy.' },
-    ],
-  },
-];
-
 export const EmotionDecoder: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const DECODER_SCENARIOS = usePracticeContent().emotions;
   const [index, setIndex] = useState(0);
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);

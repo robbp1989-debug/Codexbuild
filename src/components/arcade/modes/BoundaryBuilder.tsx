@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { BookmarkPlus, Check, Sparkles, ArrowRight, Shield } from 'lucide-react';
@@ -11,85 +12,11 @@ interface BoundaryPreset {
   nextActionOptions: string[];
 }
 
-const PRESETS: BoundaryPreset[] = [
-  {
-    title: 'Workload & Off-Hours Demands',
-    situation: 'Receiving urgent work emails during personal evening hours',
-    situationOptions: [
-      'I am receiving work requests outside standard business hours.',
-      'A non-urgent project inquiry arrived on Saturday afternoon.',
-      'My schedule is already full for the current sprint.',
-    ],
-    boundaryOptions: [
-      'I need dedicated recovery time to maintain focused, high-quality work.',
-      'I protect my evenings and weekends for rest and family.',
-      'I cannot commit to additional deadlines without adjusting existing priorities.',
-    ],
-    requestOptions: [
-      'Please queue these for our morning sync at 9:00 AM.',
-      'Let’s identify which existing deliverable we can deprioritize first.',
-      'Please send this to the project board rather than direct messages.',
-    ],
-    nextActionOptions: [
-      'I will review this first thing tomorrow at 9:00 AM.',
-      'I am stepping away from my computer for tonight.',
-      'I will update the timeline ticket with realistic delivery estimates.',
-    ],
-  },
-  {
-    title: 'Raised Voices or Disrespect in Conflict',
-    situation: 'A conversation escalates into shouting, sarcasm, or personal jabs',
-    situationOptions: [
-      'Voices are being raised during our disagreement.',
-      'Sarcastic comments are entering our conversation.',
-      'We are talking over each other without listening.',
-    ],
-    boundaryOptions: [
-      'I am not able to continue communicating while voices are raised.',
-      'I value our relationship too much to engage in sarcastic attacks.',
-      'I need a calm space to process difficult topics safely.',
-    ],
-    requestOptions: [
-      'Let’s take a 20-minute reset pause so our nervous systems can calm down.',
-      'Please speak at a conversational volume so I can hear your points.',
-      'Let’s resume this discussion over coffee tomorrow morning.',
-    ],
-    nextActionOptions: [
-      'I am stepping into the next room for 20 minutes and will return at 8:30.',
-      'I am putting down the phone and will text when I am ready.',
-      'I will write down my thoughts calmly and share them when we reconnect.',
-    ],
-  },
-  {
-    title: 'Unsolicited Advice or Critique',
-    situation: 'A family member or friend critiques your personal choices unprompted',
-    situationOptions: [
-      'You are sharing strong advice about my personal choices.',
-      'I feel critiqued about my lifestyle decisions.',
-      'The conversation is shifting toward evaluating my life.',
-    ],
-    boundaryOptions: [
-      'I need autonomy to make and navigate my own life decisions.',
-      'Right now I just need a listening ear, not a solution or critique.',
-      'I value our connection, but this topic is private for me.',
-    ],
-    requestOptions: [
-      'Are you open to just catching up on how our weeks went?',
-      'Please allow me to manage this area without further commentary.',
-      'Let’s focus our conversation on topics that feel supportive for both of us.',
-    ],
-    nextActionOptions: [
-      'If advice continues, I will change the subject or wrap up our call today.',
-      'I am going to keep my choices private for now.',
-      'Let’s enjoy our dinner together without returning to this topic.',
-    ],
-  },
-];
-
 export const BoundaryBuilderMode: React.FC<{ onCompleteSession?: () => void }> = ({
   onCompleteSession,
 }) => {
   const { addBoundary, playSoftSound, logPracticeSession } = useApp();
+  const PRESETS = usePracticeContent().boundaries;
   const [presetIndex, setPresetIndex] = useState(0);
 
   const preset = PRESETS[presetIndex];

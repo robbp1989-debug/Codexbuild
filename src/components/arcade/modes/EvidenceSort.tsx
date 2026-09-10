@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { Scale, CheckCircle2, RotateCcw, ArrowRight, HelpCircle } from 'lucide-react';
@@ -9,49 +10,11 @@ interface EvidenceItem {
   defaultCol: 'supports' | 'challenges' | 'uncertain';
 }
 
-const EVIDENCE_DECK: EvidenceItem[] = [
-  {
-    id: 'e-1',
-    statement: 'In 2023, an unpredictable previous supervisor yelled when asked a question.',
-    sourceContext: 'Historical data from previous employment',
-    defaultCol: 'supports',
-  },
-  {
-    id: 'e-2',
-    statement: 'During the sprint sync last Thursday, the VP thanked me for raising the QA risk.',
-    sourceContext: 'Current workplace observation',
-    defaultCol: 'challenges',
-  },
-  {
-    id: 'e-3',
-    statement: 'My colleague looked tired and gave a brief, one-word response in the hallway.',
-    sourceContext: 'Ambiguous interpersonal cue',
-    defaultCol: 'uncertain',
-  },
-  {
-    id: 'e-4',
-    statement: 'A friend apologized the next morning, explaining their phone battery had died.',
-    sourceContext: 'Real-world outcome after feared silence',
-    defaultCol: 'challenges',
-  },
-  {
-    id: 'e-5',
-    statement: 'A client declined an initial proposal without providing written feedback.',
-    sourceContext: 'Unclear business outcome',
-    defaultCol: 'uncertain',
-  },
-  {
-    id: 'e-6',
-    statement: 'My partner smiled and agreed to take a 20-minute pause when I asked calmly.',
-    sourceContext: 'Relationship boundary test',
-    defaultCol: 'challenges',
-  },
-];
-
 export const EvidenceSortMode: React.FC<{ onCompleteSession?: () => void }> = ({
   onCompleteSession,
 }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const EVIDENCE_DECK = usePracticeContent().evidence;
   const [items, setItems] = useState<{ [key: string]: 'supports' | 'challenges' | 'uncertain' | 'unassigned' }>(
     () => {
       const initial: { [key: string]: 'supports' | 'challenges' | 'uncertain' | 'unassigned' } = {};

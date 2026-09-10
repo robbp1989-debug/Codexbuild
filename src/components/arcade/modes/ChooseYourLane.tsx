@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { CheckCircle2, ArrowRight, ShieldCheck, MessageSquare, AlertCircle } from 'lucide-react';
@@ -13,77 +14,9 @@ interface LaneScenario {
   }[];
 }
 
-const LANE_SCENARIOS: LaneScenario[] = [
-  {
-    id: 'cyl-1',
-    context: 'Friends are deciding where to get dinner. Someone suggests sushi, but you don’t eat raw fish.',
-    category: 'preference',
-    options: [
-      {
-        text: 'Sushi doesn’t work well for me tonight, but I’d love Italian or Mexican if either sounds good to you.',
-        style: 'clean_direct',
-        feedback: 'Direct, polite, states your preference without an apology or medical justification.',
-      },
-      {
-        text: 'I am so so sorry to be difficult, I have this weird stomach thing and raw fish gives me anxiety, I feel awful ruining everyone’s plans...',
-        style: 'overexplaining',
-        feedback: 'Overexplaining signals shame for having a normal human food preference.',
-      },
-      {
-        text: 'Whatever. You guys always pick whatever you want anyway.',
-        style: 'passive_aggressive',
-        feedback: 'Passive-aggressive resentment masks honest communication.',
-      },
-    ],
-  },
-  {
-    id: 'cyl-2',
-    context: 'A coworker asks you to take over their project notes while they leave early for personal errands.',
-    category: 'boundary',
-    options: [
-      {
-        text: 'I won’t be able to take that on today as I’m at capacity with the Q3 release.',
-        style: 'clean_direct',
-        feedback: 'Clean boundary. No fabricated excuse, no lengthy apologetic preamble.',
-      },
-      {
-        text: 'Oh gosh, I wish I could, you know I’m always happy to help everyone, but my dog had a vet appointment and my aunt called and...',
-        style: 'overexplaining',
-        feedback: 'Fictional or excessive justification invites negotiation or judgment.',
-      },
-      {
-        text: 'Why do you always expect me to do your work for you?!',
-        style: 'aggressive',
-        feedback: 'Aggressive escalation usually stems from failing to set boundaries earlier.',
-      },
-    ],
-  },
-  {
-    id: 'cyl-3',
-    context: 'In a design meeting, a team member presents a layout idea you believe will confuse users on mobile.',
-    category: 'disagreement',
-    options: [
-      {
-        text: 'I have a different perspective on the mobile layout. I worry the two-column cards will compress tap targets below 44px.',
-        style: 'clean_direct',
-        feedback: 'Professional, objective, grounds disagreement in concrete technical criteria rather than personal attack.',
-      },
-      {
-        text: 'I mean, I know I’m probably totally wrong and you know way more than me, but maybe possibly could it be confusing? Sorry!',
-        style: 'overexplaining',
-        feedback: 'Extreme hedging undermines your professional expertise and wastes meeting time.',
-      },
-      {
-        text: 'This design is completely unusable garbage.',
-        style: 'aggressive',
-        feedback: 'Hostile critique creates defensive shutdown rather than collaboration.',
-      },
-    ],
-  },
-];
-
 export const ChooseYourLane: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const LANE_SCENARIOS = usePracticeContent().lanes;
   const [index, setIndex] = useState(0);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [score, setScore] = useState(0);

@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { CheckCircle2, ArrowRight, ShieldCheck, AlertCircle, Heart, User } from 'lucide-react';
@@ -10,66 +11,9 @@ interface MeFirstStep {
   selfLesson: string;
 }
 
-const STEPS: MeFirstStep[] = [
-  {
-    prompt: 'STEP 1: What objectively happened? (Select the camera fact)',
-    options: [
-      'My friend cancelled dinner with 20 minutes notice via text.',
-      'My friend was overwhelmed with her toddler and had no choice.',
-      'My friend is selfish and takes my time for granted.',
-    ],
-    correctType: 'self',
-    feedbackIfRedirect: 'Notice how quickly your mind jumps to explaining her schedule. First, stick to the observable camera event.',
-    selfLesson: 'Camera Fact: Dinner was cancelled 20 minutes prior via text.',
-  },
-  {
-    prompt: 'STEP 2: What did YOU feel when reading that text? (First-person response)',
-    options: [
-      'I felt a wave of disappointment, irritation, and disrespect.',
-      'She was probably just super busy and stressed out.',
-      'I thought that her boss must have kept her late at work.',
-    ],
-    correctType: 'self',
-    feedbackIfRedirect: 'Good theory about her day! But first: what happened inside YOU? Name your own emotional response before excusing her.',
-    selfLesson: 'First-Person Emotion: Disappointment & irritation.',
-  },
-  {
-    prompt: 'STEP 3: What did YOU want in that moment?',
-    options: [
-      'I wanted reliable plans and reciprocal respect for my evening time.',
-      'I wanted her to feel less stressed about her toddler.',
-      'I wanted to make sure she did not feel guilty.',
-    ],
-    correctType: 'self',
-    feedbackIfRedirect: 'Your reflex is to manage HER feelings. Come back to your side of the table: what was your own preference?',
-    selfLesson: 'Personal Desire: Predictability and mutual respect for time.',
-  },
-  {
-    prompt: 'STEP 4: Was this event acceptable to your personal boundaries?',
-    options: [
-      'Repeated last-minute cancellations without urgent emergencies are not acceptable to me.',
-      'It has to be acceptable because she is my friend and friends must sacrifice.',
-      'I will just act like it did not bother me at all.',
-    ],
-    correctType: 'self',
-    feedbackIfRedirect: 'Sacrificing personal limits without honest communication breeds long-term resentment. Evaluate acceptability honestly.',
-    selfLesson: 'Standard: Last-minute cancellations require a clear conversation.',
-  },
-  {
-    prompt: 'STEP 5 (ONLY NOW): What plausible context explains her behavior?',
-    options: [
-      'She likely had a domestic emergency with her child; understanding this does not mean I must pretend I was not inconvenienced.',
-      'She hates me and planned this to embarrass me.',
-      'I am not allowed to think about her reasons at all.',
-    ],
-    correctType: 'self',
-    feedbackIfRedirect: 'Now that you have grounded your own experience, you can explore external context with clarity.',
-    selfLesson: 'Integrated Balance: Compassion for her stress + clarity on your boundaries.',
-  },
-];
-
 export const MeFirst: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const STEPS = usePracticeContent().meFirst;
   const [stepIndex, setStepIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [redirectWarning, setRedirectWarning] = useState<string | null>(null);

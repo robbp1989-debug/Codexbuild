@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { Compass, Sparkles, CheckCircle2, BookmarkPlus, ArrowRight, Zap } from 'lucide-react';
@@ -11,61 +12,11 @@ interface RehearsalScenario {
   suggestedPredictions: string[];
 }
 
-const REHEARSAL_SCENARIOS: RehearsalScenario[] = [
-  {
-    id: 'sc-1',
-    title: 'The Ambiguous Silence',
-    cue: 'You share an idea in a meeting and nobody comments for 5 seconds before the host moves to the next slide.',
-    historicalResponse: 'Conclude you sounded foolish, feel a hot flush of shame, and vow never to speak up again.',
-    suggestedActions: [
-      'Take a full breath and let the silence sit without filling it with an apology.',
-      'Unmute and say: "I can drop a 2-bullet summary in Slack if anyone wants to revisit that later."',
-      'Notice the urge to panic, name it as "ambiguity anxiety", and stay engaged in the meeting.',
-    ],
-    suggestedPredictions: [
-      'People will appreciate the point asynchronously, or the meeting will proceed normally.',
-      'A colleague might reach out later to discuss the idea.',
-      'Even if ignored, my professional credibility remains intact.',
-    ],
-  },
-  {
-    id: 'sc-2',
-    title: 'The Last-Minute Scope Expansion',
-    cue: 'A manager or client messages at 4:55 PM: "Could you quickly handle this additional report tonight?"',
-    historicalResponse: 'Say "Sure thing!", cancel personal dinner plans, and harbor silent resentment.',
-    suggestedActions: [
-      'Reply: "I am wrapping up for today. I can prioritize this first thing tomorrow at 9 AM."',
-      'Reply: "I can look at this tonight if we push tomorrow morning’s deliverable back."',
-      'Pause for 10 minutes before replying to let the immediate urgency adrenaline settle.',
-    ],
-    suggestedPredictions: [
-      'They will say tomorrow morning is fine.',
-      'They might express mild urgency, but will respect the clear boundary.',
-      'I will enjoy my evening without lingering guilt.',
-    ],
-  },
-  {
-    id: 'sc-3',
-    title: 'The Emotionally Charged Criticism',
-    cue: 'A close friend or partner snaps: "You never listen when I tell you what matters to me."',
-    historicalResponse: 'Immediately counter-attack with a list of all the ways they failed to listen last week.',
-    suggestedActions: [
-      'Take a grounding breath and ask: "Can you tell me what felt missed just now?"',
-      'Say: "I hear how frustrated you are. I want to understand, but let’s take a 15-minute reset."',
-      'Drop my defensive posture, unclench my hands, and listen without interrupting.',
-    ],
-    suggestedPredictions: [
-      'The conversation will de-escalate once they feel heard.',
-      'We will have a constructive conversation instead of a shouting match.',
-      'I will feel proud of staying grounded even during emotional tension.',
-    ],
-  },
-];
-
 export const ScenarioReplayMode: React.FC<{ onCompleteSession?: () => void }> = ({
   onCompleteSession,
 }) => {
   const { playSoftSound, logPracticeSession, saveReflection, setActiveTab } = useApp();
+  const REHEARSAL_SCENARIOS = usePracticeContent().rehearsals;
   const [index, setIndex] = useState(0);
 
   const scenario = REHEARSAL_SCENARIOS[index];

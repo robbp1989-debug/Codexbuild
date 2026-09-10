@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { CheckCircle2, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
@@ -11,41 +12,9 @@ interface FlipItem {
   explanation: string;
 }
 
-const FLIP_ITEMS: FlipItem[] = [
-  {
-    id: 'pf-1',
-    statement: 'I will never be taken seriously by anyone at this company.',
-    correct: 'overgeneralized',
-    explanation: 'Absolute words like "never" and "anyone" are classic overgeneralizations that magnify a single event into an immutable universal rule.',
-  },
-  {
-    id: 'pf-2',
-    statement: 'The lead developer rejected my pull request with 4 inline comments.',
-    correct: 'known',
-    explanation: 'A PR rejection with 4 comments is a camera-verifiable fact in GitHub history.',
-  },
-  {
-    id: 'pf-3',
-    statement: 'The team might need these code revisions to prevent memory leaks in production.',
-    correct: 'possible',
-    explanation: 'A grounded, plausible engineering reason that explains the feedback.',
-  },
-  {
-    id: 'pf-4',
-    statement: 'They think I lied about my qualifications during the job interview.',
-    correct: 'assumed',
-    explanation: 'Attributing deep private suspicion without any evidence is pure catastrophizing.',
-  },
-  {
-    id: 'pf-5',
-    statement: 'Whenever I try to share an idea, things always get ruined.',
-    correct: 'overgeneralized',
-    explanation: '"Whenever" and "always" create a distorted helpless script that ignores contrary evidence.',
-  },
-];
-
 export const PerspectiveFlip: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const FLIP_ITEMS = usePracticeContent().perspectives;
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<FlipCategory | null>(null);
   const [score, setScore] = useState(0);

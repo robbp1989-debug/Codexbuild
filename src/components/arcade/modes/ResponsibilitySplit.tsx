@@ -1,3 +1,4 @@
+import { usePracticeContent } from '../../../context/usePracticeContent';
 import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { CheckCircle2, ArrowRight, UserCheck, Users, CloudRain, AlertCircle } from 'lucide-react';
@@ -11,41 +12,9 @@ interface SplitItem {
   explanation: string;
 }
 
-const DEFAULT_FACTORS: SplitItem[] = [
-  {
-    id: 'rs-1',
-    factor: 'Whether my coworker feels disappointed when I decline their weekend request.',
-    correct: 'theirs',
-    explanation: 'Their emotional processing and expectations belong to them. You are responsible for delivering your answer respectfully, not managing their feelings.',
-  },
-  {
-    id: 'rs-2',
-    factor: 'Speaking with calm clarity when setting my boundary.',
-    correct: 'mine',
-    explanation: 'Your tone, timing, and word choice are 100% within your personal agency.',
-  },
-  {
-    id: 'rs-3',
-    factor: 'A flight delay caused by sudden mechanical maintenance.',
-    correct: 'outside_control',
-    explanation: 'Mechanical and atmospheric realities are outside anyone in the room’s personal control.',
-  },
-  {
-    id: 'rs-4',
-    factor: 'Deciding how much sleep I prioritize before my Monday presentation.',
-    correct: 'mine',
-    explanation: 'Your sleep habits and self-care choices belong squarely in your sphere of control.',
-  },
-  {
-    id: 'rs-5',
-    factor: 'My supervisor’s overall mood and temperament today.',
-    correct: 'theirs',
-    explanation: 'Their mood belongs to them. Anxious people often over-function by trying to regulate other adults.',
-  },
-];
-
 export const ResponsibilitySplit: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
   const { playSoftSound, logPracticeSession } = useApp();
+  const DEFAULT_FACTORS = usePracticeContent().responsibilities;
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<ResponsibilityCategory | null>(null);
   const [score, setScore] = useState(0);
