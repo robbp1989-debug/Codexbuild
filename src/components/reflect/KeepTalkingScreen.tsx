@@ -74,8 +74,8 @@ export const KeepTalkingScreen: React.FC = () => {
           message,
           currentShift: activeShift,
           history: turns.slice(-8),
-          // Only compact learning records are useful to the server. The retrieval
-          // layer rejects raw CONFIRMED_FACT / USER_INTERPRETATION rows.
+          // The server prefers authenticated account memory and uses these compact
+          // device memories only as migration/fallback context.
           memoryItems: memoryItems.slice(0, 80),
         }),
       });
@@ -113,8 +113,13 @@ export const KeepTalkingScreen: React.FC = () => {
     }
   };
 
-  const saveSuggestedMemory = () => {
+  const saveSuggestedMemory = async () => {
     if (!memorySuggestion || memorySaved) return;
+    setMemorySaved(true);
+
+    // Keep a device copy immediately, and also persist to the authenticated D1
+    // account when available. The server never saves a model suggestion before
+    // this explicit user action.
     const tags = memorySuggestion.tags?.length ? ` | tags: ${memorySuggestion.tags.join(', ')}` : '';
     addMemoryItem(
       memorySuggestion.type as any,
@@ -122,7 +127,17 @@ export const KeepTalkingScreen: React.FC = () => {
       'active',
       activeShift.id,
     );
-    setMemorySaved(true);
+
+    try {
+      await fetch('/api/shift/memory/remember', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId: activeShift.id, memory: memorySuggestion }),
+      });
+    } catch {
+      // Device memory remains available if account persistence is temporarily offline.
+    }
+
     playSoftSound('complete');
   };
 
@@ -198,7 +213,7 @@ export const KeepTalkingScreen: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={saveSuggestedMemory}
+                onClick={() => void saveSuggestedMemory()}
                 disabled={memorySaved}
                 className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:bg-emerald-500 text-slate-950 text-xs font-bold"
               >
