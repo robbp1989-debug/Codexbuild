@@ -30,6 +30,7 @@ export const LANDING_FRAMES = buildNumberedFrameSequence({
 
 export const LANDING_STOPS = {
   hero: 0,
-  // Arrive where the in-office menu is already beginning to rise.
-  menu: 0.91,
+  chair: 0.82,
+  // The last portion of the scroll holds on the chair while the real workspace appears.
+  workspace: 0.92,
 } as const;
