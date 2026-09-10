@@ -1,6 +1,8 @@
-import { evaluateSafety } from '@/server/safetyCheck';
+import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { analyzeShiftReflection } from '@/server/aiClient';
-import { mergeMemoryContext, selectRelevantMemoryContext } from '@/server/memoryContext';
+import { mergeMemoryContext, sanitizeMemoryItems, selectRelevantMemoryContext } from '@/server/memoryContext';
+import { loadLearningMemories } from '@/server/persistence';
+import { evaluateSafety } from '@/server/safetyCheck';
 
 export async function POST(request: Request) {
   try {
@@ -18,10 +20,21 @@ export async function POST(request: Request) {
       });
     }
 
-    // Retrieve only compact, reusable learning memories. Raw event narratives and
-    // unconfirmed interpretations are excluded by the selector even if a legacy
-    // client still has them in local storage.
-    const retrieved = selectRelevantMemoryContext(situation, memoryItems, 6);
+    const user = await getChatGPTUser();
+    let durableMemory: Awaited<ReturnType<typeof loadLearningMemories>> = [];
+    if (user) {
+      try {
+        durableMemory = await loadLearningMemories(user.userId, 120);
+      } catch (error) {
+        console.info('[SHIFT Memory] Durable retrieval unavailable; using device memory for this request.', error);
+      }
+    }
+
+    // During the migration period, authenticated D1 memory and device-local compact
+    // memory can coexist. The selector rejects raw narratives/unconfirmed
+    // interpretations and only forwards the few learned records relevant now.
+    const combinedMemory = [...durableMemory, ...sanitizeMemoryItems(memoryItems)];
+    const retrieved = selectRelevantMemoryContext(situation, combinedMemory, 6);
     const context = mergeMemoryContext(retrieved, memoryContext);
     const breakdown = await analyzeShiftReflection(situation, context);
 
@@ -30,6 +43,7 @@ export async function POST(request: Request) {
       isSubstanceUrge: safety.isSubstanceUrge,
       substanceDetails: safety.substanceDetails,
       memoryUsed: context,
+      memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
       breakdown,
     });
   } catch {
