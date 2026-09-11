@@ -4,7 +4,7 @@ Date: 2026-09-11
 
 ## Status
 
-Implementation is complete on the isolated integration branch and is ready for final human visual approval before merge.
+Implementation is complete on the isolated integration branch and was approved for merge after final visual review.
 
 - Integration branch: `integration/golden-scroll-rebuild-2026-09-11`
 - Base application: `master` at `b966b0f80056cce54b5651ac6e57d34e0c0fc620`
@@ -12,7 +12,6 @@ Implementation is complete on the isolated integration branch and is ready for f
 - Golden recovery branch: `backup/perfect-live-scroll-2026-09-10`
 - Golden preview: `preview/shift-live-scroll.html`
 - Pull request: #22
-- Merge state: intentionally not merged; keep the PR in draft until final visual approval.
 
 The golden commit was used as a visual/behavioral reference only. The current application was not rolled back.
 
@@ -79,15 +78,18 @@ The older game-first processing path was not restored as the dominant route.
 
 ### 5. Keep Talking restored to the approved immersive office treatment
 
-Desktop conversation now uses the approved two-zone composition:
+The final approved desktop treatment now uses the office architecture directly:
 
-- Perspective Shift occupies the painting/console region on the left
-- the left panel is large/high enough to replace the painting visually rather than sit as a small floating card over it
-- live conversation occupies the right side
+- the workspace/menu background is lighter and more transparent
+- Perspective Shift is positioned over the painting zone as an architectural replacement surface
+- live conversation occupies one bright frosted-glass surface on the right
+- SHIFT, Reflection, Keep Talking, Prediction Lab, Memory, Privacy, and Arrival stay in one clean desktop navigation row
+- secondary Pause/audio/more controls are removed from this immersive view so they do not compete with the approved composition
 - user turns use pale blue surfaces
 - SHIFT turns use soft white/cool neutral surfaces
 - Send uses the light-blue accent family
-- bottom actions remain available
+- Practice this / Test a prediction / Save for therapy use the approved rounded action treatment
+- Perspective Shift text remains dynamic and tied to the current reflection rather than hard-coding a clinical conclusion
 
 The real `/api/shift/conversation` endpoint is preserved. Visual QA sends multiple user turns and requires completed assistant turns to advance rather than repeatedly showing the same loading/canned response.
 
@@ -162,22 +164,14 @@ The workflow:
 
 The normal validation workflow separately runs the learning-memory architecture contract check and production build.
 
-## Final validation requirement
+## Final validation
 
-Before merging #22, require both checks at the current head to be green:
+Before merge, both checks were green on the final approved implementation:
 
 - `Validate SHIFT`
 - `Visual QA`
 
-Also perform one final human check of:
-
-- mouse-wheel scroll feel forward and backward
-- hero framing
-- chair destination
-- arrival card placement
-- Perspective Shift coverage of the painting zone
-- alternating conversation colors
-- Return to Arrival behavior
+The final human visual review also approved the lighter Keep Talking workspace and Perspective Shift placement over the painting zone.
 
 ## Recovery rule
 
