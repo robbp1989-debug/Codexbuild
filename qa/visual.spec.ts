@@ -21,12 +21,21 @@ async function moveToArrival(page: import('@playwright/test').Page) {
   await page.waitForTimeout(900);
 }
 
+async function passRawGitHackInterstitial(page: import('@playwright/test').Page) {
+  const open = page.getByRole('link', { name: /Open the page/i });
+  if (await open.isVisible().catch(() => false)) {
+    await open.click();
+    await page.waitForLoadState('networkidle');
+  }
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   await page.setViewportSize({ width: 1750, height: 832 });
 
   await page.goto(GOLDEN, { waitUntil: 'networkidle' });
+  await passRawGitHackInterstitial(page);
   await shot(page, '00-golden-hero');
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await page.waitForTimeout(900);
@@ -37,10 +46,11 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   await shot(page, '10-rebuild-hero');
 
   await moveToArrival(page);
-  await expect(page.getByText('Where would you like to begin?')).toBeVisible();
-  await expect(page.getByText('Life context', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("What’s going on?", { exact: true })).toBeVisible();
   await shot(page, '11-rebuild-arrival');
+  await expect(page.getByText('Where would you like to begin?')).toBeVisible();
+  await expect(page.locator('.arrival-nav').getByRole('button', { name: 'Life context' })).toBeVisible();
+  await expect(page.locator('#life-context').getByText('Life context', { exact: true })).toBeVisible();
+  await expect(page.getByText("What’s going on?", { exact: true })).toBeVisible();
 
   const reflection = page.locator('#reflection-workspace textarea');
   await reflection.fill('A friend did not reply right away and I noticed my mind predicting that I had done something wrong.');
@@ -67,7 +77,7 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
 
   await page.goto(LOCAL, { waitUntil: 'networkidle' });
   await moveToArrival(page);
-  const explore = page.getByRole('button', { name: 'Explore Shift' });
+  const explore = page.locator('.arrival-nav').getByRole('button', { name: 'Explore Shift' });
   await expect(explore).toBeVisible();
   await explore.click();
   await page.waitForTimeout(350);
