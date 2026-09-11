@@ -9,6 +9,13 @@ interface WorkspaceShellProps {
   children: React.ReactNode;
 }
 
+// The final decoded movie frame is tighter than the approved Keep Talking
+// composition. Browser frame sampling against the approved Office reference
+// showed that holding just before the end keeps more of the chair/room context
+// while preserving the same cinematic shot. Keep this explicit rather than
+// assuming video.duration is the correct visual destination.
+const KEEP_TALKING_BACKGROUND_PROGRESS = 0.955;
+
 export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ children }) => {
   const { activeTab } = useApp();
   const isConversation = activeTab === 'conversation';
@@ -21,19 +28,23 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ children }) => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activeTab]);
 
-  const holdConversationBackgroundAtArrival = (video: HTMLVideoElement) => {
-    const seekToArrival = () => {
+  const holdConversationBackgroundAtReferenceFrame = (video: HTMLVideoElement) => {
+    const seekToReferenceFrame = () => {
       if (!Number.isFinite(video.duration) || video.duration <= 0) return;
       try {
-        video.currentTime = Math.max(0, video.duration - 0.08);
+        const target = Math.min(
+          Math.max(0, video.duration - 0.04),
+          video.duration * KEEP_TALKING_BACKGROUND_PROGRESS,
+        );
+        if (Math.abs(video.currentTime - target) > 0.02) video.currentTime = target;
         video.pause();
       } catch {
         // The static fallback remains underneath if a browser cannot seek yet.
       }
     };
 
-    if (video.readyState >= 1) seekToArrival();
-    else video.addEventListener('loadedmetadata', seekToArrival, { once: true });
+    if (video.readyState >= 1) seekToReferenceFrame();
+    else video.addEventListener('loadedmetadata', seekToReferenceFrame, { once: true });
   };
 
   return (
@@ -47,8 +58,8 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ children }) => {
           preload="auto"
           aria-hidden="true"
           tabIndex={-1}
-          onLoadedMetadata={(event) => holdConversationBackgroundAtArrival(event.currentTarget)}
-          onLoadedData={(event) => holdConversationBackgroundAtArrival(event.currentTarget)}
+          onLoadedMetadata={(event) => holdConversationBackgroundAtReferenceFrame(event.currentTarget)}
+          onLoadedData={(event) => holdConversationBackgroundAtReferenceFrame(event.currentTarget)}
         >
           <source src="/landing-sequence/shift-office-entry.mp4" type="video/mp4" />
           <source src="/landing-sequence/shift-office-entry.webm" type="video/webm" />
