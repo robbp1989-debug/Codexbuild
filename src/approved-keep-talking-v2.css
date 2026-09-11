@@ -37,11 +37,14 @@
 
 @media (min-width: 1180px) {
   .workspace-office--conversation {
-    /* Measured from the approved 1672×941 reference. */
-    --painting-panel-left: clamp(58px, 3.9vw, 68px);
-    --painting-panel-width: clamp(350px, 22.2vw, 390px);
-    --workspace-right-start: clamp(520px, 31.45vw, 548px);
-    --workspace-right-edge: clamp(126px, 8.3vw, 150px);
+    /* Measured from the approved 1672×941 reference. Keep these values
+       viewport-relative instead of capping them in px. That preserves the
+       premium painting-zone / inset-workspace composition even when Chrome is
+       zoomed out and its CSS viewport becomes much wider than the monitor. */
+    --painting-panel-left: 3.9vw;
+    --painting-panel-width: 22.2vw;
+    --workspace-right-start: 31.45vw;
+    --workspace-right-edge: 8.3vw;
   }
 
   /* Keep the chair prominent on the left while retaining the same real
@@ -58,7 +61,7 @@
   }
 
   .workspace-office--conversation .workspace-header {
-    top: 61px;
+    top: 6.5vh;
     left: var(--workspace-right-start);
     right: var(--workspace-right-edge);
     width: auto;
@@ -81,7 +84,7 @@
     width: auto;
     margin-left: var(--workspace-right-start);
     margin-right: var(--workspace-right-edge);
-    padding: 137px 0 85px !important;
+    padding: calc(6.5vh + 76px) 0 9vh !important;
   }
 
   /* The outer pane begins immediately below the one-row navigation and ends
@@ -103,11 +106,11 @@
   }
 
   .keep-talking-perspective {
-    top: 16px;
+    top: 1.7vh;
     left: var(--painting-panel-left);
     width: var(--painting-panel-width);
-    min-height: 428px !important;
-    max-height: calc(100dvh - 32px) !important;
+    min-height: 45.5vh !important;
+    max-height: calc(100dvh - 3.4vh) !important;
     padding: 30px 34px 28px;
     border-radius: 30px;
     border-color: rgba(169,171,167,.46);
