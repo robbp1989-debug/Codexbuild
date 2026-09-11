@@ -10,6 +10,10 @@
 }
 
 .cinematic-primary-cta {
+  width: 150px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 14px;
   gap: 0;
   font-size: .833rem;
   line-height: 1;
@@ -30,6 +34,32 @@
 
 .cinematic-scroll-cue span::after {
   content: ' ↓';
+}
+
+/* Restore the standalone preview's browser-default paragraph breathing room
+   inside the context card. Tailwind's reset otherwise compresses this card by
+   roughly one line-height and shifts the entire two-card stack downward. */
+.arrival-card--context .cinematic-eyebrow {
+  margin: 1em 0;
+  color: #60768a;
+}
+
+.arrival-card--context .cinematic-life-context .life-context-home-heading p {
+  margin: 1em 0;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-choice {
+  font-weight: 400;
+}
+
+.arrival-card .cinematic-framework-label {
+  color: #b8ddff;
+}
+
+.arrival-card .cinematic-input-footer button:disabled {
+  background: linear-gradient(115deg,#4f9ede,#84c7f5);
+  color: #fff;
+  opacity: .52;
 }
 
 /* The approved Keep Talking mockup treats the Perspective Shift surface as
