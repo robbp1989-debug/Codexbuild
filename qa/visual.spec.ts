@@ -81,8 +81,9 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
 
   // The handoff requires a real evolving conversation, not a repeated canned
   // prompt. Exercise the live conversation endpoint twice and confirm SHIFT
-  // advances to a new assistant turn each time.
-  const assistantTurns = page.locator('.keep-talking-turn--assistant .keep-talking-turn__body');
+  // advances to a new completed assistant turn each time. Loading placeholders
+  // are intentionally excluded from this locator.
+  const assistantTurns = page.locator('.keep-talking-turn--assistant:not(.keep-talking-turn--loading) .keep-talking-turn__body');
   const initialAssistantCount = await assistantTurns.count();
   const initialAssistantText = await assistantTurns.last().innerText();
   const composer = page.getByPlaceholder('What’s on your mind right now?');
