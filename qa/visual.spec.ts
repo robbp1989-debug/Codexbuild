@@ -165,16 +165,16 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   // after analysis. Reflection remains available as a tab rather than a gate.
   await expect(page.getByRole('heading', { name: /Stay with this before solving it/i })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Perspective shift', { exact: false }).first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Keep Talking' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('button', { name: 'Keep Talking', exact: true })).toHaveAttribute('aria-current', 'page');
   await page.waitForTimeout(450);
   await shot(page, '20-second-screen-keep-talking');
 
   // The detailed SHIFT breakdown is still fully accessible through Reflection.
-  await page.getByRole('button', { name: 'Reflection' }).click();
+  await page.getByRole('button', { name: 'Reflection', exact: true }).click();
   await expect(page.getByText('Your SHIFT breakdown')).toBeVisible({ timeout: 10_000 });
   await shot(page, '25-breakdown-via-reflection');
 
-  await page.getByRole('button', { name: 'Keep Talking' }).click();
+  await page.getByRole('button', { name: 'Keep Talking', exact: true }).click();
   await expect(page.getByRole('heading', { name: /Stay with this before solving it/i })).toBeVisible();
   await page.waitForTimeout(350);
   await shot(page, '30-keep-talking');
