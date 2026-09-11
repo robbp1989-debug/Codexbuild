@@ -30,6 +30,13 @@ jobs:
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium
 
+      - name: Prepare pinned golden preview fixture
+        run: |
+          mkdir -p public/qa
+          curl -fsSL https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/eb4b835a319ac4e005a738c2e39a1527772142ec/preview/shift-live-scroll.html > public/qa/shift-live-scroll.html
+          sed -i 's#https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/master/public/landing-sequence/frame-0001.webp#/landing-sequence/frame-0001.webp#g' public/qa/shift-live-scroll.html
+          sed -i 's#https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/master/public/landing-sequence/shift-office-entry.mp4#/landing-sequence/shift-office-entry.mp4#g' public/qa/shift-live-scroll.html
+
       - name: Start SHIFT preview
         run: |
           nohup npm run dev -- --host localhost --port 3000 > /tmp/shift-preview.log 2>&1 &
