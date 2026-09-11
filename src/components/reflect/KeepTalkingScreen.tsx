@@ -41,11 +41,6 @@ export const KeepTalkingScreen: React.FC = () => {
   const [memorySaved, setMemorySaved] = useState(false);
   const [memoryUsed, setMemoryUsed] = useState<string[]>([]);
 
-  const latestAssistantTurn = useMemo(
-    () => [...turns].reverse().find((turn) => turn.role === 'assistant') || null,
-    [turns],
-  );
-
   if (!activeShift) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
@@ -58,6 +53,17 @@ export const KeepTalkingScreen: React.FC = () => {
       </div>
     );
   }
+
+  const perspectiveText = (
+    activeShift.userEditedPerspective ||
+    activeShift.updated_perspective ||
+    activeShift.userEditedInterpretation ||
+    activeShift.interpretation ||
+    'We can separate what is known in the present from what your mind is predicting.'
+  ).trim();
+  const perspectiveSentences = perspectiveText.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const perspectiveHeadline = perspectiveSentences[0] || 'A more current perspective.';
+  const perspectiveBody = perspectiveSentences.slice(1).join(' ');
 
   const sendMessage = async () => {
     const message = input.trim();
@@ -150,16 +156,9 @@ export const KeepTalkingScreen: React.FC = () => {
     <div className="keep-talking-immersive">
       <aside className="keep-talking-perspective" aria-live="polite" aria-label="Current SHIFT perspective">
         <div className="keep-talking-perspective__eyebrow"><Sparkles className="w-4 h-4" /> Perspective shift</div>
-        <h2>What SHIFT is hearing</h2>
-        <p className="keep-talking-perspective__note">This is a working reflection, not a verdict about you or anyone else.</p>
-
-        <div className="keep-talking-perspective__answer">
-          {loading ? (
-            <span className="keep-talking-perspective__loading"><Loader2 className="w-4 h-4 animate-spin" /> Staying with what you said…</span>
-          ) : (
-            latestAssistantTurn?.content || 'Your next SHIFT response will appear here.'
-          )}
-        </div>
+        <h2>{perspectiveHeadline}</h2>
+        {perspectiveBody && <p className="keep-talking-perspective__answer">{perspectiveBody}</p>}
+        <p className="keep-talking-perspective__note">A working reflection, not a verdict about you or anyone else.</p>
 
         {memoryUsed.length > 0 && (
           <div className="keep-talking-perspective__memory">
@@ -187,7 +186,7 @@ export const KeepTalkingScreen: React.FC = () => {
           <div className="flex items-center gap-2 text-sky-600 text-xs font-mono uppercase tracking-wider">
             <MessageCircle className="w-4 h-4" /> Keep Talking
           </div>
-          <h1 id="keep-talking-title" className="text-2xl sm:text-3xl font-bold mt-2">Stay with this before solving it.</h1>
+          <h1 id="keep-talking-title" className="text-2xl sm:text-3xl font-bold mt-2">Stay with this before solving it</h1>
           <p className="text-sm mt-2 max-w-2xl text-slate-600">
             This is a space to explore what’s underneath. There’s no rush — we can look at this together.
           </p>
