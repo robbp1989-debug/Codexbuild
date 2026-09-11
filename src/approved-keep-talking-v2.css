@@ -21,6 +21,7 @@
   z-index: -3;
   width: 100%;
   height: 100%;
+  max-width: none;
   object-fit: cover;
   object-position: center center;
   transform: scale(1.006);
@@ -47,11 +48,14 @@
 
   /* Reframe the final cinematic frame so the chair remains prominent on the
      left, as in the approved composition, while the window side stays behind
-     the conversation glass. */
+     the conversation glass. Using left + right instead of a percentage width
+     avoids global video width rules collapsing the frame back to 100vw. */
   .workspace-office--conversation .workspace-office__background-video {
-    inset: 0 auto 0 -30vw;
-    width: 130vw;
-    height: 100vh;
+    inset: 0 0 0 -30vw;
+    width: auto !important;
+    min-width: 130vw;
+    max-width: none !important;
+    height: 100vh !important;
     transform: none;
     object-position: center center;
   }
@@ -172,8 +176,10 @@
 @media (max-width: 1179px) {
   .workspace-office--conversation .workspace-office__background-video {
     inset: 0;
-    width: 100%;
-    height: 100%;
+    width: 100% !important;
+    min-width: 0;
+    max-width: none;
+    height: 100% !important;
     transform: scale(1.006);
     object-position: 53% center;
     filter: saturate(1.03) brightness(1.13) contrast(.98);
