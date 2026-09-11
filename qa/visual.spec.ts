@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 
 const OUT = 'qa-artifacts';
@@ -11,12 +11,12 @@ const GOLDEN_LOCAL = `${LOCAL}/qa/shift-live-scroll.html`;
 // back to static frames during visual regression testing.
 test.use({ channel: 'chrome' });
 
-async function shot(page: import('@playwright/test').Page, name: string) {
+async function shot(page: Page, name: string) {
   fs.mkdirSync(OUT, { recursive: true });
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
 }
 
-async function moveToArrival(page: import('@playwright/test').Page) {
+async function moveToArrival(page: Page) {
   await page.evaluate(() => {
     const root = document.querySelector<HTMLElement>('.cinematic-scroll, .cinematic');
     if (!root) return;
@@ -27,14 +27,105 @@ async function moveToArrival(page: import('@playwright/test').Page) {
   await page.waitForTimeout(1100);
 }
 
-async function expectVideoReady(page: import('@playwright/test').Page, selector: string) {
+async function expectVideoReady(page: Page, selector: string) {
   await expect.poll(async () => page.locator(selector).evaluate((node) => {
     const video = node as HTMLVideoElement;
     return Number.isFinite(video.duration) && video.duration > 9 && video.readyState >= 1;
   }), { timeout: 15_000 }).toBe(true);
 }
 
+type CinematicSample = {
+  time: number;
+  heroOpacity: number;
+  arrivalOpacity: number;
+  cueOpacity: number;
+};
+
+async function sampleCinematic(
+  page: Page,
+  selectors: { root: string; video: string; hero: string; arrival: string; cue: string },
+  progress: number,
+): Promise<CinematicSample> {
+  await page.evaluate(({ rootSelector, progressValue }) => {
+    const root = document.querySelector<HTMLElement>(rootSelector);
+    if (!root) throw new Error(`Missing cinematic root: ${rootSelector}`);
+    const rootTop = window.scrollY + root.getBoundingClientRect().top;
+    const max = Math.max(1, root.offsetHeight - window.innerHeight);
+    window.scrollTo(0, rootTop + max * progressValue);
+  }, { rootSelector: selectors.root, progressValue: progress });
+  await page.waitForTimeout(720);
+
+  return page.evaluate((currentSelectors) => {
+    const video = document.querySelector<HTMLVideoElement>(currentSelectors.video);
+    const hero = document.querySelector<HTMLElement>(currentSelectors.hero);
+    const arrival = document.querySelector<HTMLElement>(currentSelectors.arrival);
+    const cue = document.querySelector<HTMLElement>(currentSelectors.cue);
+    if (!video || !hero || !arrival || !cue) throw new Error('Missing cinematic sample element.');
+    return {
+      time: video.currentTime,
+      heroOpacity: Number.parseFloat(getComputedStyle(hero).opacity),
+      arrivalOpacity: Number.parseFloat(getComputedStyle(arrival).opacity),
+      cueOpacity: Number.parseFloat(getComputedStyle(cue).opacity),
+    };
+  }, selectors);
+}
+
 test.describe.configure({ mode: 'serial' });
+
+test('golden scroll transport parity', async ({ page }) => {
+  await page.setViewportSize({ width: 1750, height: 832 });
+  const progressStops = [0, 0.08, 0.16, 0.25, 0.5, 0.78, 0.86, 0.94, 1];
+
+  await page.goto(GOLDEN_LOCAL, { waitUntil: 'networkidle' });
+  await expectVideoReady(page, '#movie');
+  const goldenGeometry = await page.locator('#cinematic').evaluate((root) => ({
+    rootHeight: (root as HTMLElement).offsetHeight,
+    viewportHeight: window.innerHeight,
+    stageHeight: document.querySelector<HTMLElement>('.stage')?.offsetHeight || 0,
+  }));
+  expect(Math.abs(goldenGeometry.rootHeight / goldenGeometry.viewportHeight - 2.1)).toBeLessThan(0.02);
+  expect(Math.abs(goldenGeometry.stageHeight - goldenGeometry.viewportHeight)).toBeLessThanOrEqual(1);
+  const goldenSamples: CinematicSample[] = [];
+  for (const progress of progressStops) {
+    goldenSamples.push(await sampleCinematic(page, {
+      root: '#cinematic',
+      video: '#movie',
+      hero: '#hero',
+      arrival: '#arrival',
+      cue: '#cue',
+    }, progress));
+  }
+
+  await page.goto(LOCAL, { waitUntil: 'networkidle' });
+  await expectVideoReady(page, 'video.cinematic-video');
+  const rebuiltGeometry = await page.locator('.cinematic-scroll').evaluate((root) => ({
+    rootHeight: (root as HTMLElement).offsetHeight,
+    viewportHeight: window.innerHeight,
+    stageHeight: document.querySelector<HTMLElement>('.cinematic-stage')?.offsetHeight || 0,
+  }));
+  expect(Math.abs(rebuiltGeometry.rootHeight / rebuiltGeometry.viewportHeight - 2.1)).toBeLessThan(0.02);
+  expect(Math.abs(rebuiltGeometry.stageHeight - rebuiltGeometry.viewportHeight)).toBeLessThanOrEqual(1);
+
+  for (let index = 0; index < progressStops.length; index += 1) {
+    const rebuilt = await sampleCinematic(page, {
+      root: '.cinematic-scroll',
+      video: 'video.cinematic-video',
+      hero: '.cinematic-panel--hero',
+      arrival: '.cinematic-panel--workspace-arrival',
+      cue: '.cinematic-scroll-cue',
+    }, progressStops[index]);
+    const golden = goldenSamples[index];
+    expect(Math.abs(rebuilt.time - golden.time)).toBeLessThanOrEqual(0.08);
+    expect(Math.abs(rebuilt.heroOpacity - golden.heroOpacity)).toBeLessThanOrEqual(0.035);
+    expect(Math.abs(rebuilt.arrivalOpacity - golden.arrivalOpacity)).toBeLessThanOrEqual(0.035);
+    expect(Math.abs(rebuilt.cueOpacity - golden.cueOpacity)).toBeLessThanOrEqual(0.035);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(LOCAL, { waitUntil: 'networkidle' });
+  const mobileRatio = await page.locator('.cinematic-scroll').evaluate((root) => (root as HTMLElement).offsetHeight / window.innerHeight);
+  expect(Math.abs(mobileRatio - 1.9)).toBeLessThan(0.02);
+});
 
 test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   await page.setViewportSize({ width: 1750, height: 832 });
