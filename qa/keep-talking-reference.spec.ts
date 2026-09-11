@@ -36,6 +36,10 @@ test('Keep Talking matches approved 1672x941 composition envelope', async ({ pag
     const video = node as HTMLVideoElement;
     return Number.isFinite(video.duration) && video.duration > 9 && video.readyState >= 2;
   }), { timeout: 15_000 }).toBe(true);
+  await expect.poll(async () => backgroundVideo.evaluate((node) => {
+    const video = node as HTMLVideoElement;
+    return video.duration > 0 ? video.currentTime / video.duration : 0;
+  }), { timeout: 10_000 }).toBeGreaterThan(0.95);
 
   await page.waitForTimeout(500);
 
@@ -54,6 +58,10 @@ test('Keep Talking matches approved 1672x941 composition envelope', async ({ pag
     };
   });
 
+  console.log('KEEP_TALKING_REFERENCE_GEOMETRY', JSON.stringify(geometry));
+  fs.mkdirSync(OUT, { recursive: true });
+  await page.screenshot({ path: `${OUT}/21-keep-talking-reference-size.png`, fullPage: false });
+
   // Broad guardrails taken from the approved Office perfect reference. These
   // deliberately protect composition without turning responsive CSS into a
   // brittle single-pixel test.
@@ -64,11 +72,9 @@ test('Keep Talking matches approved 1672x941 composition envelope', async ({ pag
   expect(geometry.perspective.width).toBeLessThanOrEqual(400);
   expect(geometry.header.x).toBeGreaterThanOrEqual(500);
   expect(geometry.header.x).toBeLessThanOrEqual(550);
+  expect(geometry.outer.right).toBeGreaterThanOrEqual(1510);
   expect(geometry.outer.right).toBeLessThanOrEqual(1580);
   expect(geometry.dialogue.x).toBeGreaterThanOrEqual(580);
   expect(geometry.dialogue.right).toBeLessThanOrEqual(1535);
   expect(geometry.dialogue.bottom).toBeGreaterThanOrEqual(820);
-
-  fs.mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/21-keep-talking-reference-size.png`, fullPage: false });
 });
