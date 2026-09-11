@@ -25,10 +25,10 @@ jobs:
       - name: Install app dependencies
         run: npm ci
 
-      - name: Install Playwright and Chromium
+      - name: Install Playwright and verify Chrome
         run: |
           npm install --no-save @playwright/test@1.55.0
-          npx playwright install --with-deps chromium
+          google-chrome --version
 
       - name: Prepare pinned golden preview fixture
         run: |
@@ -51,7 +51,7 @@ jobs:
           exit 1
 
       - name: Capture golden and rebuilt screenshots
-        run: npx playwright test qa/visual.spec.ts --browser=chromium --reporter=line
+        run: npx playwright test qa/visual.spec.ts --reporter=line
 
       - name: Upload screenshots
         if: always()
