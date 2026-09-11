@@ -1,0 +1,193 @@
+/* Final approved Keep Talking composition ---------------------------------
+   This layer corrects the remaining production drift visible after the
+   routing rebuild. It intentionally sits after approved-keep-talking.css.
+
+   Key invariant: Keep Talking must feel like the next state of the cinematic
+   office, not a separate gray utility page. The real cinematic movie is held
+   on its final chair frame and becomes the stationary room behind the tools. */
+
+.workspace-office__background-video {
+  display: none;
+}
+
+.workspace-office--conversation .workspace-office__background {
+  opacity: 0;
+}
+
+.workspace-office--conversation .workspace-office__background-video {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: center center;
+  transform: scale(1.006);
+  filter: saturate(1.04) brightness(1.18) contrast(.97);
+  pointer-events: none;
+}
+
+.workspace-office--conversation .workspace-office__veil {
+  background:
+    linear-gradient(180deg, rgba(255,252,248,.025), rgba(250,252,252,.055) 56%, rgba(247,250,250,.10)),
+    radial-gradient(circle at 77% 10%, rgba(255,255,255,.13), transparent 40%),
+    radial-gradient(circle at 18% 74%, rgba(255,238,214,.07), transparent 36%);
+  backdrop-filter: blur(.45px);
+  -webkit-backdrop-filter: blur(.45px);
+}
+
+@media (min-width: 1180px) {
+  .workspace-office--conversation {
+    --painting-panel-left: clamp(58px, 4vw, 68px);
+    --painting-panel-width: clamp(350px, 22.2vw, 390px);
+    --workspace-right-start: clamp(520px, 31.45vw, 548px);
+    --workspace-right-edge: clamp(48px, 3.35vw, 64px);
+  }
+
+  /* Reframe the final cinematic frame so the chair remains prominent on the
+     left, as in the approved composition, while the window side stays behind
+     the conversation glass. Using left + right instead of a percentage width
+     avoids global video width rules collapsing the frame back to 100vw. */
+  .workspace-office--conversation .workspace-office__background-video {
+    inset: 0 0 0 -30vw;
+    width: auto !important;
+    min-width: 130vw;
+    max-width: none !important;
+    height: 100vh !important;
+    transform: none;
+    object-position: center center;
+  }
+
+  .workspace-office--conversation .workspace-header {
+    top: 52px;
+    left: var(--workspace-right-start);
+    right: var(--workspace-right-edge);
+    width: auto;
+    margin: 0;
+    border-radius: 28px 28px 0 0;
+    background: rgba(249,252,253,.86);
+    border-color: rgba(151,181,199,.30);
+    border-bottom-color: rgba(132,164,185,.18);
+    box-shadow: 0 14px 42px rgba(45,62,71,.10);
+    backdrop-filter: blur(22px) saturate(1.02);
+    -webkit-backdrop-filter: blur(22px) saturate(1.02);
+  }
+
+  .workspace-office--conversation .workspace-nav {
+    min-height: 76px;
+    padding: 12px 26px;
+  }
+
+  .workspace-office--conversation .workspace-office__main {
+    width: auto;
+    margin-left: var(--workspace-right-start);
+    margin-right: var(--workspace-right-edge);
+    padding: 128px 0 44px !important;
+  }
+
+  /* The workspace surface is the large outer glass pane from the approved
+     mockup. The conversation itself is intentionally inset inside it. */
+  .workspace-office--conversation .workspace-office__surface {
+    min-height: calc(100dvh - 180px);
+    padding: 22px clamp(50px, 4.35vw, 74px) 24px !important;
+    border: 1px solid rgba(145,174,193,.26);
+    border-top: 0;
+    border-radius: 0 0 28px 28px;
+    background: rgba(244,248,249,.66);
+    box-shadow: 0 26px 70px rgba(49,65,73,.11);
+    backdrop-filter: blur(19px) saturate(1.01);
+    -webkit-backdrop-filter: blur(19px) saturate(1.01);
+  }
+
+  .workspace-office--conversation .workspace-office__surface::before {
+    background: linear-gradient(115deg, rgba(255,255,255,.24), transparent 28%, transparent 76%, rgba(255,255,255,.12));
+  }
+
+  .keep-talking-perspective {
+    top: 28px;
+    left: var(--painting-panel-left);
+    width: var(--painting-panel-width);
+    min-height: 408px !important;
+    padding: 30px 34px 28px;
+    border-radius: 30px;
+    border-color: rgba(169,171,167,.46);
+    background: linear-gradient(145deg, rgba(255,252,247,.965), rgba(250,250,247,.92));
+    box-shadow: 0 25px 62px rgba(70,55,42,.18), inset 0 1px 0 rgba(255,255,255,.96);
+    backdrop-filter: blur(14px) saturate(.98);
+    -webkit-backdrop-filter: blur(14px) saturate(.98);
+  }
+
+  .keep-talking-perspective::after {
+    inset: 10px;
+    border-radius: 22px;
+    border-color: rgba(255,255,255,.76);
+  }
+
+  .keep-talking-perspective h2 {
+    max-width: 295px;
+    font-size: clamp(1.75rem, 2vw, 2.12rem) !important;
+  }
+
+  .keep-talking-dialogue {
+    width: 100%;
+    min-height: calc(100dvh - 226px);
+    border: 1px solid rgba(145,174,193,.28);
+    border-radius: 24px;
+    background: rgba(250,252,253,.78);
+    box-shadow: 0 18px 52px rgba(55,72,82,.08);
+    backdrop-filter: blur(18px) saturate(1.01);
+    -webkit-backdrop-filter: blur(18px) saturate(1.01);
+  }
+
+  .keep-talking-dialogue__header {
+    padding: 22px 28px 12px;
+    background: rgba(255,255,255,.28);
+    border-radius: 24px 24px 0 0;
+  }
+
+  .keep-talking-thread {
+    min-height: 292px;
+    max-height: 50vh;
+    padding: 8px 28px 12px;
+    gap: 11px;
+  }
+
+  .keep-talking-composer {
+    padding: 10px 28px 20px;
+    background: rgba(248,250,251,.52);
+    border-radius: 0 0 24px 24px;
+  }
+
+  .keep-talking-turn {
+    border-radius: 17px;
+  }
+
+  .keep-talking-turn--user {
+    background: rgba(220,240,253,.92);
+  }
+
+  .keep-talking-turn--assistant {
+    background: rgba(255,255,255,.88);
+  }
+}
+
+@media (max-width: 1179px) {
+  .workspace-office--conversation .workspace-office__background-video {
+    inset: 0;
+    width: 100% !important;
+    min-width: 0;
+    max-width: none;
+    height: 100% !important;
+    transform: scale(1.006);
+    object-position: 53% center;
+    filter: saturate(1.03) brightness(1.13) contrast(.98);
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace-office--conversation .workspace-office__background-video {
+    object-position: 57% center;
+  }
+}

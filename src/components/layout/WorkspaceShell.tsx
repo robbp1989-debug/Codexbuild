@@ -11,7 +11,8 @@ interface WorkspaceShellProps {
 
 export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ children }) => {
   const { activeTab } = useApp();
-  const immersiveClass = activeTab === 'conversation' ? ' workspace-office--conversation' : '';
+  const isConversation = activeTab === 'conversation';
+  const immersiveClass = isConversation ? ' workspace-office--conversation' : '';
 
   useEffect(() => {
     // Workspace tools are distinct stationary views. Do not inherit the scroll
@@ -20,9 +21,39 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({ children }) => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activeTab]);
 
+  const holdConversationBackgroundAtArrival = (video: HTMLVideoElement) => {
+    const seekToArrival = () => {
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+      try {
+        video.currentTime = Math.max(0, video.duration - 0.08);
+        video.pause();
+      } catch {
+        // The static fallback remains underneath if a browser cannot seek yet.
+      }
+    };
+
+    if (video.readyState >= 1) seekToArrival();
+    else video.addEventListener('loadedmetadata', seekToArrival, { once: true });
+  };
+
   return (
     <div className={`shift-light workspace-office${immersiveClass} min-h-screen text-slate-900 selection:bg-sky-300/50 selection:text-slate-950`}>
       <div className="workspace-office__background" aria-hidden="true" />
+      {isConversation && (
+        <video
+          className="workspace-office__background-video"
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+          tabIndex={-1}
+          onLoadedMetadata={(event) => holdConversationBackgroundAtArrival(event.currentTarget)}
+          onLoadedData={(event) => holdConversationBackgroundAtArrival(event.currentTarget)}
+        >
+          <source src="/landing-sequence/shift-office-entry.mp4" type="video/mp4" />
+          <source src="/landing-sequence/shift-office-entry.webm" type="video/webm" />
+        </video>
+      )}
       <div className="workspace-office__veil" aria-hidden="true" />
 
       <div className="workspace-office__app">
