@@ -5,14 +5,23 @@
   font-weight: 700;
 }
 
+.cinematic-nav--hero nav > span {
+  display: none;
+}
+
 .cinematic-primary-cta {
-  gap: .35rem;
+  gap: 0;
   font-size: .833rem;
+  line-height: 1;
 }
 
 .cinematic-primary-cta svg {
-  width: .8rem;
-  height: .8rem;
+  display: none;
+}
+
+.cinematic-primary-cta::after {
+  content: ' →';
+  margin-left: .35rem;
 }
 
 .cinematic-scroll-cue i {
@@ -21,4 +30,41 @@
 
 .cinematic-scroll-cue span::after {
   content: ' ↓';
+}
+
+/* The approved Keep Talking mockup treats the Perspective Shift surface as
+   the architectural replacement for the painting rather than a small card on
+   top of it. On desktop, cover that entire wall-art zone. */
+@media (min-width: 1180px) {
+  .workspace-office--conversation {
+    --painting-panel-left: clamp(56px, 4vw, 72px);
+    --painting-panel-width: clamp(440px, 27vw, 480px);
+    --workspace-right-start: clamp(550px, 32vw, 650px);
+  }
+
+  .keep-talking-perspective {
+    width: var(--painting-panel-width);
+    height: min(640px, calc(100dvh - 32px));
+    min-height: min(600px, calc(100dvh - 32px));
+    max-height: calc(100dvh - 32px);
+  }
+}
+
+/* Workspace accents use the same light-blue family throughout. Prediction
+   Lab's older amber states remain semantically distinct through labels and
+   borders, but no longer introduce an unrelated orange visual system. */
+.workspace-office [class*='bg-amber-950'] {
+  background-color: #e8f4ff !important;
+}
+.workspace-office [class*='bg-amber-500'] {
+  background-color: #9ed3fa !important;
+}
+.workspace-office [class*='text-amber-'] {
+  color: #2d6f9f !important;
+}
+.workspace-office [class*='border-amber-'] {
+  border-color: #9bc9e9 !important;
+}
+.workspace-office [class*='hover:bg-amber-500']:hover {
+  background-color: #b8def8 !important;
 }
