@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 
 const OUT = 'qa-artifacts';
-const LOCAL = 'http://127.0.0.1:3000';
+const LOCAL = 'http://localhost:3000';
 const GOLDEN = 'https://raw.githack.com/robbp1989-debug/Codexbuild/preview-live-scroll/preview/shift-live-scroll.html';
 
 async function shot(page: import('@playwright/test').Page, name: string) {
