@@ -6,6 +6,7 @@ import '../src/perspective-left.css';
 import '../src/perspective-final.css';
 import '../src/golden-final.css';
 import '../src/golden-scroll-source.css';
+import '../src/golden-pixel-fixes.css';
 
 export const metadata: Metadata = {
   title: 'SHIFT — Mind over matter',
