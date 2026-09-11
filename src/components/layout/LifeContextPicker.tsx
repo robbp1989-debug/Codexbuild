@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Compass, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { LIFE_CONTEXTS, normalizeLifeContext, type LifeContextId, CONTEXT_SCENES } from '../../data/lifeContexts';
+import {
+  ARRIVAL_LIFE_CONTEXTS,
+  LIFE_CONTEXTS,
+  normalizeLifeContext,
+  type LifeContextId,
+  CONTEXT_SCENES,
+} from '../../data/lifeContexts';
 import { useApp } from '../../context/AppContext';
 
 export function LifeContextPicker({ inline = false }: { inline?: boolean }) {
@@ -19,7 +25,7 @@ export function LifeContextPicker({ inline = false }: { inline?: boolean }) {
       </div>
     </div>
     <RadioGroup value={lifeContext} onValueChange={value => setLifeContext(normalizeLifeContext(value))} aria-labelledby="life-context-title" className="life-context-home-grid">
-      {LIFE_CONTEXTS.map(item => <label key={item.id} title={item.description} className={`life-context-home-choice ${lifeContext === item.id ? 'is-selected' : ''}`}>
+      {ARRIVAL_LIFE_CONTEXTS.map(item => <label key={item.id} title={item.description} className={`life-context-home-choice ${lifeContext === item.id ? 'is-selected' : ''}`}>
         <RadioGroupItem value={item.id} className="life-context-radio" /><span>{item.title}</span>
       </label>)}
     </RadioGroup>
