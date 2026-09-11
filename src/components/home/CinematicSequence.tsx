@@ -6,8 +6,6 @@ import React, {
   useLayoutEffect,
   useRef,
 } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 export type CinematicSequenceHandle = {
   scrollToProgress: (progress: number) => void;
@@ -25,6 +23,14 @@ type CinematicSequenceProps = {
   videoFps?: number;
   children: React.ReactNode;
 };
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function smoothstep(value: number) {
+  return value * value * (3 - 2 * value);
+}
 
 function isReady(image?: HTMLImageElement) {
   return Boolean(image?.complete && image.naturalWidth);
@@ -62,10 +68,11 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       scrollToProgress(progress) {
         const root = rootRef.current;
         if (!root) return;
+
         const rootTop = window.scrollY + root.getBoundingClientRect().top;
-        const scrollDistance = Math.max(0, root.offsetHeight - window.innerHeight);
+        const scrollDistance = Math.max(1, root.offsetHeight - window.innerHeight);
         window.scrollTo({
-          top: rootTop + scrollDistance * Math.min(1, Math.max(0, progress)),
+          top: rootTop + scrollDistance * clamp(progress, 0, 1),
           behavior: 'smooth',
         });
       },
@@ -77,62 +84,55 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
       const video = videoRef.current;
       if (!root || !canvas || frames.length === 0) return;
 
-      gsap.registerPlugin(ScrollTrigger);
+      const drawingContext = canvas.getContext('2d', { alpha: false });
+      if (!drawingContext) return;
 
-      const context2d = canvas.getContext('2d', { alpha: false });
-      if (!context2d) return;
-      const canvasElement = canvas;
-      const videoElement = video;
-      const drawingContext = context2d;
-      const stageElement = root.querySelector<HTMLElement>('.cinematic-stage');
+      const stage = root.querySelector<HTMLElement>('.cinematic-stage');
+      const hero = root.querySelector<HTMLElement>('.cinematic-panel--hero');
+      const heroCopy = root.querySelector<HTMLElement>('.cinematic-hero-copy');
+      const arrival = root.querySelector<HTMLElement>('.cinematic-panel--menu-rise');
+      const scrollCue = root.querySelector<HTMLElement>('.cinematic-scroll-cue');
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const images: Array<HTMLImageElement | undefined> = Array.from({ length: frames.length });
+      let disposed = false;
+      let display = 0;
+      let target = 0;
+      let duration = 10;
+      let videoReady = false;
+      let frameRequest = 0;
+      let resizeRequest = 0;
+      let viewportWidth = 1;
+      let viewportHeight = 1;
 
       drawingContext.imageSmoothingEnabled = true;
       drawingContext.imageSmoothingQuality = 'high';
 
-      const images: Array<HTMLImageElement | undefined> = Array.from({ length: frames.length });
-      const transport = { progress: 0 };
-      let frameRequest = 0;
-      let resizeRequest = 0;
-      let disposed = false;
-      let viewportWidth = 1;
-      let viewportHeight = 1;
-      let videoReady = false;
-      let videoDuration = 0;
-      let lastVideoTarget = -1;
-
-      const setResponsiveTunnelLength = () => {
-        if (prefersReducedMotion) {
-          root.style.height = '150vh';
-          return;
-        }
-
-        const width = window.innerWidth;
-        // The approved dense video has 240 real frames. One compact viewport-plus
-        // journey is enough to feel cinematic without making the user spin the wheel.
-        root.style.height = width <= 640 ? '190vh' : width <= 900 ? '200vh' : '210vh';
+      const setApprovedScrollDistance = () => {
+        root.style.height = window.innerWidth <= 640 ? '190vh' : '210vh';
       };
 
-      const nearestReadyFrame = (target: number) => {
-        const roundedTarget = Math.round(target);
+      const nearestReadyFrame = (rawTarget: number) => {
+        const roundedTarget = Math.round(rawTarget);
         if (isReady(images[roundedTarget])) return images[roundedTarget];
+
         for (let distance = 1; distance < images.length; distance += 1) {
           const before = images[roundedTarget - distance];
           if (isReady(before)) return before;
           const after = images[roundedTarget + distance];
           if (isReady(after)) return after;
         }
+
         return undefined;
       };
 
-      function renderFallbackFrame() {
-        const target = Math.min(frames.length - 1, Math.max(0, transport.progress * (frames.length - 1)));
-        const lowerIndex = Math.floor(target);
-        const upperIndex = Math.min(frames.length - 1, Math.ceil(target));
-        const rawBlend = target - lowerIndex;
-        const blend = rawBlend * rawBlend * (3 - 2 * rawBlend);
+      const renderFallbackFrame = () => {
+        const rawFrame = clamp(display, 0, 1) * (frames.length - 1);
+        const lowerIndex = Math.floor(rawFrame);
+        const upperIndex = Math.min(frames.length - 1, Math.ceil(rawFrame));
         const lower = images[lowerIndex];
         const upper = images[upperIndex];
+        const blend = smoothstep(rawFrame - lowerIndex);
 
         if (isReady(lower) && isReady(upper)) {
           drawImageCover(drawingContext, lower!, viewportWidth, viewportHeight, 1);
@@ -142,94 +142,130 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           return;
         }
 
-        const fallback = nearestReadyFrame(target);
+        const fallback = nearestReadyFrame(rawFrame);
         if (fallback) drawImageCover(drawingContext, fallback, viewportWidth, viewportHeight, 1);
-      }
+      };
 
-      function renderVisual() {
+      const renderMedia = () => {
         if (disposed) return;
 
-        if (videoElement && videoReady && videoDuration > 0) {
-          // The production movie is 24fps and encoded for seeking. Quantizing the
-          // scroll target to real video frames prevents the browser from doing many
-          // useless sub-frame seeks between the same two encoded pictures.
+        if (video && videoReady && duration > 0) {
           const safeFps = Math.max(1, videoFps);
-          const maxFrameIndex = Math.max(0, Math.floor(videoDuration * safeFps) - 1);
-          const targetFrame = Math.min(
-            maxFrameIndex,
-            Math.max(0, Math.round(transport.progress * maxFrameIndex)),
-          );
-          const targetTime = targetFrame / safeFps;
+          const frame = Math.round(clamp(display, 0, 1) * duration * safeFps);
+          const time = Math.min(Math.max(0, duration - 0.001), frame / safeFps);
 
-          if (targetTime !== lastVideoTarget) {
-            lastVideoTarget = targetTime;
+          if (Math.abs(video.currentTime - time) > 0.012) {
             try {
-              videoElement.currentTime = targetTime;
+              video.currentTime = time;
             } catch {
-              // If a browser temporarily rejects a seek while loading, the next
-              // ScrollTrigger update will retry on the next real frame boundary.
+              // Browsers can briefly reject seeks while media buffers. The next
+              // animation frame retries naturally, matching the approved preview.
             }
           }
           return;
         }
 
         renderFallbackFrame();
-      }
-
-      const scheduleRender = () => {
-        cancelAnimationFrame(frameRequest);
-        frameRequest = requestAnimationFrame(renderVisual);
       };
 
-      const activateVideo = () => {
-        if (!videoElement || disposed || !Number.isFinite(videoElement.duration) || videoElement.duration <= 0) return;
-        videoDuration = videoElement.duration;
-        videoReady = true;
-        videoElement.pause();
-        videoElement.style.opacity = '1';
-        canvasElement.style.opacity = '0';
-        scheduleRender();
+      const applyPresentation = () => {
+        const heroExit = clamp((display - 0.08) / 0.17, 0, 1);
+        if (hero) {
+          hero.style.opacity = String(1 - heroExit);
+          hero.style.visibility = heroExit >= 0.999 ? 'hidden' : 'visible';
+          hero.style.pointerEvents = heroExit >= 0.8 ? 'none' : 'auto';
+        }
+        if (heroCopy) {
+          heroCopy.style.transform = `translateY(${-22 * heroExit}px)`;
+          heroCopy.style.filter = prefersReducedMotion ? 'none' : `blur(${3.5 * heroExit}px)`;
+        }
+
+        if (scrollCue) {
+          scrollCue.style.opacity = String(clamp(1 - display * 4, 0, 1));
+        }
+
+        if (arrival) {
+          const reveal = smoothstep(clamp((display - 0.78) / 0.16, 0, 1));
+          arrival.style.opacity = String(reveal);
+          arrival.style.visibility = reveal <= 0.001 ? 'hidden' : 'visible';
+          arrival.style.transform = `translateY(${22 * (1 - reveal)}px)`;
+          arrival.style.pointerEvents = reveal > 0.8 ? 'auto' : 'none';
+        }
       };
 
-      const useFrameFallback = () => {
-        videoReady = false;
-        if (videoElement) videoElement.style.opacity = '0';
-        canvasElement.style.opacity = '1';
-        scheduleRender();
+      const render = () => {
+        renderMedia();
+        applyPresentation();
       };
 
-      if (videoElement && videoSources.length > 0) {
-        // Wait until the first decoded frame is available before fading away the
-        // still-image fallback. This prevents the brief black flash some browsers
-        // show when only metadata has loaded.
-        videoElement.addEventListener('loadeddata', activateVideo);
-        videoElement.addEventListener('error', useFrameFallback);
-        videoElement.pause();
-        videoElement.load();
-      } else {
-        useFrameFallback();
-      }
+      const tick = () => {
+        frameRequest = 0;
+        if (disposed) return;
+
+        if (prefersReducedMotion) {
+          display = target;
+        } else {
+          display += (target - display) * 0.22;
+        }
+
+        render();
+
+        if (!prefersReducedMotion && Math.abs(target - display) > 0.0005) {
+          frameRequest = requestAnimationFrame(tick);
+          return;
+        }
+
+        display = target;
+        render();
+      };
+
+      const requestTick = () => {
+        if (!frameRequest) frameRequest = requestAnimationFrame(tick);
+      };
+
+      const updateTarget = () => {
+        const rootTop = window.scrollY + root.getBoundingClientRect().top;
+        const scrollDistance = Math.max(1, root.offsetHeight - window.innerHeight);
+        target = clamp((window.scrollY - rootTop) / scrollDistance, 0, 1);
+        requestTick();
+      };
 
       const resizeCanvas = () => {
-        setResponsiveTunnelLength();
-        const { width, height } = (stageElement ?? canvasElement).getBoundingClientRect();
-        viewportWidth = Math.max(1, width);
-        viewportHeight = Math.max(1, height);
+        setApprovedScrollDistance();
+        const bounds = (stage ?? canvas).getBoundingClientRect();
+        viewportWidth = Math.max(1, bounds.width);
+        viewportHeight = Math.max(1, bounds.height);
 
-        const maxDpr = width > 1400 ? 1.25 : width > 900 ? 1.35 : 1.5;
-        const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
-        canvasElement.width = Math.max(1, Math.round(width * dpr));
-        canvasElement.height = Math.max(1, Math.round(height * dpr));
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        canvas.width = Math.max(1, Math.round(viewportWidth * dpr));
+        canvas.height = Math.max(1, Math.round(viewportHeight * dpr));
         drawingContext.setTransform(dpr, 0, 0, dpr, 0, 0);
         drawingContext.imageSmoothingEnabled = true;
         drawingContext.imageSmoothingQuality = 'high';
         renderFallbackFrame();
-        ScrollTrigger.refresh();
+        updateTarget();
       };
 
       const scheduleResize = () => {
         cancelAnimationFrame(resizeRequest);
         resizeRequest = requestAnimationFrame(resizeCanvas);
+      };
+
+      const activateVideo = () => {
+        if (!video || disposed || !Number.isFinite(video.duration) || video.duration <= 0) return;
+        duration = video.duration || 10;
+        videoReady = true;
+        video.pause();
+        video.style.opacity = '1';
+        canvas.style.opacity = '0';
+        requestTick();
+      };
+
+      const useFrameFallback = () => {
+        videoReady = false;
+        if (video) video.style.opacity = '0';
+        canvas.style.opacity = '1';
+        requestTick();
       };
 
       const loadFrame = (index: number) => new Promise<void>((resolve) => {
@@ -241,131 +277,44 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
           try {
             await image.decode();
           } catch {
-            // onload already guarantees a usable image in browsers that reject decode().
+            // onload already guarantees a drawable image when decode() is unavailable.
           }
-          if (!videoReady && (index <= 1 || Math.abs(transport.progress * (frames.length - 1) - index) < 1.5)) {
-            scheduleRender();
-          }
+          if (!videoReady) requestTick();
           resolve();
         };
         image.onerror = () => resolve();
         image.src = frames[index];
       });
 
-      const loadSequence = async () => {
-        await loadFrame(0);
-        if (disposed) return;
-        await Promise.all(frames.slice(1).map((_, index) => loadFrame(index + 1)));
-      };
+      void Promise.all(frames.map((_, index) => loadFrame(index)));
 
-      void loadSequence();
-      setResponsiveTunnelLength();
+      if (video && videoSources.length > 0) {
+        video.addEventListener('loadedmetadata', activateVideo);
+        video.addEventListener('loadeddata', activateVideo);
+        video.addEventListener('error', useFrameFallback);
+        video.pause();
+        video.load();
+        if (video.readyState >= 1) activateVideo();
+      } else {
+        useFrameFallback();
+      }
+
+      setApprovedScrollDistance();
       resizeCanvas();
+      window.addEventListener('scroll', updateTarget, { passive: true });
       window.addEventListener('resize', scheduleResize, { passive: true });
-
-      const animationContext = gsap.context(() => {
-        const panels = gsap.utils.toArray<HTMLElement>('.cinematic-panel');
-        const hero = panels.find((panel) => panel.matches('.cinematic-panel--hero'));
-        const workspaceArrival = panels.find((panel) => panel.matches('.cinematic-panel--menu-rise'));
-        const depthFar = root.querySelector<HTMLElement>('.cinematic-depth--far');
-        const depthMid = root.querySelector<HTMLElement>('.cinematic-depth--mid');
-        const depthNear = root.querySelector<HTMLElement>('.cinematic-depth--near');
-        const vignette = root.querySelector<HTMLElement>('.cinematic-vignette');
-        const scrollCue = root.querySelector<HTMLElement>('.cinematic-scroll-cue');
-        const mediaTargets = [canvasElement, videoElement].filter(Boolean) as HTMLElement[];
-
-        const FRAME_TRAVEL_DURATION = 7.1;
-        const CHAIR_SETTLE_AT = 6.15;
-        const CHAIR_SETTLE_DURATION = 1.2;
-        const WORKSPACE_REVEAL_AT = 7.35;
-        // The real 240-frame movie supplies the visual continuity now, so scrub can
-        // stay responsive instead of using a long lag to hide eight-frame stepping.
-        const SCRUB_SMOOTHING = window.innerWidth <= 640 ? 0.56 : window.innerWidth <= 900 ? 0.64 : 0.72;
-
-        gsap.set(panels, { autoAlpha: 0 });
-        gsap.set(mediaTargets, { transformOrigin: '48% 64%' });
-        if (hero) gsap.set(hero, { autoAlpha: 1, y: 0, filter: 'blur(0px)', pointerEvents: 'auto' });
-        if (workspaceArrival) {
-          gsap.set(workspaceArrival, {
-            autoAlpha: 0,
-            y: 34,
-            scale: 0.992,
-            filter: prefersReducedMotion ? 'none' : 'blur(6px)',
-            pointerEvents: 'none',
-          });
-        }
-
-        const timeline = gsap.timeline({
-          scrollTrigger: {
-            trigger: root,
-            start: 'top top',
-            end: 'bottom bottom',
-            scrub: prefersReducedMotion ? false : SCRUB_SMOOTHING,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        timeline.to(transport, {
-          progress: 1,
-          duration: FRAME_TRAVEL_DURATION,
-          ease: 'none',
-          onUpdate: scheduleRender,
-        }, 0);
-
-        if (!prefersReducedMotion) {
-          if (depthFar) timeline.to(depthFar, { scale: 1.025, z: -28, duration: FRAME_TRAVEL_DURATION, ease: 'none' }, 0);
-          if (depthMid) timeline.to(depthMid, { scale: 1.08, z: 40, duration: FRAME_TRAVEL_DURATION, ease: 'none' }, 0);
-          if (depthNear) timeline.to(depthNear, { scale: 1.42, z: 170, autoAlpha: 0, duration: 5.8, ease: 'none' }, 0.3);
-
-          timeline.to(mediaTargets, {
-            scale: 1.028,
-            duration: CHAIR_SETTLE_AT,
-            ease: 'none',
-          }, 0);
-          timeline.to(mediaTargets, {
-            scale: 1.11,
-            duration: CHAIR_SETTLE_DURATION,
-            ease: 'power1.inOut',
-          }, CHAIR_SETTLE_AT);
-        }
-
-        if (hero) {
-          timeline.to(hero, {
-            autoAlpha: 0,
-            y: -24,
-            filter: prefersReducedMotion ? 'none' : 'blur(4px)',
-            pointerEvents: 'none',
-            duration: 1.15,
-            ease: 'power2.out',
-          }, 1.05);
-        }
-
-        if (scrollCue) timeline.to(scrollCue, { autoAlpha: 0, duration: 0.7, ease: 'none' }, 0.8);
-        if (vignette) timeline.to(vignette, { autoAlpha: 0.72, duration: 0.9, ease: 'none' }, WORKSPACE_REVEAL_AT - 0.35);
-
-        if (workspaceArrival) {
-          timeline
-            .set(workspaceArrival, { autoAlpha: 1, pointerEvents: 'auto' }, WORKSPACE_REVEAL_AT)
-            .to(workspaceArrival, {
-              y: 0,
-              scale: 1,
-              filter: 'blur(0px)',
-              duration: 1.05,
-              ease: prefersReducedMotion ? 'none' : 'power3.out',
-            }, WORKSPACE_REVEAL_AT);
-        }
-      }, root);
 
       return () => {
         disposed = true;
         cancelAnimationFrame(frameRequest);
         cancelAnimationFrame(resizeRequest);
+        window.removeEventListener('scroll', updateTarget);
         window.removeEventListener('resize', scheduleResize);
-        if (videoElement) {
-          videoElement.removeEventListener('loadeddata', activateVideo);
-          videoElement.removeEventListener('error', useFrameFallback);
+        if (video) {
+          video.removeEventListener('loadedmetadata', activateVideo);
+          video.removeEventListener('loadeddata', activateVideo);
+          video.removeEventListener('error', useFrameFallback);
         }
-        animationContext.revert();
       };
     }, [frames, videoSources, videoFps]);
 
@@ -395,11 +344,6 @@ export const CinematicSequence = forwardRef<CinematicSequenceHandle, CinematicSe
               ))}
             </video>
           )}
-          <div className="cinematic-depth" aria-hidden="true">
-            <span className="cinematic-depth-layer cinematic-depth--far" />
-            <span className="cinematic-depth-layer cinematic-depth--mid" />
-            <span className="cinematic-depth-layer cinematic-depth--near" />
-          </div>
           <div className="cinematic-vignette" aria-hidden="true" />
           {children}
           <div className="cinematic-scroll-cue" aria-hidden="true">
