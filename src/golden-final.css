@@ -2,6 +2,8 @@
    Imported last. These rules intentionally preserve the approved standalone
    scroll framing and the approved office-backed application composition. */
 
+.cinematic-scroll { height: 210vh; }
+
 /* The golden scroll preview used only the film plus a restrained shade.
    Remove the later experimental faux-depth borders so they cannot change the
    approved camera framing while the video scrubs. */
@@ -19,7 +21,6 @@
   left: 4vw;
   right: 4vw;
   top: 3.3vh;
-  inset-bottom: auto;
 }
 
 .cinematic-brand {
@@ -356,6 +357,7 @@
 }
 
 @media (max-width: 640px) {
+  .cinematic-scroll { height: 190vh; }
   .cinematic-panel--hero { padding: 8vw; }
   .cinematic-hero-copy h1 { font-size: clamp(4rem,17vw,5.3rem); }
   .arrival-header { min-height: auto; }
