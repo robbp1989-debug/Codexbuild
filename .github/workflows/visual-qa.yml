@@ -51,7 +51,7 @@ jobs:
           exit 1
 
       - name: Capture golden and rebuilt screenshots
-        run: npx playwright test qa/visual.spec.ts qa/keep-talking-reference.spec.ts --reporter=line
+        run: npx playwright test qa/visual.spec.ts qa/keep-talking-reference.spec.ts qa/background-sample.spec.ts --reporter=line
 
       - name: Upload screenshots
         if: always()
