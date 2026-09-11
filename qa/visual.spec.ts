@@ -166,6 +166,17 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Stay with this before solving it/i })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Perspective shift', { exact: false }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Keep Talking', exact: true })).toHaveAttribute('aria-current', 'page');
+
+  // Keep Talking must reuse the real final cinematic chair frame. This guards
+  // against accidentally falling back to the older painting-only static room.
+  const conversationBackground = page.locator('video.workspace-office__background-video');
+  await expect(conversationBackground).toBeVisible({ timeout: 10_000 });
+  await expectVideoReady(page, 'video.workspace-office__background-video');
+  await expect.poll(async () => conversationBackground.evaluate((node) => {
+    const video = node as HTMLVideoElement;
+    return video.duration > 0 ? video.currentTime / video.duration : 0;
+  }), { timeout: 10_000 }).toBeGreaterThan(0.95);
+
   await page.waitForTimeout(450);
   await shot(page, '20-second-screen-keep-talking');
 
