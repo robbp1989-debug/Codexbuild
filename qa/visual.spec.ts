@@ -4,6 +4,8 @@ import fs from 'node:fs';
 const OUT = 'qa-artifacts';
 const LOCAL = 'http://localhost:3000';
 const GOLDEN_RAW = 'https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/preview-live-scroll/preview/shift-live-scroll.html';
+const REMOTE_POSTER = 'https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/master/public/landing-sequence/frame-0001.webp';
+const REMOTE_VIDEO = 'https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/master/public/landing-sequence/shift-office-entry.mp4';
 
 async function shot(page: import('@playwright/test').Page, name: string) {
   fs.mkdirSync(OUT, { recursive: true });
@@ -18,7 +20,14 @@ async function moveToArrival(page: import('@playwright/test').Page) {
     const max = Math.max(1, root.offsetHeight - window.innerHeight);
     window.scrollTo(0, top + max);
   });
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1100);
+}
+
+async function expectVideoReady(page: import('@playwright/test').Page, selector: string) {
+  await expect.poll(async () => page.locator(selector).evaluate((node) => {
+    const video = node as HTMLVideoElement;
+    return Number.isFinite(video.duration) && video.duration > 9 && video.readyState >= 1;
+  }), { timeout: 15_000 }).toBe(true);
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -26,23 +35,33 @@ test.describe.configure({ mode: 'serial' });
 test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   await page.setViewportSize({ width: 1750, height: 832 });
 
-  // Render the approved standalone HTML directly instead of going through the
-  // rawgit.hack interstitial. All media references in the golden file are
-  // absolute, so this produces the same page while keeping visual QA stable.
+  const assetResponse = await page.request.get(`${LOCAL}/landing-sequence/shift-office-entry.mp4`);
+  expect(assetResponse.ok()).toBeTruthy();
+  expect(assetResponse.headers()['content-type'] || '').toContain('video');
+
+  // Render the canonical standalone HTML directly, but point its poster/movie
+  // at the exact same locally served production assets as the rebuilt app. This
+  // avoids rawgit interstitials and cross-origin media timing from corrupting
+  // the side-by-side visual comparison.
   const goldenResponse = await fetch(GOLDEN_RAW);
   expect(goldenResponse.ok).toBeTruthy();
-  const goldenHtml = await goldenResponse.text();
+  const goldenHtml = (await goldenResponse.text())
+    .replaceAll(REMOTE_POSTER, `${LOCAL}/landing-sequence/frame-0001.webp`)
+    .replaceAll(REMOTE_VIDEO, `${LOCAL}/landing-sequence/shift-office-entry.mp4`);
   await page.setContent(goldenHtml, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(500);
+  await expectVideoReady(page, '#movie');
   await shot(page, '00-golden-hero');
   await moveToArrival(page);
+  await expect.poll(async () => page.locator('#movie').evaluate((node) => (node as HTMLVideoElement).currentTime), { timeout: 5000 }).toBeGreaterThan(9);
   await shot(page, '01-golden-arrival');
 
   await page.goto(LOCAL, { waitUntil: 'networkidle' });
   await expect(page.getByText('Mind over', { exact: false })).toBeVisible();
+  await expectVideoReady(page, 'video.cinematic-video');
   await shot(page, '10-rebuild-hero');
 
   await moveToArrival(page);
+  await expect.poll(async () => page.locator('video.cinematic-video').evaluate((node) => (node as HTMLVideoElement).currentTime), { timeout: 5000 }).toBeGreaterThan(9);
   await shot(page, '11-rebuild-arrival');
   await expect(page.getByText('Where would you like to begin?')).toBeVisible();
   await expect(page.locator('.arrival-nav').getByRole('button', { name: 'Life context' })).toBeVisible();
@@ -53,21 +72,21 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   await reflection.fill('A friend did not reply right away and I noticed my mind predicting that I had done something wrong.');
   await page.getByRole('button', { name: /Explore my situation/i }).click();
   await expect(page.getByText('Your SHIFT breakdown')).toBeVisible({ timeout: 20_000 });
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(350);
   await shot(page, '20-breakdown');
 
   await page.getByRole('button', { name: /Keep talking/i }).first().click();
   await expect(page.getByRole('heading', { name: /Stay with this before solving it/i })).toBeVisible();
   await expect(page.getByText('Perspective shift', { exact: false }).first()).toBeVisible();
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(450);
   await shot(page, '30-keep-talking');
 
   await page.getByRole('button', { name: 'Prediction Lab' }).click();
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(400);
   await shot(page, '40-prediction-lab');
 
   await page.getByRole('button', { name: 'Memory' }).click();
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(400);
   await shot(page, '50-memory');
 
   await page.getByRole('link', { name: 'Privacy' }).click();
@@ -79,11 +98,11 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   const explore = page.locator('.arrival-nav').getByRole('button', { name: 'Explore Shift' });
   await expect(explore).toBeVisible();
   await explore.click();
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(400);
   const arrivalButton = page.getByRole('button', { name: /Arrival/i }).first();
   await expect(arrivalButton).toBeVisible();
   await arrivalButton.click();
   await expect(page.getByText('Where would you like to begin?')).toBeVisible({ timeout: 10_000 });
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1100);
   await shot(page, '70-arrival-return');
 });
