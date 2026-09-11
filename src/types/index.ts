@@ -197,6 +197,11 @@ export interface ShiftBreakdown {
   recommended_skills: string[];
   recommended_games: ArcadeModeType[];
 
+  // Personalization transparency: the compact historical learning that was
+  // considered for this breakdown. These are comparison points, not conclusions.
+  memoryUsed?: string[];
+  memorySource?: 'account' | 'device_or_none' | string;
+
   // State flags
   isSavedToProfile: boolean;
   savePreference: 'remember' | 'session_only' | 'dont_save';

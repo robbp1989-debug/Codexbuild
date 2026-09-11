@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Compass, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { LIFE_CONTEXTS, normalizeLifeContext, type LifeContextId, CONTEXT_SCENES } from '../../data/lifeContexts';
+import {
+  ARRIVAL_LIFE_CONTEXTS,
+  LIFE_CONTEXTS,
+  normalizeLifeContext,
+  type LifeContextId,
+  CONTEXT_SCENES,
+} from '../../data/lifeContexts';
 import { useApp } from '../../context/AppContext';
 
 export function LifeContextPicker({ inline = false }: { inline?: boolean }) {
@@ -10,18 +16,21 @@ export function LifeContextPicker({ inline = false }: { inline?: boolean }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<LifeContextId>(lifeContext);
   const selected = LIFE_CONTEXTS.find(item => item.id === lifeContext)!;
+
   if (inline) return <section className="life-context-home" aria-labelledby="life-context-title">
     <div className="life-context-home-heading">
-      <div><h2 id="life-context-title">Life context</h2><p>Choose what fits your day. This changes the sample game questions—not your own story.</p></div>
-      <span className="life-context-optional">Optional · change anytime</span>
+      <div>
+        <h2 id="life-context-title">Life context</h2>
+        <p>Choose the setting that best fits what you are working through.</p>
+      </div>
     </div>
     <RadioGroup value={lifeContext} onValueChange={value => setLifeContext(normalizeLifeContext(value))} aria-labelledby="life-context-title" className="life-context-home-grid">
-      {LIFE_CONTEXTS.map(item => <label key={item.id} title={item.description} className={`life-context-home-choice ${lifeContext === item.id ? 'is-selected' : ''}`}>
+      {ARRIVAL_LIFE_CONTEXTS.map(item => <label key={item.id} title={item.description} className={`life-context-home-choice ${lifeContext === item.id ? 'is-selected' : ''}`}>
         <RadioGroupItem value={item.id} className="life-context-radio" /><span>{item.title}</span>
       </label>)}
     </RadioGroup>
-    <p className="life-context-home-note" aria-live="polite"><strong>{selected.title} selected.</strong> Saved automatically on this device. Not sure? Everyday life is a good place to start.</p>
   </section>;
+
   return <>
     <button className="life-context-trigger" onClick={() => { setDraft(lifeContext); setOpen(true); }}>
       <Compass size={18} aria-hidden="true" /><span>Life context: <strong>{selected.title}</strong></span><span className="life-context-change">Change</span>
