@@ -10,13 +10,14 @@
 }
 
 .cinematic-primary-cta {
-  width: 150px;
-  height: 48px;
-  min-height: 48px;
-  padding: 0 14px;
+  width: auto;
+  height: auto;
+  min-height: auto;
+  padding: 1rem 1.2rem;
   gap: 0;
   font-size: .833rem;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .cinematic-primary-cta svg {
@@ -54,6 +55,13 @@
 
 .arrival-card .cinematic-framework-label {
   color: #b8ddff;
+}
+
+/* The standalone arrival CTA is text-only. The richer app can keep the
+   Sparkles icon elsewhere, but the golden landing surface intentionally does
+   not spend width on it. */
+.arrival-card .cinematic-input-footer button svg {
+  display: none;
 }
 
 .arrival-card .cinematic-input-footer button:disabled {
