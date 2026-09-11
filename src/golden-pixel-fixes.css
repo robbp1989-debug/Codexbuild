@@ -1,0 +1,24 @@
+/* Final pixel-level reconciliation against the pinned standalone preview. */
+
+.cinematic-hero-copy strong {
+  color: inherit;
+  font-weight: 700;
+}
+
+.cinematic-primary-cta {
+  gap: .35rem;
+  font-size: .833rem;
+}
+
+.cinematic-primary-cta svg {
+  width: .8rem;
+  height: .8rem;
+}
+
+.cinematic-scroll-cue i {
+  display: none;
+}
+
+.cinematic-scroll-cue span::after {
+  content: ' ↓';
+}
