@@ -3,9 +3,7 @@ import fs from 'node:fs';
 
 const OUT = 'qa-artifacts';
 const LOCAL = 'http://localhost:3000';
-const GOLDEN_RAW = 'https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/preview-live-scroll/preview/shift-live-scroll.html';
-const REMOTE_POSTER = 'https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/master/public/landing-sequence/frame-0001.webp';
-const REMOTE_VIDEO = 'https://raw.githubusercontent.com/robbp1989-debug/Codexbuild/master/public/landing-sequence/shift-office-entry.mp4';
+const GOLDEN_LOCAL = `${LOCAL}/qa/shift-live-scroll.html`;
 
 async function shot(page: import('@playwright/test').Page, name: string) {
   fs.mkdirSync(OUT, { recursive: true });
@@ -39,16 +37,7 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   expect(assetResponse.ok()).toBeTruthy();
   expect(assetResponse.headers()['content-type'] || '').toContain('video');
 
-  // Render the canonical standalone HTML directly, but point its poster/movie
-  // at the exact same locally served production assets as the rebuilt app. This
-  // avoids rawgit interstitials and cross-origin media timing from corrupting
-  // the side-by-side visual comparison.
-  const goldenResponse = await fetch(GOLDEN_RAW);
-  expect(goldenResponse.ok).toBeTruthy();
-  const goldenHtml = (await goldenResponse.text())
-    .replaceAll(REMOTE_POSTER, `${LOCAL}/landing-sequence/frame-0001.webp`)
-    .replaceAll(REMOTE_VIDEO, `${LOCAL}/landing-sequence/shift-office-entry.mp4`);
-  await page.setContent(goldenHtml, { waitUntil: 'networkidle' });
+  await page.goto(GOLDEN_LOCAL, { waitUntil: 'networkidle' });
   await expectVideoReady(page, '#movie');
   await shot(page, '00-golden-hero');
   await moveToArrival(page);
