@@ -1,7 +1,19 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Brain, Check, Loader2, MessageCircle, Save, Send, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bookmark,
+  Brain,
+  Check,
+  Leaf,
+  LineChart,
+  Loader2,
+  MessageCircle,
+  Save,
+  Send,
+  Sparkles,
+} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 interface ConversationTurn {
@@ -41,11 +53,6 @@ export const KeepTalkingScreen: React.FC = () => {
   const [memorySaved, setMemorySaved] = useState(false);
   const [memoryUsed, setMemoryUsed] = useState<string[]>([]);
 
-  const latestAssistantTurn = useMemo(
-    () => [...turns].reverse().find((turn) => turn.role === 'assistant') || null,
-    [turns],
-  );
-
   if (!activeShift) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center">
@@ -58,6 +65,17 @@ export const KeepTalkingScreen: React.FC = () => {
       </div>
     );
   }
+
+  const perspectiveText = (
+    activeShift.userEditedPerspective ||
+    activeShift.updated_perspective ||
+    activeShift.userEditedInterpretation ||
+    activeShift.interpretation ||
+    'We can separate what is known in the present from what your mind is predicting.'
+  ).trim();
+  const perspectiveSentences = perspectiveText.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const perspectiveHeadline = perspectiveSentences[0] || 'A more current perspective.';
+  const perspectiveBody = perspectiveSentences.slice(1).join(' ');
 
   const sendMessage = async () => {
     const message = input.trim();
@@ -79,8 +97,6 @@ export const KeepTalkingScreen: React.FC = () => {
           message,
           currentShift: activeShift,
           history: turns.slice(-8),
-          // The server prefers authenticated account memory and uses these compact
-          // device memories only as migration/fallback context.
           memoryItems: memoryItems.slice(0, 80),
         }),
       });
@@ -122,9 +138,6 @@ export const KeepTalkingScreen: React.FC = () => {
     if (!memorySuggestion || memorySaved) return;
     setMemorySaved(true);
 
-    // Keep a device copy immediately, and also persist to the authenticated D1
-    // account when available. The server never saves a model suggestion before
-    // this explicit user action.
     const tags = memorySuggestion.tags?.length ? ` | tags: ${memorySuggestion.tags.join(', ')}` : '';
     addMemoryItem(
       memorySuggestion.type as any,
@@ -150,16 +163,9 @@ export const KeepTalkingScreen: React.FC = () => {
     <div className="keep-talking-immersive">
       <aside className="keep-talking-perspective" aria-live="polite" aria-label="Current SHIFT perspective">
         <div className="keep-talking-perspective__eyebrow"><Sparkles className="w-4 h-4" /> Perspective shift</div>
-        <h2>What SHIFT is hearing</h2>
-        <p className="keep-talking-perspective__note">This is a working reflection, not a verdict about you or anyone else.</p>
-
-        <div className="keep-talking-perspective__answer">
-          {loading ? (
-            <span className="keep-talking-perspective__loading"><Loader2 className="w-4 h-4 animate-spin" /> Staying with what you said…</span>
-          ) : (
-            latestAssistantTurn?.content || 'Your next SHIFT response will appear here.'
-          )}
-        </div>
+        <h2>{perspectiveHeadline}</h2>
+        {perspectiveBody && <p className="keep-talking-perspective__answer">{perspectiveBody}</p>}
+        <p className="keep-talking-perspective__note">A working reflection, not a verdict about you or anyone else.</p>
 
         {memoryUsed.length > 0 && (
           <div className="keep-talking-perspective__memory">
@@ -173,21 +179,24 @@ export const KeepTalkingScreen: React.FC = () => {
           </div>
         )}
 
-        <div className="keep-talking-perspective__footer">Greater understanding creates more choice.</div>
+        <div className="keep-talking-perspective__footer">
+          <Leaf className="w-5 h-5" aria-hidden="true" />
+          <span>Greater understanding creates more choice.</span>
+        </div>
       </aside>
 
       <section className="keep-talking-dialogue" aria-labelledby="keep-talking-title">
         <div className="keep-talking-dialogue__header">
           <button
             onClick={() => setActiveTab('breakdown')}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-sky-600 mb-3"
+            className="keep-talking-back-button inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-sky-600 mb-3"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to breakdown
           </button>
-          <div className="flex items-center gap-2 text-sky-600 text-xs font-mono uppercase tracking-wider">
+          <div className="keep-talking-section-label flex items-center gap-2 text-sky-600 text-xs font-mono uppercase tracking-wider">
             <MessageCircle className="w-4 h-4" /> Keep Talking
           </div>
-          <h1 id="keep-talking-title" className="text-2xl sm:text-3xl font-bold mt-2">Stay with this before solving it.</h1>
+          <h1 id="keep-talking-title" className="text-2xl sm:text-3xl font-bold mt-2">Stay with this before solving it</h1>
           <p className="text-sm mt-2 max-w-2xl text-slate-600">
             This is a space to explore what’s underneath. There’s no rush — we can look at this together.
           </p>
@@ -232,7 +241,7 @@ export const KeepTalkingScreen: React.FC = () => {
         )}
 
         <div className="keep-talking-composer">
-          <div className="flex gap-2">
+          <div className="keep-talking-composer-row flex gap-2">
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -258,10 +267,19 @@ export const KeepTalkingScreen: React.FC = () => {
               <span>Send</span>
             </button>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={() => setActiveTab('scenario-game')} className="keep-talking-secondary-action">Practice this</button>
-            <button onClick={() => setActiveTab('prediction-lab')} className="keep-talking-secondary-action">Test a prediction</button>
-            <button onClick={() => setActiveTab('therapy-prep')} className="keep-talking-secondary-action">Save for therapy</button>
+          <div className="keep-talking-secondary-row mt-3 flex flex-wrap gap-2">
+            <button onClick={() => setActiveTab('scenario-game')} className="keep-talking-secondary-action">
+              <Leaf className="w-4 h-4" aria-hidden="true" />
+              <span>Practice this</span>
+            </button>
+            <button onClick={() => setActiveTab('prediction-lab')} className="keep-talking-secondary-action">
+              <LineChart className="w-4 h-4" aria-hidden="true" />
+              <span>Test a prediction</span>
+            </button>
+            <button onClick={() => setActiveTab('therapy-prep')} className="keep-talking-secondary-action">
+              <Bookmark className="w-4 h-4" aria-hidden="true" />
+              <span>Save for therapy</span>
+            </button>
           </div>
         </div>
       </section>

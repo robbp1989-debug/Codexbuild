@@ -1,0 +1,366 @@
+/* Golden visual master overrides -----------------------------------------
+   Imported last. These rules intentionally preserve the approved standalone
+   scroll framing and the approved office-backed application composition. */
+
+.cinematic-scroll { height: 210vh; }
+
+/* The golden scroll preview used only the film plus a restrained shade.
+   Remove the later experimental faux-depth borders so they cannot change the
+   approved camera framing while the video scrubs. */
+.cinematic-depth { display: none !important; }
+.cinematic-stage { perspective: none; }
+.cinematic-canvas { transform: none !important; transform-origin: center center; }
+
+/* Golden landing hero ---------------------------------------------------- */
+.cinematic-panel--hero {
+  align-items: center;
+  padding: 7vw;
+}
+
+.cinematic-nav--hero {
+  left: 4vw;
+  right: 4vw;
+  top: 3.3vh;
+}
+
+.cinematic-brand {
+  gap: .8rem;
+  font-size: .98rem;
+  font-weight: 800;
+  letter-spacing: .24em;
+}
+
+.cinematic-brand-mark {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  transform: none;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: .9rem;
+  letter-spacing: 0;
+  background: linear-gradient(135deg, #58a7ea, #a7d8ff);
+  box-shadow: 0 10px 28px rgba(61,137,200,.34);
+}
+
+.cinematic-nav--hero nav {
+  gap: 1rem;
+  color: rgba(255,255,255,.8);
+}
+
+.cinematic-nav--hero nav button {
+  font-size: .84rem;
+}
+
+.cinematic-hero-copy {
+  width: min(36rem, 80vw);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  text-shadow: 0 4px 24px rgba(0,0,0,.55);
+}
+
+.cinematic-hero-copy h1 {
+  font-size: clamp(4rem, 8.5vw, 8rem);
+  line-height: .82;
+  letter-spacing: -.055em;
+}
+
+.cinematic-hero-copy > i { display: none; }
+
+.cinematic-hero-copy > p:not(.cinematic-kicker) {
+  max-width: 29rem;
+  margin-top: 1.2rem;
+  color: rgba(255,255,255,.82);
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.cinematic-primary-cta {
+  min-height: auto;
+  margin-top: 1rem;
+  padding: 1rem 1.2rem;
+  border: 0;
+  border-radius: .8rem;
+  background: linear-gradient(115deg,#3f92da,#85c8ff);
+  color: #fff;
+  font-size: .9rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: none;
+}
+
+.cinematic-primary-cta svg { width: 1rem; }
+
+/* Golden chair arrival --------------------------------------------------- */
+.arrival-header {
+  min-height: 4.25rem;
+  padding: 0 3.3vw;
+  background: rgba(12,18,24,.78);
+  box-shadow: none;
+}
+
+.arrival-brand {
+  font-size: .92rem;
+}
+
+.arrival-prompt {
+  font-size: clamp(1.15rem, 1.8vw, 1.65rem);
+}
+
+.arrival-nav button {
+  min-height: 2.35rem;
+  border-radius: .62rem;
+  background: rgba(231,246,255,.065);
+  font-size: .72rem;
+}
+
+.arrival-workspace {
+  align-items: center;
+  padding: 1rem 2.1vw 1.55rem;
+}
+
+.arrival-workspace-stack {
+  width: min(40rem, 47vw);
+  max-height: calc(100svh - 5.7rem);
+  gap: .72rem;
+}
+
+.arrival-card {
+  border-radius: 1.12rem;
+  background: rgba(250,253,255,.955);
+  box-shadow: 0 20px 54px rgba(6,18,30,.18);
+}
+
+.arrival-card--context {
+  padding: .95rem 1rem .9rem;
+}
+
+.arrival-card--reflection {
+  padding: .9rem 1rem .85rem;
+}
+
+.arrival-card .cinematic-eyebrow,
+.arrival-card .cinematic-framework-label {
+  margin-bottom: .35rem;
+  font-size: .68rem;
+  letter-spacing: .15em;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-heading {
+  margin-bottom: .55rem;
+}
+
+.arrival-card .cinematic-life-context .life-context-home h2 {
+  font-size: clamp(1.85rem, 2.35vw, 2.55rem);
+}
+
+.arrival-card .cinematic-life-context .life-context-home-heading p {
+  font-size: .76rem;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-choice {
+  min-height: 2.15rem;
+  justify-content: center;
+  padding: .4rem .55rem;
+  font-size: .69rem;
+}
+
+.arrival-card .cinematic-life-context .life-context-radio {
+  display: none;
+}
+
+/* The approved intake card did not carry secondary story, quick-example,
+   or safety rows. Those remain available elsewhere in the product. */
+.arrival-card .personal-context-disclosure,
+.arrival-card .cinematic-scenarios,
+.arrival-card .cinematic-safety-link,
+.arrival-card .life-context-optional,
+.arrival-card .life-context-home-note {
+  display: none !important;
+}
+
+.arrival-card--reflection h2 {
+  font-size: clamp(2.1rem, 3vw, 3rem);
+}
+
+.arrival-card .cinematic-intro {
+  margin: .35rem 0 .62rem;
+  font-size: .76rem;
+}
+
+.arrival-card .cinematic-textarea textarea {
+  min-height: 5.5rem;
+  padding: .8rem;
+  font-size: .88rem;
+}
+
+.arrival-card .cinematic-input-footer {
+  padding: .55rem .65rem .55rem .75rem;
+}
+
+.arrival-card .cinematic-input-footer small {
+  font-size: .68rem;
+}
+
+.arrival-card .cinematic-input-footer button {
+  min-height: 2.45rem;
+  padding-inline: .9rem;
+  border-radius: .65rem;
+  font-size: .72rem;
+}
+
+/* Stationary office application ----------------------------------------- */
+.workspace-office__background {
+  background-position: center center;
+  transform: none;
+  filter: saturate(1.02) brightness(1.03);
+}
+
+.workspace-office__veil {
+  background:
+    linear-gradient(180deg, rgba(247,252,255,.22), rgba(240,248,252,.34) 48%, rgba(234,244,249,.48)),
+    radial-gradient(circle at 74% 12%, rgba(255,255,255,.24), transparent 42%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.shift-light .workspace-office__surface {
+  background: linear-gradient(145deg, rgba(255,255,255,.84), rgba(244,250,255,.68));
+  box-shadow: 0 24px 70px rgba(24,52,72,.13);
+}
+
+/* Approved Keep Talking appearance -------------------------------------- */
+.keep-talking-perspective h2,
+.keep-talking-dialogue__header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400 !important;
+  letter-spacing: -.035em;
+}
+
+.keep-talking-dialogue__header h1 {
+  font-size: clamp(1.8rem, 2.25vw, 2.55rem) !important;
+  line-height: 1.08;
+}
+
+.keep-talking-dialogue__header {
+  border-bottom: 0;
+}
+
+.keep-talking-thread {
+  gap: 10px;
+}
+
+.keep-talking-turn {
+  border-radius: 16px;
+  padding: 13px 16px;
+  box-shadow: none;
+}
+
+.keep-talking-turn--user {
+  background: rgba(218,239,255,.96);
+  border-color: rgba(92,167,222,.30);
+}
+
+.keep-talking-turn--assistant {
+  background: rgba(255,255,255,.91);
+  border-color: rgba(127,164,191,.18);
+}
+
+.keep-talking-turn__label {
+  margin-bottom: 2px;
+  color: #20486a;
+  font-size: .68rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.keep-talking-turn__body {
+  color: #1d4260;
+  font-size: .91rem;
+  line-height: 1.52;
+}
+
+.keep-talking-send-button {
+  background: linear-gradient(145deg,#6fbff4,#59ace8) !important;
+  border-color: rgba(76,160,220,.46) !important;
+  color: #103750 !important;
+  box-shadow: 0 8px 18px rgba(69,153,212,.14);
+}
+
+.keep-talking-secondary-action {
+  background: rgba(255,255,255,.72);
+}
+
+@media (min-width: 1180px) {
+  .workspace-office--conversation {
+    --painting-panel-left: clamp(48px, 4vw, 72px);
+    --painting-panel-width: clamp(350px, 23.5vw, 405px);
+    --workspace-right-start: clamp(520px, 31.5vw, 650px);
+    --workspace-right-edge: clamp(36px, 4vw, 68px);
+  }
+
+  .keep-talking-perspective {
+    top: 16px;
+    min-height: 425px;
+    padding: 30px 32px;
+    border-radius: 28px;
+    background: linear-gradient(150deg, rgba(255,253,249,.94), rgba(247,251,253,.88));
+  }
+
+  .keep-talking-perspective h2 {
+    max-width: 310px;
+    margin: 16px 0 14px;
+    font-size: clamp(1.85rem, 2.15vw, 2.3rem);
+  }
+
+  .keep-talking-perspective__note {
+    margin-bottom: 14px;
+    font-size: .82rem;
+  }
+
+  .keep-talking-perspective__answer {
+    min-height: 115px;
+    color: #294f6b;
+    font-size: .92rem;
+    line-height: 1.55;
+  }
+
+  .keep-talking-dialogue {
+    min-height: calc(100dvh - 112px);
+    border-radius: 26px;
+    background: rgba(249,253,255,.80);
+  }
+
+  .keep-talking-dialogue__header {
+    padding: 18px 26px 10px;
+  }
+
+  .keep-talking-thread {
+    min-height: 330px;
+    max-height: 50vh;
+    padding: 12px 26px 14px;
+  }
+
+  .keep-talking-composer {
+    padding: 12px 26px 18px;
+  }
+}
+
+@media (max-width: 900px) {
+  .cinematic-panel--hero { padding: 8vw; }
+  .arrival-workspace-stack { width: min(92vw, 40rem); }
+}
+
+@media (max-width: 640px) {
+  .cinematic-scroll { height: 190vh; }
+  .cinematic-panel--hero { padding: 8vw; }
+  .cinematic-hero-copy h1 { font-size: clamp(4rem,17vw,5.3rem); }
+  .arrival-header { min-height: auto; }
+  .arrival-workspace-stack { width: 94vw; }
+  .arrival-card .cinematic-life-context .life-context-home-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}

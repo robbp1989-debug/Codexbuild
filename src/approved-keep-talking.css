@@ -1,0 +1,345 @@
+/* Approved Keep Talking screen -------------------------------------------
+   This is the user-approved visual target: a brighter stationary office,
+   Perspective Shift replacing the painting, and one light glass workspace
+   spanning navigation, dialogue, composer, and secondary actions. */
+
+@media (min-width: 1180px) {
+  .workspace-office--conversation {
+    --painting-panel-left: clamp(54px, 3.8vw, 68px);
+    --painting-panel-width: clamp(350px, 22vw, 390px);
+    --workspace-right-start: clamp(500px, 31vw, 540px);
+    --workspace-right-edge: clamp(44px, 3.4vw, 64px);
+  }
+
+  .workspace-office--conversation .workspace-office__background {
+    background-position: center center;
+    transform: scale(1.01);
+    filter: saturate(1.04) brightness(1.16) contrast(.98);
+  }
+
+  .workspace-office--conversation .workspace-office__veil {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.08), rgba(249,252,253,.11) 55%, rgba(242,248,250,.18)),
+      radial-gradient(circle at 76% 12%, rgba(255,255,255,.18), transparent 40%);
+    backdrop-filter: blur(.7px);
+    -webkit-backdrop-filter: blur(.7px);
+  }
+
+  .workspace-office--conversation .workspace-header {
+    position: fixed;
+    z-index: 42;
+    top: 52px;
+    left: var(--workspace-right-start);
+    right: var(--workspace-right-edge);
+    width: auto;
+    margin: 0;
+    border: 1px solid rgba(133, 174, 201, .30);
+    border-bottom-color: rgba(126, 163, 188, .20);
+    border-radius: 28px 28px 0 0;
+    background: rgba(248, 251, 252, .84);
+    box-shadow: 0 16px 44px rgba(47, 68, 78, .11);
+    backdrop-filter: blur(24px) saturate(1.04);
+    -webkit-backdrop-filter: blur(24px) saturate(1.04);
+  }
+
+  .workspace-office--conversation .workspace-nav {
+    min-height: 76px;
+    padding: 12px 22px;
+    flex-wrap: nowrap !important;
+    align-items: center;
+  }
+
+  .workspace-office--conversation .workspace-brand {
+    flex: 0 0 auto;
+    color: #258ed1;
+    font-size: 1rem;
+    letter-spacing: .24em;
+  }
+
+  .workspace-office--conversation .workspace-nav-links {
+    width: auto !important;
+    flex: 1 1 auto;
+    margin-left: auto !important;
+    flex-wrap: nowrap !important;
+    gap: 8px;
+  }
+
+  .workspace-office--conversation .workspace-nav-links > button,
+  .workspace-office--conversation .workspace-nav-links > a {
+    min-height: 40px;
+    padding: 8px 15px;
+    border-radius: 20px;
+    border-color: rgba(102, 147, 179, .24);
+    background: rgba(255,255,255,.72);
+    color: #244d6d;
+    box-shadow: 0 4px 12px rgba(62, 85, 99, .04);
+  }
+
+  .workspace-office--conversation .workspace-nav-links > button[aria-current='page'] {
+    background: rgba(224, 243, 255, .94);
+    border-color: rgba(75, 165, 224, .66);
+    color: #245f88;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.52), 0 5px 14px rgba(61,140,195,.09);
+  }
+
+  .workspace-office--conversation .workspace-arrival-action {
+    margin-left: auto;
+    min-width: 104px;
+    border-radius: 20px !important;
+    color: #f8fbfd !important;
+    background: rgba(65, 91, 108, .84) !important;
+  }
+
+  .workspace-office--conversation .workspace-more,
+  .workspace-office--conversation .workspace-icon-action,
+  .workspace-office--conversation .workspace-context-bar,
+  .workspace-office--conversation footer {
+    display: none !important;
+  }
+
+  .workspace-office--conversation .workspace-office__main {
+    width: auto;
+    margin-left: var(--workspace-right-start);
+    margin-right: var(--workspace-right-edge);
+    padding: 128px 0 44px !important;
+  }
+
+  .keep-talking-immersive {
+    display: block;
+    min-height: calc(100dvh - 172px);
+  }
+
+  .keep-talking-perspective {
+    position: fixed;
+    z-index: 30;
+    top: 28px;
+    left: var(--painting-panel-left);
+    width: var(--painting-panel-width);
+    height: auto !important;
+    min-height: 408px !important;
+    max-height: min(520px, calc(100dvh - 56px)) !important;
+    padding: 30px 34px 28px;
+    overflow-y: auto;
+    border: 1px solid rgba(157, 170, 176, .48);
+    border-radius: 30px;
+    background: linear-gradient(145deg, rgba(255,252,247,.95), rgba(250,250,247,.90));
+    box-shadow: 0 26px 66px rgba(63, 53, 44, .18), inset 0 1px 0 rgba(255,255,255,.95);
+    backdrop-filter: blur(15px) saturate(.98);
+    -webkit-backdrop-filter: blur(15px) saturate(.98);
+  }
+
+  .keep-talking-perspective::after {
+    inset: 10px;
+    border-radius: 22px;
+    border-color: rgba(255,255,255,.72);
+  }
+
+  .keep-talking-perspective__eyebrow {
+    color: #399fe2;
+    font-size: .68rem;
+    letter-spacing: .20em;
+  }
+
+  .keep-talking-perspective__eyebrow svg {
+    display: none;
+  }
+
+  .keep-talking-perspective h2 {
+    max-width: 290px;
+    margin: 16px 0 12px;
+    color: #1c4564;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.75rem, 2vw, 2.15rem);
+    line-height: 1.08;
+    font-weight: 400 !important;
+  }
+
+  .keep-talking-perspective__answer {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #355b74;
+    font-size: .94rem;
+    line-height: 1.58;
+  }
+
+  .keep-talking-perspective__note {
+    margin: 14px 0 0;
+    color: #6a7d8c;
+    font-size: .76rem;
+    line-height: 1.45;
+  }
+
+  .keep-talking-perspective__footer {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-top: 24px;
+    padding-top: 18px;
+    color: #486c83;
+    font-size: .78rem;
+    font-weight: 650;
+  }
+
+  .keep-talking-perspective__footer svg {
+    flex: 0 0 auto;
+    color: #6a9cbc;
+  }
+
+  .keep-talking-dialogue {
+    width: 100%;
+    min-height: calc(100dvh - 172px);
+    overflow: hidden;
+    border: 1px solid rgba(135, 171, 194, .28);
+    border-top: 0;
+    border-radius: 0 0 28px 28px;
+    background: rgba(246, 249, 250, .78);
+    box-shadow: 0 26px 70px rgba(51, 72, 84, .12);
+    backdrop-filter: blur(22px) saturate(1.02);
+    -webkit-backdrop-filter: blur(22px) saturate(1.02);
+  }
+
+  .keep-talking-dialogue__header {
+    padding: 24px 28px 12px;
+    background: rgba(255,255,255,.34);
+  }
+
+  .keep-talking-back-button {
+    display: none !important;
+  }
+
+  .keep-talking-section-label {
+    color: #65b9ee !important;
+    font-size: .68rem !important;
+    font-weight: 800;
+    letter-spacing: .18em !important;
+  }
+
+  .keep-talking-section-label svg {
+    display: none;
+  }
+
+  .keep-talking-dialogue__header h1 {
+    margin-top: 7px;
+    color: #183f5d;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2rem, 2.45vw, 2.65rem) !important;
+    line-height: 1.03;
+    font-weight: 400 !important;
+  }
+
+  .keep-talking-dialogue__header > p {
+    margin-top: 8px;
+    max-width: 760px;
+    color: #6c7f8f !important;
+    font-size: .93rem !important;
+  }
+
+  .keep-talking-thread {
+    min-height: 300px;
+    max-height: 52vh;
+    padding: 10px 28px 14px;
+    gap: 11px;
+    align-content: start;
+    grid-auto-rows: max-content;
+  }
+
+  .keep-talking-turn {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 12px 17px 13px;
+    border-radius: 18px;
+    box-shadow: none;
+  }
+
+  .keep-talking-turn--user {
+    background: rgba(219, 239, 253, .92);
+    border-color: rgba(99, 171, 221, .28);
+  }
+
+  .keep-talking-turn--assistant {
+    background: rgba(255,255,255,.84);
+    border-color: rgba(148, 167, 180, .22);
+  }
+
+  .keep-talking-turn__label {
+    margin-bottom: 2px;
+    color: #173f5d;
+    font-size: .72rem;
+    font-weight: 800;
+    text-transform: none;
+  }
+
+  .keep-talking-turn__body {
+    color: #244b67;
+    font-size: .91rem;
+    line-height: 1.48;
+  }
+
+  .keep-talking-composer {
+    padding: 10px 28px 20px;
+    border-top: 0;
+    background: rgba(246,249,250,.64);
+  }
+
+  .keep-talking-composer-row {
+    align-items: stretch;
+  }
+
+  .shift-light .workspace-office__surface .keep-talking-composer__input {
+    min-height: 48px;
+    height: 48px;
+    padding: 12px 15px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.92);
+    border-color: rgba(117, 169, 205, .42);
+    font-size: .90rem;
+    line-height: 1.35;
+  }
+
+  .keep-talking-send-button {
+    min-width: 88px;
+    width: 88px;
+    min-height: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(145deg,#74c5f8,#55afea) !important;
+    color: #123b56 !important;
+    font-weight: 800;
+  }
+
+  .keep-talking-send-button svg {
+    display: none;
+  }
+
+  .keep-talking-secondary-row {
+    gap: 12px !important;
+  }
+
+  .keep-talking-secondary-action {
+    min-height: 40px !important;
+    padding: 8px 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    border-radius: 999px;
+    border-color: rgba(128, 159, 180, .22);
+    background: rgba(255,255,255,.76);
+    color: #3b617d;
+    font-size: .78rem;
+    box-shadow: 0 5px 16px rgba(62, 82, 94, .04);
+  }
+
+  .keep-talking-secondary-action svg {
+    color: #547b98;
+  }
+}
+
+@media (max-width: 1179px) {
+  .workspace-office--conversation .workspace-office__background {
+    filter: saturate(1.03) brightness(1.10);
+  }
+}

@@ -1,0 +1,108 @@
+/* Final pixel-level reconciliation against the pinned standalone preview. */
+
+.cinematic-hero-copy strong {
+  color: inherit;
+  font-weight: 700;
+}
+
+.cinematic-nav--hero nav > span {
+  display: none;
+}
+
+.cinematic-primary-cta {
+  width: auto;
+  height: auto;
+  min-height: auto;
+  padding: 1rem 1.2rem;
+  gap: 0;
+  font-size: .833rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cinematic-primary-cta svg {
+  display: none;
+}
+
+.cinematic-primary-cta::after {
+  content: ' →';
+  margin-left: .35rem;
+}
+
+.cinematic-scroll-cue i {
+  display: none;
+}
+
+.cinematic-scroll-cue span::after {
+  content: ' ↓';
+}
+
+/* Restore the standalone preview's browser-default paragraph breathing room
+   inside the context card. Tailwind's reset otherwise compresses this card by
+   roughly one line-height and shifts the entire two-card stack downward. */
+.arrival-card--context .cinematic-eyebrow {
+  margin: 1em 0;
+  color: #60768a;
+}
+
+.arrival-card--context .cinematic-life-context .life-context-home-heading p {
+  margin: 1em 0;
+}
+
+.arrival-card .cinematic-life-context .life-context-home-choice {
+  font-weight: 400;
+}
+
+.arrival-card .cinematic-framework-label {
+  color: #b8ddff;
+}
+
+/* The standalone arrival CTA is text-only. The richer app can keep the
+   Sparkles icon elsewhere, but the golden landing surface intentionally does
+   not spend width on it. */
+.arrival-card .cinematic-input-footer button svg {
+  display: none;
+}
+
+.arrival-card .cinematic-input-footer button:disabled {
+  background: linear-gradient(115deg,#4f9ede,#84c7f5);
+  color: #fff;
+  opacity: .52;
+}
+
+/* The approved Keep Talking mockup treats the Perspective Shift surface as
+   the architectural replacement for the painting rather than a small card on
+   top of it. On desktop, cover that entire wall-art zone. */
+@media (min-width: 1180px) {
+  .workspace-office--conversation {
+    --painting-panel-left: clamp(56px, 4vw, 72px);
+    --painting-panel-width: clamp(440px, 27vw, 480px);
+    --workspace-right-start: clamp(550px, 32vw, 650px);
+  }
+
+  .keep-talking-perspective {
+    width: var(--painting-panel-width);
+    height: min(640px, calc(100dvh - 32px));
+    min-height: min(600px, calc(100dvh - 32px));
+    max-height: calc(100dvh - 32px);
+  }
+}
+
+/* Workspace accents use the same light-blue family throughout. Prediction
+   Lab's older amber states remain semantically distinct through labels and
+   borders, but no longer introduce an unrelated orange visual system. */
+.workspace-office [class*='bg-amber-950'] {
+  background-color: #e8f4ff !important;
+}
+.workspace-office [class*='bg-amber-500'] {
+  background-color: #9ed3fa !important;
+}
+.workspace-office [class*='text-amber-'] {
+  color: #2d6f9f !important;
+}
+.workspace-office [class*='border-amber-'] {
+  border-color: #9bc9e9 !important;
+}
+.workspace-office [class*='hover:bg-amber-500']:hover {
+  background-color: #b8def8 !important;
+}
