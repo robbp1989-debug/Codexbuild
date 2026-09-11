@@ -1,10 +1,7 @@
-/* Final approved Keep Talking composition ---------------------------------
-   This layer corrects the remaining production drift visible after the
-   routing rebuild. It intentionally sits after approved-keep-talking.css.
-
-   Key invariant: Keep Talking must feel like the next state of the cinematic
-   office, not a separate gray utility page. The real cinematic movie is held
-   on its final chair frame and becomes the stationary room behind the tools. */
+/* Final Office-reference Keep Talking composition -------------------------
+   This layer is intentionally last in app/layout.tsx. The approved Office
+   screenshot is the visual authority for the desktop composition; the live
+   application state, conversation, memory, safety, and routing remain real. */
 
 .workspace-office__background-video {
   display: none;
@@ -25,31 +22,31 @@
   object-fit: cover;
   object-position: center center;
   transform: scale(1.006);
-  filter: saturate(1.04) brightness(1.18) contrast(.97);
+  filter: saturate(1.03) brightness(1.10) contrast(.99);
   pointer-events: none;
 }
 
 .workspace-office--conversation .workspace-office__veil {
   background:
-    linear-gradient(180deg, rgba(255,252,248,.025), rgba(250,252,252,.055) 56%, rgba(247,250,250,.10)),
-    radial-gradient(circle at 77% 10%, rgba(255,255,255,.13), transparent 40%),
-    radial-gradient(circle at 18% 74%, rgba(255,238,214,.07), transparent 36%);
-  backdrop-filter: blur(.45px);
-  -webkit-backdrop-filter: blur(.45px);
+    linear-gradient(180deg, rgba(255,252,248,.015), rgba(250,252,252,.035) 56%, rgba(247,250,250,.065)),
+    radial-gradient(circle at 77% 10%, rgba(255,255,255,.10), transparent 40%),
+    radial-gradient(circle at 18% 74%, rgba(255,238,214,.055), transparent 36%);
+  backdrop-filter: blur(.2px);
+  -webkit-backdrop-filter: blur(.2px);
 }
 
 @media (min-width: 1180px) {
   .workspace-office--conversation {
-    --painting-panel-left: clamp(58px, 4vw, 68px);
+    /* Measured from the approved 1672×941 reference. */
+    --painting-panel-left: clamp(58px, 3.9vw, 68px);
     --painting-panel-width: clamp(350px, 22.2vw, 390px);
     --workspace-right-start: clamp(520px, 31.45vw, 548px);
-    --workspace-right-edge: clamp(48px, 3.35vw, 64px);
+    --workspace-right-edge: clamp(126px, 8.3vw, 150px);
   }
 
-  /* Reframe the final cinematic frame so the chair remains prominent on the
-     left, as in the approved composition, while the window side stays behind
-     the conversation glass. Using left + right instead of a percentage width
-     avoids global video width rules collapsing the frame back to 100vw. */
+  /* Keep the chair prominent on the left while retaining the same real
+     cinematic office. The actual held timestamp is selected in WorkspaceShell
+     from browser-rendered frame samples rather than video.duration. */
   .workspace-office--conversation .workspace-office__background-video {
     inset: 0 0 0 -30vw;
     width: auto !important;
@@ -61,7 +58,7 @@
   }
 
   .workspace-office--conversation .workspace-header {
-    top: 52px;
+    top: 61px;
     left: var(--workspace-right-start);
     right: var(--workspace-right-edge);
     width: auto;
@@ -84,14 +81,14 @@
     width: auto;
     margin-left: var(--workspace-right-start);
     margin-right: var(--workspace-right-edge);
-    padding: 128px 0 44px !important;
+    padding: 137px 0 85px !important;
   }
 
-  /* The workspace surface is the large outer glass pane from the approved
-     mockup. The conversation itself is intentionally inset inside it. */
+  /* The outer pane begins immediately below the one-row navigation and ends
+     at the same lower visual line as the inset conversation card. */
   .workspace-office--conversation .workspace-office__surface {
-    min-height: calc(100dvh - 180px);
-    padding: 22px clamp(50px, 4.35vw, 74px) 24px !important;
+    min-height: calc(100dvh - 222px);
+    padding: 14px clamp(50px, 4.35vw, 74px) 0 !important;
     border: 1px solid rgba(145,174,193,.26);
     border-top: 0;
     border-radius: 0 0 28px 28px;
@@ -106,10 +103,11 @@
   }
 
   .keep-talking-perspective {
-    top: 28px;
+    top: 16px;
     left: var(--painting-panel-left);
     width: var(--painting-panel-width);
-    min-height: 408px !important;
+    min-height: 428px !important;
+    max-height: calc(100dvh - 32px) !important;
     padding: 30px 34px 28px;
     border-radius: 30px;
     border-color: rgba(169,171,167,.46);
@@ -132,7 +130,7 @@
 
   .keep-talking-dialogue {
     width: 100%;
-    min-height: calc(100dvh - 226px);
+    min-height: calc(100dvh - 236px);
     border: 1px solid rgba(145,174,193,.28);
     border-radius: 24px;
     background: rgba(250,252,253,.78);
@@ -182,7 +180,7 @@
     height: 100% !important;
     transform: scale(1.006);
     object-position: 53% center;
-    filter: saturate(1.03) brightness(1.13) contrast(.98);
+    filter: saturate(1.03) brightness(1.10) contrast(.99);
   }
 }
 
