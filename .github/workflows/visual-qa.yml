@@ -25,15 +25,17 @@ jobs:
       - name: Install app dependencies
         run: npm ci
 
-      - name: Install Chromium
-        run: npx -y playwright@1.55.0 install --with-deps chromium
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
 
       - name: Start SHIFT preview
         run: |
-          npm run dev -- --host 127.0.0.1 --port 3000 > /tmp/shift-preview.log 2>&1 &
+          nohup npm run dev -- --host localhost --port 3000 > /tmp/shift-preview.log 2>&1 &
           echo $! > /tmp/shift-preview.pid
           for i in {1..90}; do
-            if curl -fsS http://127.0.0.1:3000 >/dev/null; then
+            if curl -fsS http://localhost:3000 >/dev/null; then
               exit 0
             fi
             sleep 1
@@ -42,7 +44,7 @@ jobs:
           exit 1
 
       - name: Capture golden and rebuilt screenshots
-        run: npx -y @playwright/test@1.55.0 test qa/visual.spec.ts --browser=chromium --reporter=line
+        run: npx playwright test qa/visual.spec.ts --browser=chromium --reporter=line
 
       - name: Upload screenshots
         if: always()
