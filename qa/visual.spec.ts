@@ -5,6 +5,12 @@ const OUT = 'qa-artifacts';
 const LOCAL = 'http://localhost:3000';
 const GOLDEN_LOCAL = `${LOCAL}/qa/shift-live-scroll.html`;
 
+// Use the installed Google Chrome channel rather than Playwright's open-source
+// Chromium build. The approved SHIFT movie is H.264, and Chrome includes the
+// codec needed to exercise the real scrubbed video instead of silently falling
+// back to static frames during visual regression testing.
+test.use({ channel: 'chrome' });
+
 async function shot(page: import('@playwright/test').Page, name: string) {
   fs.mkdirSync(OUT, { recursive: true });
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
