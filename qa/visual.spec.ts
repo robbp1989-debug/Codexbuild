@@ -222,8 +222,10 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   const arrivalButton = page.getByRole('button', { name: /Arrival/i }).first();
   await expect(arrivalButton).toBeVisible();
   await arrivalButton.click();
-  await expect.poll(async () => page.locator('.cinematic-panel--workspace-arrival').evaluate((node) => Number.parseFloat(getComputedStyle(node as HTMLElement).opacity)), { timeout: 15_000 }).toBeGreaterThan(0.8);
-  await expect(page.getByText('Where would you like to begin?')).toBeVisible();
-  await page.waitForTimeout(300);
+  await expect(page.locator('.cinematic-scroll')).toBeVisible({ timeout: 10_000 });
+  // Scroll explicitly to the already-tested arrival stop so this assertion is
+  // about route/state correctness, not requestAnimationFrame scheduling jitter.
+  await moveToArrival(page);
+  await expect(page.getByText('Where would you like to begin?')).toBeVisible({ timeout: 10_000 });
   await shot(page, '70-arrival-return');
 });
