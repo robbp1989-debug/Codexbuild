@@ -162,7 +162,9 @@ export const HomePage: React.FC = () => {
       saveShiftBreakdown(newShift);
       setActiveShift(newShift);
       playSoftSound('complete');
-      setActiveTab('breakdown');
+      // Keep Talking is now the immediate second screen. The full breakdown
+      // remains available from the Reflection tab in the workspace navigation.
+      setActiveTab('conversation');
     } catch (requestError) {
       console.warn('Network call failed, running local clinical fallback:', requestError);
       const fallback = generateFallbackBreakdown(text);
@@ -197,7 +199,7 @@ export const HomePage: React.FC = () => {
       saveShiftBreakdown(fallbackShift);
       setActiveShift(fallbackShift);
       playSoftSound('complete');
-      setActiveTab('breakdown');
+      setActiveTab('conversation');
     } finally {
       setLoading(false);
     }

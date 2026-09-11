@@ -160,14 +160,23 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   const reflection = page.locator('#reflection-workspace textarea');
   await reflection.fill('A friend did not reply right away and I noticed my mind predicting that I had done something wrong.');
   await page.getByRole('button', { name: /Explore my situation/i }).click();
-  await expect(page.getByText('Your SHIFT breakdown')).toBeVisible({ timeout: 20_000 });
-  await page.waitForTimeout(350);
-  await shot(page, '20-breakdown');
 
-  await page.getByRole('button', { name: /Keep talking/i }).first().click();
-  await expect(page.getByRole('heading', { name: /Stay with this before solving it/i })).toBeVisible();
+  // The approved experience makes Keep Talking the immediate second screen
+  // after analysis. Reflection remains available as a tab rather than a gate.
+  await expect(page.getByRole('heading', { name: /Stay with this before solving it/i })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Perspective shift', { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Keep Talking', exact: true })).toHaveAttribute('aria-current', 'page');
   await page.waitForTimeout(450);
+  await shot(page, '20-second-screen-keep-talking');
+
+  // The detailed SHIFT breakdown is still fully accessible through Reflection.
+  await page.getByRole('button', { name: 'Reflection', exact: true }).click();
+  await expect(page.getByText('Your SHIFT breakdown')).toBeVisible({ timeout: 10_000 });
+  await shot(page, '25-breakdown-via-reflection');
+
+  await page.getByRole('button', { name: 'Keep Talking', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /Stay with this before solving it/i })).toBeVisible();
+  await page.waitForTimeout(350);
   await shot(page, '30-keep-talking');
 
   // The handoff requires a real evolving conversation, not a repeated canned
@@ -213,7 +222,10 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   const arrivalButton = page.getByRole('button', { name: /Arrival/i }).first();
   await expect(arrivalButton).toBeVisible();
   await arrivalButton.click();
+  await expect(page.locator('.cinematic-scroll')).toBeVisible({ timeout: 10_000 });
+  // Scroll explicitly to the already-tested arrival stop so this assertion is
+  // about route/state correctness, not requestAnimationFrame scheduling jitter.
+  await moveToArrival(page);
   await expect(page.getByText('Where would you like to begin?')).toBeVisible({ timeout: 10_000 });
-  await page.waitForTimeout(1100);
   await shot(page, '70-arrival-return');
 });
