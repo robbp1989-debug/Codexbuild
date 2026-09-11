@@ -62,6 +62,9 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   await expect(page.locator('.arrival-nav').getByRole('button', { name: 'Life context' })).toBeVisible();
   await expect(page.locator('#life-context').getByText('Life context', { exact: true })).toBeVisible();
   await expect(page.getByText("What’s going on?", { exact: true })).toBeVisible();
+  for (const contextName of ['Everyday life', 'Work', 'Relationships', 'Family', 'Recovery', 'Social situations']) {
+    await expect(page.locator('#life-context').getByText(contextName, { exact: true })).toBeVisible();
+  }
 
   const reflection = page.locator('#reflection-workspace textarea');
   await reflection.fill('A friend did not reply right away and I noticed my mind predicting that I had done something wrong.');
@@ -75,6 +78,27 @@ test('capture golden reference and rebuilt SHIFT flow', async ({ page }) => {
   await expect(page.getByText('Perspective shift', { exact: false }).first()).toBeVisible();
   await page.waitForTimeout(450);
   await shot(page, '30-keep-talking');
+
+  // The handoff requires a real evolving conversation, not a repeated canned
+  // prompt. Exercise the live conversation endpoint twice and confirm SHIFT
+  // advances to a new assistant turn each time.
+  const assistantTurns = page.locator('.keep-talking-turn--assistant .keep-talking-turn__body');
+  const initialAssistantCount = await assistantTurns.count();
+  const initialAssistantText = await assistantTurns.last().innerText();
+  const composer = page.getByPlaceholder('What’s on your mind right now?');
+
+  await composer.fill('I think maybe they are upset with me, and I keep trying to figure out why.');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(assistantTurns).toHaveCount(initialAssistantCount + 1, { timeout: 20_000 });
+  const firstReply = await assistantTurns.last().innerText();
+  expect(firstReply.trim()).not.toBe(initialAssistantText.trim());
+
+  await composer.fill('Underneath the analysis, I feel hurt and uncertain.');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(assistantTurns).toHaveCount(initialAssistantCount + 2, { timeout: 20_000 });
+  const secondReply = await assistantTurns.last().innerText();
+  expect(secondReply.trim()).not.toBe(firstReply.trim());
+  await shot(page, '31-keep-talking-evolving');
 
   await page.getByRole('button', { name: 'Prediction Lab' }).click();
   await page.waitForTimeout(400);
