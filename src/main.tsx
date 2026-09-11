@@ -6,6 +6,11 @@ import './arrival-blue.css';
 import './workspace-office.css';
 import './perspective-left.css';
 import './perspective-final.css';
+import './golden-final.css';
+import './golden-scroll-source.css';
+import './golden-pixel-fixes.css';
+import './approved-keep-talking.css';
+import './approved-keep-talking-v2.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
