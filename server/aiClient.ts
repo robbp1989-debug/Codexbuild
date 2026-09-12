@@ -52,11 +52,12 @@ async function callOpenAI(model: string, options: GenerateOptions): Promise<stri
   if (options.systemInstruction) messages.push({ role: 'system', content: options.systemInstruction });
   messages.push({ role: 'user', content: options.contents });
 
-  const body: Record<string, unknown> = { model, messages };
+  const body: Record<string, unknown> = { model, messages, max_completion_tokens: 1800 };
   if (options.jsonResponse) body.response_format = { type: 'json_object' };
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
+    signal: AbortSignal.timeout(8000),
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,

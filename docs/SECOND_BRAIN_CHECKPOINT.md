@@ -42,3 +42,10 @@ No application code changes or clinical validation have occurred at this checkpo
 - Deployment connector also could not access the user-provided preview through its authenticated fetch. No live update claimed.
 - Remaining: verify exact target deployment/branch, enable a real backend on that deployment, complete primary-source review of 72 candidates and independent review of adapted exercises, assess existing game answer keys, and add real authenticated source synchronization if desired. Current import is a versioned snapshot, not live Drive synchronization.
 - Saved implementation at b63b3fc before final test/handoff commit. Resume from the integration branch, not main.
+
+## Backend continuation
+- Added a Vercel /api function with explicit routing before the SPA fallback. It handles health, source-card catalog, reflection, conversation, and confirmed game requests without importing Cloudflare account storage.
+- Added request-size/method/origin checks, bounded model output and request timeouts, and explicit no-store responses. Unsupported account endpoints report failure rather than claiming persistence.
+- Server responses expose selected source-card IDs and version. Account memory remains unavailable on this Vercel adapter; relevant consented device memories can be used per request.
+- Six backend tests PASSED in addition to the six knowledge tests. This validates local fallback behavior, not live model or Vercel execution. Preview build passes. Live deployment/access remains blocked pending reconnection.
+- New code uses documented Vercel Node Web Standard fetch export. Validate the exact deployment after access returns before merging or promoting.

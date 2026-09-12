@@ -2,10 +2,22 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npx vite build --config vite.preview.config.ts",
   "outputDirectory": "dist-preview",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/api(?:/.*)?",
+      "dest": "/api/shift"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
+      "dest": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/shift.ts": {
+      "maxDuration": 60
+    }
+  }
 }
