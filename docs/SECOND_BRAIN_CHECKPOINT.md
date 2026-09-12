@@ -34,3 +34,11 @@ No application code changes or clinical validation have occurred at this checkpo
 - Removed automatic confirmation of suggested emotions/needs and replaced invented fallback narratives with neutral reflection prompts.
 - No live Drive sync, account backend migration, or deployment is completed. Static preview does not execute app/api handlers.
 - Full typecheck currently reports existing storage-check typing and missing Playwright QA dependency errors; no errors reported in edited files. Preview build verification in progress.
+
+## Verified savepoint
+- Preview production build PASSED. Six focused second-brain tests PASSED (`node --test tests/second-brain.test.mjs`, Node 24).
+- Added the existing safety check before the browser makes a reflection request, so static/offline fallback does not skip that check. This is not a comprehensive clinical risk assessment.
+- Existing older Learn modules explicitly marked as draft pending source/clinical review.
+- Deployment connector also could not access the user-provided preview through its authenticated fetch. No live update claimed.
+- Remaining: verify exact target deployment/branch, enable a real backend on that deployment, complete primary-source review of 72 candidates and independent review of adapted exercises, assess existing game answer keys, and add real authenticated source synchronization if desired. Current import is a versioned snapshot, not live Drive synchronization.
+- Saved implementation at b63b3fc before final test/handoff commit. Resume from the integration branch, not main.

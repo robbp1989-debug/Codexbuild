@@ -132,7 +132,7 @@ export const LearnPage: React.FC = () => {
           The Foundations of SHIFT
         </h1>
         <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-          Concise, evidence-based mental models grounding active-recall practice and trauma-informed self-reflection.
+          Explore source-checked skills above. The older learning modules below are draft educational material awaiting source and clinical review.
         </p>
       </div>
 

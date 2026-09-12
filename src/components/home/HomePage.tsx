@@ -8,6 +8,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
+import { evaluateSafety } from '../../../server/safetyCheck';
 import { generateFallbackBreakdown } from '../../../server/fallbackAnalysis';
 import { ShiftBreakdown } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -85,6 +86,11 @@ export const HomePage: React.FC = () => {
   const handleAnalyze = async (textToAnalyze?: string) => {
     const text = (textToAnalyze || inputText).trim();
     if (!text) return;
+    const localSafety = evaluateSafety(text);
+    if (localSafety.isCrisis) {
+      setCrisisInterruption({ isOpen: true, type: localSafety.crisisType, message: localSafety.crisisMessage });
+      return;
+    }
 
     playSoftSound('tap');
     setLoading(true);
@@ -166,7 +172,7 @@ export const HomePage: React.FC = () => {
       // remains available from the Reflection tab in the workspace navigation.
       setActiveTab('conversation');
     } catch (requestError) {
-      console.warn('Network call failed, running local clinical fallback:', requestError);
+      console.warn('Network call failed, using educational fallback:', requestError);
       const fallback = generateFallbackBreakdown(text);
       const fallbackShift: ShiftBreakdown = {
         id: 'shift-' + Date.now(),
