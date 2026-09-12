@@ -25,3 +25,12 @@ Register and one summary were reviewed in conversation. Full corpus has NOT been
 Completed: repository clone, branch discovery, preliminary architecture review on main, deployment access checks, checkpoint.
 Pending: current-branch inspection, evidence verification, implementation, tests, deployment.
 No application code changes or clinical validation have occurred at this checkpoint.
+
+## Implementation checkpoint
+- Imported 72 public bibliographic URLs into an inactive verification queue. No private research links or narratives included.
+- Four original, source-checked NHS self-help cards; independent clinical review explicitly pending. The larger research corpus is not clinically verified.
+- Added inspectable sources and voluntary, unscored step-by-step practice on Reflection and Learn screens; works in static preview.
+- Added bounded lexical evidence selection and shared restrictions for server reflection, Keep Talking, and generated game content. Unsupported game requests return the existing fallback signal.
+- Removed automatic confirmation of suggested emotions/needs and replaced invented fallback narratives with neutral reflection prompts.
+- No live Drive sync, account backend migration, or deployment is completed. Static preview does not execute app/api handlers.
+- Full typecheck currently reports existing storage-check typing and missing Playwright QA dependency errors; no errors reported in edited files. Preview build verification in progress.

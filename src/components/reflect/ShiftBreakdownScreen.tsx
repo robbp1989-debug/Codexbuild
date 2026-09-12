@@ -1,5 +1,6 @@
 'use client';
 
+import { EvidencePanel } from '../../second-brain/EvidencePanel';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, CheckCircle2, Edit3, Save, Sparkles, XCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -156,6 +157,8 @@ export const ShiftBreakdownScreen: React.FC = () => {
             Review what fits. SHIFT separates what happened, what you felt, the meaning your mind added, what the response may be trying to do, and what you can choose today.
           </p>
         </header>
+
+        <EvidencePanel query={[activeShift.userEditedObservation || activeShift.observation, ...confirmedNeeds].join(" ")} />
 
         {savedBanner && (
           <div className="mb-5 flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50/90 px-4 py-3 text-sm text-sky-900" role="status">

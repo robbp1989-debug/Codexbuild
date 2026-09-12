@@ -1,3 +1,4 @@
+import { evidencePrompt, selectCards } from '../src/second-brain/knowledge';
 import { PRIMARY_MODEL, FALLBACK_MODELS, SHIFT_SYSTEM_INSTRUCTION } from './config';
 import { ShiftBreakdownOutput, generateFallbackBreakdown } from './fallbackAnalysis';
 
@@ -104,7 +105,7 @@ export async function analyzeShiftReflection(
   userMemoryContext?: string[],
 ): Promise<ShiftBreakdownOutput> {
   if (!process.env.OPENAI_API_KEY) {
-    console.info('[SHIFT Engine] No OPENAI_API_KEY detected. Using clinical fallback engine.');
+    console.info('[SHIFT Engine] No OPENAI_API_KEY detected. Using educational fallback.');
     return generateFallbackBreakdown(situationText);
   }
 
@@ -117,7 +118,7 @@ export async function analyzeShiftReflection(
 
     const responseText = await callModelWithFallback({
       contents: prompt,
-      systemInstruction: SHIFT_SYSTEM_INSTRUCTION,
+      systemInstruction: SHIFT_SYSTEM_INSTRUCTION + "\n" + evidencePrompt(situationText),
       jsonResponse: true,
     });
 
@@ -127,7 +128,7 @@ export async function analyzeShiftReflection(
     }
     return parsed;
   } catch (err: any) {
-    console.info('[SHIFT Engine] Transitioning to structured heuristic engine:', err?.message || 'Demand spike');
+    console.info('[SHIFT Engine] Transitioning to structured heuristic engine:', 'Model unavailable');
     return generateFallbackBreakdown(situationText);
   }
 }
@@ -233,7 +234,7 @@ export async function extractLearningMemories(
         tags: list(item.tags).map((tag) => tag.toLowerCase().slice(0, 60)).slice(0, 6),
       }));
   } catch (err: any) {
-    console.info('[SHIFT Memory] Using deterministic learning extraction:', err?.message || 'Model unavailable');
+    console.info('[SHIFT Memory] Using deterministic learning extraction:', 'Model unavailable');
     return fallbackLearningMemories(shift);
   }
 }
@@ -277,14 +278,14 @@ export async function continueShiftConversation(args: {
   try {
     const responseText = await callModelWithFallback({
       jsonResponse: true,
-      systemInstruction: conversationInstruction,
+      systemInstruction: conversationInstruction + "\n" + evidencePrompt(userMessage),
       contents: `CURRENT SHIFT:\n${JSON.stringify(shiftSnapshot)}\n\nRELEVANT HISTORICAL LEARNING:\n${memoryContext.length ? memoryContext.join('\n') : 'None retrieved.'}\n\nRECENT CONVERSATION:\n${safeHistory || 'No prior turns.'}\n\nUSER:\n${userMessage}`,
     });
     const parsed = JSON.parse(responseText) as ShiftConversationResult;
     if (!parsed.reply) throw new Error('Conversation response missing reply');
     return parsed;
   } catch (err: any) {
-    console.info('[SHIFT Conversation] Using reflective fallback:', err?.message || 'Model unavailable');
+    console.info('[SHIFT Conversation] Using reflective fallback:', 'Model unavailable');
     return {
       reply: 'We can keep talking about this without trying to solve it yet. What part of what happened is landing hardest right now — what happened, what you felt, what you think it meant, or what you wanted instead?',
       memorySuggestion: null,
@@ -299,14 +300,14 @@ export async function generatePersonalizedGameContent(
   interpretation: string,
   updatedPerspective: string,
 ): Promise<any> {
-  if (!process.env.OPENAI_API_KEY) return null;
+  if (!process.env.OPENAI_API_KEY || !selectCards([theme, observation, interpretation].join(" "), gameId).length) return null;
 
   try {
     const prompt = `Generate 4 personalized game items for arcade game engine "${gameId}".\nActive User Theme: "${theme}"\nObjective Observation: "${observation}"\nUser Automatic Interpretation: "${interpretation}"\nUpdated Perspective: "${updatedPerspective}"\n\nFormat as JSON with an "items" array tailored to this game engine.`;
-    const responseText = await callModelWithFallback({ contents: prompt, jsonResponse: true });
+    const responseText = await callModelWithFallback({ contents: prompt, jsonResponse: true, systemInstruction: evidencePrompt([theme, observation, interpretation].join(" "), gameId) });
     return JSON.parse(responseText || '{}');
   } catch (err: any) {
-    console.info('[SHIFT Game Content] Using local game items:', err?.message || 'Local items active');
+    console.info('[SHIFT Game Content] Using local game items:', 'Local items active');
     return null;
   }
 }

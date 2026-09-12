@@ -1,3 +1,4 @@
+import { EvidencePanel } from '../../second-brain/EvidencePanel';
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -120,6 +121,7 @@ export const LearnPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto py-8 sm:py-12 space-y-8">
+      <EvidencePanel all />
       {/* Header */}
       <div className="pb-6 border-b border-slate-800">
         <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-teal-400 font-semibold mb-1">
