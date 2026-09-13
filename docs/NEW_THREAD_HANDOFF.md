@@ -60,3 +60,11 @@ The runtime test compiles an unbundled NodeNext entry and calls health, catching
 
 ## Working-copy cautions
 The previous workspace was `/workspace/scratch/31d6523761bc/shift`; it may expire. Code was saved through GitHub tools because shell push lacked credentials. Local HEAD/status may not match remote saved commits and can display already-saved code as dirty. Do not reset or force-push blindly; use a fresh checkout of the remote integration branch if needed. Prior public-repository approval rejected private links, so only sanitized code, public research sources, and operational notes were committed. No user conversation examples or secret values belong in public docs.
+
+## Later runtime-log finding — 2026-09-13
+- New deployment host conversation and breakdown requests return HTTP 200 but log `Model unavailable`, so the server catches a failed OpenAI call and supplies deterministic fallback text.
+- An older host logged `No OPENAI_API_KEY detected`; the new host no longer logs that. This confirms the Preview-scoped variable reached the new deployment.
+- Current logging intentionally discards the actual provider error. The next code change should record only safe diagnostics: attempted model, HTTP status, OpenAI error code/type, request ID, or timeout name. Never log the key, response body, prompt, or user narrative.
+- The configured primary model `gpt-5-mini` officially supports Chat Completions and structured outputs, so do not assume the model name/endpoint combination is invalid. Check 401 authentication, 429 credit/project/org limits, timeout, empty output, and JSON parse failure using safe diagnostics.
+- `/api/shift/memory/extract` returning 404 is expected on the preview adapter because account persistence is explicitly unavailable. It does not cause the repeated Keep Talking response. The frontend should later stop calling that unsupported endpoint or suppress the expected request.
+- As a user-side diagnostic, OpenAI dashboard “Test models” is optional but now useful: choose `gpt-5-mini` and send a tiny test. It validates the OpenAI project/model/billing path, though it does not prove the exact secret copied into Vercel.
