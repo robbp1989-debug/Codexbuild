@@ -1,4 +1,4 @@
-import type { ArcadeModeType } from '../src/types';
+import type { ArcadeModeType } from '../src/types/index.js';
 
 export interface ShiftBreakdownOutput {
   observation: string;

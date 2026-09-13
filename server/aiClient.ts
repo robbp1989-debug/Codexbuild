@@ -1,6 +1,6 @@
-import { evidencePrompt, selectCards } from '../src/second-brain/knowledge';
-import { PRIMARY_MODEL, FALLBACK_MODELS, SHIFT_SYSTEM_INSTRUCTION } from './config';
-import { ShiftBreakdownOutput, generateFallbackBreakdown } from './fallbackAnalysis';
+import { evidencePrompt, selectCards } from '../src/second-brain/knowledge.js';
+import { PRIMARY_MODEL, FALLBACK_MODELS, SHIFT_SYSTEM_INSTRUCTION } from './config.js';
+import { type ShiftBreakdownOutput, generateFallbackBreakdown } from './fallbackAnalysis.js';
 
 // ---------------------------------------------------------------------------
 // Provider-agnostic AI client.

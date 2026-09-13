@@ -1,7 +1,7 @@
-import { analyzeShiftReflection, continueShiftConversation, generatePersonalizedGameContent } from './aiClient';
-import { evaluateSafety } from './safetyCheck';
-import { sanitizeMemoryItems, selectRelevantMemoryContext } from './memoryContext';
-import { KNOWLEDGE_CARDS, KNOWLEDGE_VERSION, selectCards } from '../src/second-brain/knowledge';
+import { analyzeShiftReflection, continueShiftConversation, generatePersonalizedGameContent } from './aiClient.js';
+import { evaluateSafety } from './safetyCheck.js';
+import { sanitizeMemoryItems, selectRelevantMemoryContext } from './memoryContext.js';
+import { KNOWLEDGE_CARDS, KNOWLEDGE_VERSION, selectCards } from '../src/second-brain/knowledge.js';
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });

@@ -1,4 +1,4 @@
-import type { ArcadeModeType } from '../types';
+import type { ArcadeModeType } from '../types/index.js';
 
 export const KNOWLEDGE_VERSION = '2026-09-12.1';
 export type SkillId = 'thought-record' | 'balanced-perspective' | 'practical-choice' | 'worry-plan';

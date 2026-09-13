@@ -55,3 +55,9 @@ No application code changes or clinical validation have occurred at this checkpo
 - The preview requires Vercel authentication: an unauthenticated health request redirects to the Vercel login page. The Vercel connector still cannot inspect it. A successful build/deployment does not verify runtime responses or API credentials.
 - Added per-conversation source-context disclosure and browser-side crisis interruption before conversation requests. This preserves the office layout and does not claim sources establish individual interpretations.
 - All 12 focused tests and the preview build pass after these edits. Model-backed live behavior remains unverified.
+
+## Runtime repair — 2026-09-13
+- User log shows ERR_MODULE_NOT_FOUND for server/previewApi imported by api/shift.js. Reproduced missing extension failure locally.
+- Fixed the full Vercel entry dependency chain to use explicit emitted .js imports, including type-only imports.
+- Added an unbundled TypeScript-to-NodeNext runtime test that imports the emitted function and invokes /api/health. This catches the issue missed by earlier bundled tests.
+- All 13 focused tests pass. Preview build checked again. Live recovery requires the replacement deployment and authenticated health response.
