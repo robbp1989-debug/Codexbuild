@@ -8,6 +8,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
+import { evaluateSafety } from '../../../server/safetyCheck';
 import { generateFallbackBreakdown } from '../../../server/fallbackAnalysis';
 import { ShiftBreakdown } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -85,6 +86,11 @@ export const HomePage: React.FC = () => {
   const handleAnalyze = async (textToAnalyze?: string) => {
     const text = (textToAnalyze || inputText).trim();
     if (!text) return;
+    const localSafety = evaluateSafety(text);
+    if (localSafety.isCrisis) {
+      setCrisisInterruption({ isOpen: true, type: localSafety.crisisType, message: localSafety.crisisMessage });
+      return;
+    }
 
     playSoftSound('tap');
     setLoading(true);
@@ -137,12 +143,12 @@ export const HomePage: React.FC = () => {
         observation: breakdownData.observation || text,
         userEditedObservation: breakdownData.observation || text,
         possible_emotions: breakdownData.possible_emotions || ['Uncertainty', 'Tension'],
-        confirmed_emotions: [breakdownData.possible_emotions?.[0] || 'Uncertainty'],
+        confirmed_emotions: [],
         emotionIntensity: 6,
         interpretation: breakdownData.interpretation || 'Mind anticipating an unwanted consequence.',
         userEditedInterpretation: breakdownData.interpretation || 'Mind anticipating an unwanted consequence.',
         possible_needs: breakdownData.possible_needs || ['predictability', 'safety'],
-        confirmed_needs: [breakdownData.possible_needs?.[0] || 'predictability'],
+        confirmed_needs: [],
         protective_rule_hypothesis: breakdownData.protective_rule_hypothesis || 'When ambiguity occurs, I predict negative outcomes, so my system attempts to control or retreat.',
         hypothesis_confidence: breakdownData.hypothesis_confidence || 'medium',
         hypothesisUserStatus: 'unreviewed',
@@ -166,7 +172,7 @@ export const HomePage: React.FC = () => {
       // remains available from the Reflection tab in the workspace navigation.
       setActiveTab('conversation');
     } catch (requestError) {
-      console.warn('Network call failed, running local clinical fallback:', requestError);
+      console.warn('Network call failed, using educational fallback:', requestError);
       const fallback = generateFallbackBreakdown(text);
       const fallbackShift: ShiftBreakdown = {
         id: 'shift-' + Date.now(),
@@ -176,12 +182,12 @@ export const HomePage: React.FC = () => {
         observation: fallback.observation,
         userEditedObservation: fallback.observation,
         possible_emotions: fallback.possible_emotions,
-        confirmed_emotions: [fallback.possible_emotions[0]],
+        confirmed_emotions: [],
         emotionIntensity: 6,
         interpretation: fallback.interpretation,
         userEditedInterpretation: fallback.interpretation,
         possible_needs: fallback.possible_needs,
-        confirmed_needs: [fallback.possible_needs[0]],
+        confirmed_needs: [],
         protective_rule_hypothesis: fallback.protective_rule_hypothesis,
         hypothesis_confidence: fallback.hypothesis_confidence,
         hypothesisUserStatus: 'unreviewed',

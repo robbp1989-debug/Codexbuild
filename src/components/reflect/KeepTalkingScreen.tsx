@@ -14,11 +14,13 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
+import { evaluateSafety } from '../../../server/safetyCheck';
 import { useApp } from '../../context/AppContext';
 
 interface ConversationTurn {
   role: 'user' | 'assistant';
   content: string;
+  evidence?: { version: string; sources: Array<{title: string; url: string}> };
 }
 
 interface MemorySuggestion {
@@ -80,6 +82,11 @@ export const KeepTalkingScreen: React.FC = () => {
   const sendMessage = async () => {
     const message = input.trim();
     if (!message || loading) return;
+    const safety = evaluateSafety(message);
+    if (safety.isCrisis) {
+      setCrisisInterruption({isOpen: true, type: safety.crisisType, message: safety.crisisMessage});
+      return;
+    }
 
     playSoftSound('tap');
     const nextTurns: ConversationTurn[] = [...turns, { role: 'user', content: message }];
@@ -107,6 +114,7 @@ export const KeepTalkingScreen: React.FC = () => {
         crisisType?: string;
         crisisMessage?: string;
         reply?: string;
+        evidence?: ConversationTurn['evidence'];
         relevantMemory?: string[];
         memorySuggestion?: MemorySuggestion | null;
       };
@@ -117,7 +125,7 @@ export const KeepTalkingScreen: React.FC = () => {
       }
 
       const reply = data.reply || 'What part of that feels most important to name before we explain it?';
-      setTurns((current) => [...current, { role: 'assistant', content: reply }]);
+      setTurns((current) => [...current, { role: 'assistant', content: reply, evidence: data.evidence }]);
       setMemoryUsed(Array.isArray(data.relevantMemory) ? data.relevantMemory : []);
       setMemorySuggestion(data.memorySuggestion || null);
       playSoftSound('chime');
@@ -207,6 +215,14 @@ export const KeepTalkingScreen: React.FC = () => {
             <div key={`${turn.role}-${index}`} className={`keep-talking-turn keep-talking-turn--${turn.role}`}>
               <div className="keep-talking-turn__label">{turn.role === 'user' ? 'You' : 'SHIFT'}</div>
               <div className="keep-talking-turn__body">{turn.content}</div>
+              {turn.evidence && <details className="mt-3 text-sm">
+                <summary className="cursor-pointer font-medium">Research context for this response</summary>
+                <p className="mt-2">These educational sources were selected for this request. They do not verify personal interpretations or establish that SHIFT is a validated treatment.</p>
+                {turn.evidence.sources.length === 0 && <p className="mt-2">No source-backed exercise was selected; this response should remain exploratory.</p>}
+                {turn.evidence.sources.filter(source => {
+                  try { return new URL(source.url).hostname === 'www.nhs.uk'; } catch { return false; }
+                }).map(source => <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="mt-2 block text-blue-700 underline">{source.title}</a>)}
+              </details>}
             </div>
           ))}
           {loading && (
