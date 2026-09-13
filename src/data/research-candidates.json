@@ -1,0 +1,366 @@
+{
+  "version": "2026-09-12",
+  "description": "Public source links imported from the project research register. Pending primary-source verification; excluded from active guidance until individually reviewed.",
+  "sources": [
+    {
+      "id": "candidate-1",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3584580/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-2",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7856415/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-3",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11459498/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-4",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7618600/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-5",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4396183/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-6",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2559832/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-7",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8586102/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-8",
+      "url": "https://www.nice.org.uk/guidance/ng222",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-9",
+      "url": "https://www.nice.org.uk/guidance/cg159",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-10",
+      "url": "https://www.nice.org.uk/guidance/ng116",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-11",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11653371/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-12",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5039035/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-13",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9789494/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-14",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10293686/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-15",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11178235/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-16",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10796538/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-17",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11837766/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-18",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13152172/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-19",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8136399/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-20",
+      "url": "https://contextualscience.org/act",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-21",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2963469/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-22",
+      "url": "https://www.cochranelibrary.com/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-23",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/25267661/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-24",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/33875025/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-25",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8140974/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-26",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11414305/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-27",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11119869/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-28",
+      "url": "https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00756/full",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-29",
+      "url": "https://behavioraltech.org/resources/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-30",
+      "url": "https://www.nice.org.uk/guidance/ng225",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-31",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7001362/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-32",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7697337/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-33",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11032640/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-34",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11578913/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-35",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10370272/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-36",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/21454916/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-37",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/25650630/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-38",
+      "url": "https://interpersonalpsychotherapy.org/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-39",
+      "url": "https://www.who.int/teams/mental-health-and-substance-use/policy-law-rights/qualityrights",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-40",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8364929/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-41",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8083197/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-42",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10172073/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-43",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9819465/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-44",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5636047/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-45",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8533446/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-46",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/28132772/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-47",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/26111944/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-48",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/24395196/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-49",
+      "url": "https://www.nccih.nih.gov/health/meditation-and-mindfulness-effectiveness-and-safety",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-50",
+      "url": "https://www.who.int/publications/i/item/9789241505406",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-51",
+      "url": "https://store.samhsa.gov/product/tip-57-trauma-informed-care-behavioral-health-services/sma14-4816",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-52",
+      "url": "https://www.samhsa.gov/resource/ebp/practical-guide-implementing-trauma-informed-approach",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-53",
+      "url": "https://www.ptsd.va.gov/apps/decisionaid/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-54",
+      "url": "https://www.ptsd.va.gov/understand/what/ptsd_basics.asp",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-55",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1463134/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-56",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8200683/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-57",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5636036/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-58",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5958907/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-59",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5844157/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-60",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11075040/",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-61",
+      "url": "https://www.samhsa.gov/find-help/national-helpline",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-62",
+      "url": "https://www.niaaa.nih.gov/publications/brochures-and-fact-sheets/treatment-alcohol-problems-finding-and-getting-help",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-63",
+      "url": "https://www.who.int/publications/i/item/9789241550505",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-64",
+      "url": "https://www.who.int/publications/i/item/9789240029200",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-65",
+      "url": "https://www.who.int/publications/i/item/9789240078871",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-66",
+      "url": "https://www.nice.org.uk/corporate/ecd7",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-67",
+      "url": "https://www.fda.gov/regulatory-information/search-fda-guidance-documents/clinical-decision-support-software",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-68",
+      "url": "https://www.fda.gov/medical-devices/digital-health-center-excellence",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-69",
+      "url": "https://www.ftc.gov/business-guidance/resources/health-breach-notification-rule",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-70",
+      "url": "https://www.ftc.gov/business-guidance/blog/2021/02/health-apps-and-hipaa",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-71",
+      "url": "https://www.hhs.gov/hipaa/index.html",
+      "status": "pending_verification"
+    },
+    {
+      "id": "candidate-72",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "status": "pending_verification"
+    }
+  ]
+}

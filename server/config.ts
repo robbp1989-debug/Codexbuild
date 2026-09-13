@@ -1,12 +1,15 @@
 // Centralized Model Routing Configuration for SHIFT
-// Primary lightweight model with automated fallback sequence during high-demand periods.
+// Primary lightweight model routing for the deployed OpenAI project.
 // Swapping AI providers later only requires changing server/aiClient.ts + these names.
-export const PRIMARY_MODEL = 'gpt-5-mini';
-export const FALLBACK_MODELS = ['gpt-4o-mini', 'gpt-5-nano'];
+export const PRIMARY_MODEL = 'gpt-5.6-luna';
+// Keep routing to the model this OpenAI project has verified in Playground.
+// A provider error should be visible in safe diagnostics instead of being
+// multiplied across unavailable or unverified fallback models.
+export const FALLBACK_MODELS: string[] = [];
 export const ALL_MODELS = [PRIMARY_MODEL, ...FALLBACK_MODELS];
 export const DEFAULT_MODEL = PRIMARY_MODEL;
-export const DEEP_ANALYSIS_MODEL = 'gpt-5-mini';
-export const SAFETY_MODEL = 'gpt-5-mini';
+export const DEEP_ANALYSIS_MODEL = PRIMARY_MODEL;
+export const SAFETY_MODEL = PRIMARY_MODEL;
 
 export const SHIFT_SYSTEM_INSTRUCTION = `You are SHIFT, a personalized perspective-shifting and behavioral-learning platform.
 You are NOT an AI therapist, diagnostic service, or medical provider.
