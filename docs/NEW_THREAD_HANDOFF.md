@@ -14,6 +14,12 @@ Continue robbp1989-debug/Codexbuild from branch `integration/holly-report-import
 - PR base: `integration/second-brain-2026-09-12` (PR #27), commit `9c0ca0bff682f6ad677f6342933438a7e43c0dfb`. Main is older. Neither PR was merged or promoted to production in this work.
 - Primary preview: https://shift-office-workspace-previe-git-194874-patrick-robbs-projects.vercel.app
 
+## Follow-up: voice recovery and transcript editing
+- Empty/no-speech turns now explain how to retry; partial transcripts remain available for explicit review without automatic submission.
+- Focusing or editing the answer stops speech capture so late recognition cannot overwrite an edit. Retry keeps the previous transcript until new speech arrives.
+- Turn labels distinguish user listening from Holly speaking with the microphone off.
+- Ten focused voice/personalization tests and targeted Holly lint passed. Real-device microphone testing remains required.
+
 ## Latest verification
 At the pause, GitHub Validate SHIFT run **34774701182**, run number 75, succeeded for application commit 2503fc2. Both Vercel deployments succeeded:
 - shift-office-workspace-preview: 68kan39pHVftc8ryXJxrYmyhUrKm

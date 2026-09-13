@@ -291,9 +291,9 @@ export function HollyIntake() {
           )}
           <output aria-live="polite">
             {voiceState === 'listening'
-              ? 'Listening…'
+              ? 'Your turn — listening…'
               : voiceState === 'speaking'
-                ? 'Holly speaking…'
+                ? 'Holly is speaking — microphone off'
                 : voiceState === 'paused'
                   ? 'Microphone off'
                   : 'Ready when you are'}
@@ -302,7 +302,7 @@ export function HollyIntake() {
             <div className="personalize-actions">
               <button
                 onClick={() => {
-                  setDraft('');
+                  setNotice('');
                   setReady(false);
                   provider.current?.listen();
                 }}
@@ -394,7 +394,12 @@ export function HollyIntake() {
               rows={3}
               value={draft}
               maxLength={3000}
+              onFocus={() => {
+                stop();
+                setReady(true);
+              }}
               onChange={(e) => {
+                stop();
                 setDraft(e.target.value);
                 setSource('user_direct_form');
                 setConfidence(null);

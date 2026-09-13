@@ -147,3 +147,53 @@ test('Holly opens the microphone after each question and stopping cancels queued
   delete globalThis.window;
   delete globalThis.SpeechSynthesisUtterance;
 });
+
+test('empty and partial listening turns explain recovery without submitting an answer', () => {
+  let recognition;
+  const errors = [], transcripts = [], states = [];
+  class Recognizer {
+    constructor() { recognition = this; }
+    start() {}
+    abort() {}
+  }
+  globalThis.window = {
+    SpeechRecognition: Recognizer,
+    speechSynthesis: { cancel() {} },
+  };
+  const voice = new BrowserVoiceProvider({
+    onState: (state) => states.push(state),
+    onTranscript: (...args) => transcripts.push(args),
+    onError: (message) => errors.push(message),
+  });
+  try {
+    voice.listen();
+    recognition.onend();
+    assert.match(errors.pop(), /did not catch an answer/);
+    assert.deepEqual(transcripts, []);
+    voice.listen();
+    recognition.onresult({ results: [
+      { isFinal: false, 0: { transcript: 'I would like', confidence: 0 } },
+    ] });
+    recognition.onend();
+    assert.match(errors.pop(), /only caught part/);
+    assert.equal(transcripts[0][1], false, 'partial text never becomes a final answer');
+    assert.equal(states.at(-1), 'idle');
+    voice.listen();
+    const lateEnd = recognition.onend;
+    voice.stop();
+    lateEnd();
+    assert.equal(errors.length, 0, 'intentional stop does not show a recovery error');
+    voice.listen();
+    recognition.onerror({ error: 'no-speech' });
+    assert.match(errors.pop(), /Take your time/);
+    voice.listen();
+    recognition.onresult({ results: [
+      { isFinal: true, 0: { transcript: 'Taylor', confidence: 0.9 } },
+    ] });
+    recognition.onend();
+    assert.equal(errors.length, 0, 'complete answers do not show a recovery error');
+  } finally {
+    voice.dispose();
+    delete globalThis.window;
+  }
+});

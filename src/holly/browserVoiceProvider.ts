@@ -97,6 +97,8 @@ export class BrowserVoiceProvider implements VoiceProvider {
     recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.continuous = false;
+    let capturedFinal = false;
+    let heardPartial = false;
     recognition.onresult = (event) => {
       if (generation !== this.generation) return;
       let transcript = '';
@@ -108,6 +110,8 @@ export class BrowserVoiceProvider implements VoiceProvider {
         final &&= result.isFinal;
         if (result.isFinal) confidence = result[0].confidence || null;
       }
+      heardPartial ||= Boolean(transcript.trim());
+      capturedFinal ||= final && Boolean(transcript.trim());
       this.callbacks.onTranscript(transcript, final, confidence);
     };
     recognition.onerror = (event) => {
@@ -116,13 +120,22 @@ export class BrowserVoiceProvider implements VoiceProvider {
       this.callbacks.onError(
         event.error === 'not-allowed'
           ? 'Microphone permission was denied. You can type instead.'
-          : 'Speech recognition stopped. Please type or try the microphone again.',
+          : event.error === 'no-speech'
+            ? 'I did not catch an answer. Take your time, then choose Speak now to try again, or type below.'
+            : 'Speech recognition stopped. Your transcript is still below. You can edit it or try the microphone again.',
       );
     };
     recognition.onend = () => {
       if (generation === this.generation) {
         this.recognition = null;
         this.callbacks.onState('idle');
+        if (!capturedFinal) {
+          this.callbacks.onError(
+            heardPartial
+              ? 'I only caught part of that. Check the transcript below before using it, or choose Speak now to try again.'
+              : 'I did not catch an answer. Take your time, then choose Speak now to try again, or type below.',
+          );
+        }
       }
     };
     try {
