@@ -1,5 +1,6 @@
 'use client';
 
+import { activeContext } from '../../personalization/model';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -36,7 +37,7 @@ const QUICK_EXAMPLES = [
 
 export const HomePage: React.FC = () => {
   const {
-    memoryItems,
+    memoryItems, approvedSummary, personalContext,
     setActiveTab,
     playSoftSound,
     setActiveShift,
@@ -109,6 +110,7 @@ export const HomePage: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           situation: text,
+          approvedSummary, personalContext: activeContext(personalContext),
           // The server selects only reusable learning types. Raw event narratives and
           // unconfirmed interpretations are excluded from long-term context retrieval.
           memoryItems: memoryItems.slice(0, 80),
@@ -254,6 +256,7 @@ export const HomePage: React.FC = () => {
             <button type="button" onClick={() => arriveAtWorkspace('life-context')}>Life context</button>
             <button type="button" onClick={() => arriveAtWorkspace('reflection-workspace')}>Start a reflection</button>
             <button type="button" onClick={() => navigateToTool('dashboard')}>Explore Shift</button>
+            <button type="button" onClick={() => navigateToTool('personalize')}>Personalize SHIFT</button>
           </nav>
         </header>
 
@@ -265,6 +268,7 @@ export const HomePage: React.FC = () => {
               <details className="personal-context-disclosure">
                 <summary>Your story, in your words <span>Optional</span></summary>
                 <PersonalSummary />
+                <button type="button" onClick={() => navigateToTool('personalize')}>Talk with Holly or import a report</button>
               </details>
             </section>
 

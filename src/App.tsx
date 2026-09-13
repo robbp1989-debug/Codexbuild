@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { PersonalizationScreen } from './personalization/PersonalizationScreen';
 import { AppProvider, useApp } from './context/AppContext';
 import { HomePage } from './components/home/HomePage';
 import { WorkspaceShell } from './components/layout/WorkspaceShell';
@@ -57,6 +58,7 @@ const AppContent: React.FC = () => {
         {activeTab === 'skills' && <SkillTreeScreen />}
         {activeTab === 'prediction-lab' && <PredictionLabScreen />}
         {activeTab === 'therapy-prep' && <TherapyPrepScreen />}
+        {activeTab === 'personalize' && <PersonalizationScreen />}
         {activeTab === 'memory' && <EpistemicMemoryScreen />}
         {activeTab === 'patterns' && <PatternsPage />}
         {activeTab === 'review' && <ReviewPage />}

@@ -1,3 +1,4 @@
+import { personalContextPrompt } from '@/server/personalContext';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { continueShiftConversation } from '@/server/aiClient';
 import { sanitizeMemoryItems, selectRelevantMemoryContext } from '@/server/memoryContext';
@@ -35,7 +36,7 @@ function nonRepeatingFallback(message: string, history: Array<{ role: 'user' | '
 
 export async function POST(request: Request) {
   try {
-    const { message, currentShift, history, memoryItems } = await request.json() as Record<string, unknown>;
+    const { message, currentShift, history, memoryItems, personalContext, approvedSummary } = await request.json() as Record<string, unknown>;
     if (typeof message !== 'string' || !message.trim()) {
       return Response.json({ error: 'Please enter what you want to keep talking about.' }, { status: 400 });
     }
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
       userMessage: message.trim(),
       history: safeHistory,
       memoryContext: relevantMemory,
+      personalContext: personalContextPrompt(personalContext, approvedSummary),
     });
 
     // Keep Talking must progress as a conversation even when the hosted model is

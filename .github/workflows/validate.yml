@@ -2,7 +2,7 @@ name: Validate SHIFT
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main, master, "integration/**"]
   workflow_dispatch:
 
 permissions:
@@ -18,11 +18,13 @@ jobs:
       - name: Use Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13.0'
+          node-version: '22'
           cache: npm
       - name: Install
         run: npm ci
       - name: Check learning-memory contracts
         run: npm run check:memory
-      - name: Build
-        run: npm run build
+      - name: Focused upgrade and runtime tests
+        run: node --experimental-strip-types --test tests/second-brain.test.mjs tests/preview-api.test.mjs tests/runtime-import.test.mjs tests/personalization.test.mjs tests/holly-voice.test.mjs tests/report-import.test.mjs
+      - name: Vercel preview build
+        run: npx vite build --config vite.preview.config.ts
