@@ -41,3 +41,21 @@ CI now watches main, master and integration PR targets and builds the actual Ver
 - Speech output availability and female-sounding voice choice vary by browser/OS. No guarantee of offline audio processing. PDF parsing is built but still needs browser-file verification. There is no OCR, account sync, clinical report authentication, or autonomous medical-record retrieval.
 - Safety uses SHIFT's existing heuristic plus a few explicit immediate-medical/danger phrases. It is not clinically validated and may over-trigger or miss risks. Production clinical review, age/under-18 policy, locale resources, retention/provider terms, final wording/usability, and future voice-owner consent/license remain open, as required by the blueprint.
 - This is an isolated draft integration; no merge to main or production promotion is authorized by this handoff.
+
+## Verified remote checkpoint — 2026-09-13
+- Draft PR: https://github.com/robbp1989-debug/Codexbuild/pull/28
+- Branch: integration/holly-report-import-2026-09-13
+- Tested application commit: bd1366c341ba311ead989654c19f4b2decabc1de
+- Exact tree match between tested local code and GitHub: 89d161a0c432f9aaccc4f1c19e4fa08ac14675ae.
+- GitHub Validate SHIFT run 34774037999 completed successfully.
+- Both Vercel projects reported successful deployment: shift-office-workspace-preview and shift-approved-keep-talking-preview. The primary office deployment ID is AhoYH7PSowdAfts1B559JxJmH1ss.
+- Primary preview: https://shift-office-workspace-previe-git-194874-patrick-robbs-projects.vercel.app
+- Direct browser inspection reached Vercel sign-in, not the app. The connector could not generate temporary access. Do not disable deployment protection to complete QA.
+- No production promotion or main merge occurred. Do not change API keys or model routing just to test these UI upgrades.
+- Terminal Git push lacked credentials; the authenticated GitHub connector saved the exact tested tree atomically. Local history was aligned with that remote commit while preserving local/holly-tested-307057a.
+
+## Next implementation increments after preview review
+1. Verify the present tap-to-speak demo with real device audio and fix observed usability errors.
+2. Add optional automatic turn-taking and constrained clarification; retain a visible microphone state and immediate stop. Do not claim acoustic barge-in without testing echo behavior on real hardware.
+3. Add a consented, bounded AI-assisted report-candidate extraction route, if desired; candidates must retain source excerpts and remain inactive until review. This is distinct from the currently implemented manual excerpt selection.
+4. Finish production clinical/age/privacy decisions from the blueprint before real-user release.
