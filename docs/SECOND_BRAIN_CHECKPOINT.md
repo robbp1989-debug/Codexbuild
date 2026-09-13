@@ -1,3 +1,5 @@
+> Latest status and resume instructions: [NEW_THREAD_HANDOFF.md](NEW_THREAD_HANDOFF.md). Entries below are chronological history.
+
 # SHIFT second-brain integration checkpoint — 2026-09-12
 
 ## Authorization and preservation
@@ -61,3 +63,8 @@ No application code changes or clinical validation have occurred at this checkpo
 - Fixed the full Vercel entry dependency chain to use explicit emitted .js imports, including type-only imports.
 - Added an unbundled TypeScript-to-NodeNext runtime test that imports the emitted function and invokes /api/health. This catches the issue missed by earlier bundled tests.
 - All 13 focused tests pass. Preview build checked again. Live recovery requires the replacement deployment and authenticated health response.
+
+## Pause/savepoint — 2026-09-13
+- User confirmed the interface opens and supplied working health after runtime repair.
+- Latest repeated conversation wording matches the missing OPENAI_API_KEY branch in server/aiClient.ts; live AI remains unverified. Last environment screenshot scoped both key variables to Production only.
+- Saved a complete new-thread handoff. No application code changed for this documentation checkpoint.
