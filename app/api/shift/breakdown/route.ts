@@ -1,3 +1,4 @@
+import { personalContextPrompt } from '@/server/personalContext';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { analyzeShiftReflection } from '@/server/aiClient';
 import { mergeMemoryContext, sanitizeMemoryItems, selectRelevantMemoryContext } from '@/server/memoryContext';
@@ -7,7 +8,7 @@ import { embedMemoryQuery } from '@/server/semanticMemory';
 
 export async function POST(request: Request) {
   try {
-    const { situation, memoryContext, memoryItems } = await request.json() as Record<string, unknown>;
+    const { situation, memoryContext, memoryItems, personalContext, approvedSummary } = await request.json() as Record<string, unknown>;
     if (typeof situation !== 'string' || !situation.trim()) {
       return Response.json({ error: 'Please provide a description of what is going on.' }, { status: 400 });
     }
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
     }
     const retrieved = selectRelevantMemoryContext(situation, combinedMemory, 6, queryEmbedding);
     const context = mergeMemoryContext(retrieved, memoryContext);
-    const breakdown = await analyzeShiftReflection(situation, context);
+    const breakdown = await analyzeShiftReflection(situation, context, personalContextPrompt(personalContext, approvedSummary));
 
     return Response.json({
       safetyInterruption: false,

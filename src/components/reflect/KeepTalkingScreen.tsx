@@ -1,5 +1,6 @@
 'use client';
 
+import { activeContext } from '../../personalization/model';
 import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -40,6 +41,7 @@ export const KeepTalkingScreen: React.FC = () => {
     setActiveTab,
     setCrisisInterruption,
     playSoftSound,
+    personalContext, approvedSummary,
   } = useApp();
 
   const initialMessage = useMemo(() => {
@@ -102,6 +104,7 @@ export const KeepTalkingScreen: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          personalContext: activeContext(personalContext), approvedSummary,
           message,
           currentShift: activeShift,
           history: turns.slice(-8),

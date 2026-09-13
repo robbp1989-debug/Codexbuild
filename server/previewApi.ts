@@ -2,6 +2,7 @@ import { analyzeShiftReflection, continueShiftConversation, generatePersonalized
 import { evaluateSafety } from './safetyCheck.js';
 import { sanitizeMemoryItems, selectRelevantMemoryContext } from './memoryContext.js';
 import { KNOWLEDGE_CARDS, KNOWLEDGE_VERSION, selectCards } from '../src/second-brain/knowledge.js';
+import { personalContextPrompt } from './personalContext.js';
 import { PRIMARY_MODEL } from './config.js';
 
 function json(data: unknown, status = 200) {
@@ -52,13 +53,13 @@ export async function handlePreviewApi(request: Request): Promise<Response> {
     const evidence = { version: KNOWLEDGE_VERSION, cardIds: cards.map(card => card.id), sources: cards.map(card => card.source), selection: 'lexical', clinicalReview: 'pending' };
     const memory = selectRelevantMemoryContext(query, sanitizeMemoryItems(input.memoryItems), 6);
     if (path.endsWith('/breakdown')) {
-      const breakdown = await analyzeShiftReflection(situation, memory);
+      const breakdown = await analyzeShiftReflection(situation, memory, personalContextPrompt(input.personalContext, input.approvedSummary));
       return json({ safetyInterruption: false, breakdown, evidence, memoryUsed: memory, memorySource: 'device_or_none' });
     }
     if (path.endsWith('/conversation')) {
       if (!input.currentShift || typeof input.currentShift !== 'object' || Array.isArray(input.currentShift)) return json({ error: 'An active reflection is required.' }, 400);
       const history = Array.isArray(input.history) ? input.history.filter((turn): turn is {role: 'user' | 'assistant'; content: string} => Boolean(turn) && (turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string').slice(-8).map(turn => ({...turn, content: turn.content.slice(0,1200)})) : [];
-      const result = await continueShiftConversation({ currentShift: input.currentShift as Record<string, unknown>, userMessage: message, history, memoryContext: memory });
+      const result = await continueShiftConversation({ currentShift: input.currentShift as Record<string, unknown>, userMessage: message, history, memoryContext: memory, personalContext: personalContextPrompt(input.personalContext, input.approvedSummary) });
       return json({ ...result, safetyInterruption: false, evidence, relevantMemory: memory, memorySource: 'device_or_none' });
     }
     if (input.confirmed !== true) return json({ error: 'Confirm the reflection before generating practice.', content: null }, 400);

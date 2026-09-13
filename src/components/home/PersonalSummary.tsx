@@ -23,7 +23,7 @@ export function PersonalSummary() {
     {editing && <div className="space-y-3">
       <label className="block text-sm text-slate-700" htmlFor="personal-summary">What would you like SHIFT to keep in mind? Include goals, important boundaries, helpful skills, and anything you want it to avoid assuming. Share only what feels necessary.</label>
       <textarea id="personal-summary" value={draft} maxLength={4000} rows={6} onChange={e => setDraft(e.target.value)} className="w-full rounded-xl border border-blue-200 bg-white p-3 text-slate-900" />
-      <p className="text-sm text-slate-600">{draft.length}/4,000 characters. No document uploads or raw document storage. The approved summary is sent with reflections to our server and, when available, OpenAI for processing. Unsaved edits are not sent.</p>
+      <p className="text-sm text-slate-600">{draft.length}/4,000 characters. Only this approved text is used; unsaved edits remain in this form. The approved summary is sent with reflections to our server and, when available, OpenAI for processing. Unsaved edits are not sent.</p>
       <label className="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} className="mt-1" />Remember on this device. This is unencrypted browser storage, not a private account; avoid this option on a shared device.</label>
       <div className="flex flex-wrap gap-3">
         <button disabled={!draft.trim()} onClick={() => save(draft, remember)} className="rounded-xl bg-blue-600 text-white px-4 py-2 disabled:opacity-50">Approve and use summary</button>

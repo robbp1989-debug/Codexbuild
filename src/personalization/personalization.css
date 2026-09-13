@@ -1,0 +1,130 @@
+.personalize-screen {
+  color: #17354c;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: clamp(16px, 3vw, 32px);
+  line-height: 1.6;
+}
+.personalize-screen h1,
+.personalize-screen h2,
+.personalize-screen h3 {
+  font-family: Georgia, serif;
+  line-height: 1.25;
+  color: #13344d;
+  margin: 8px 0 16px;
+}
+.personalize-screen h1 {
+  font-size: clamp(28px, 4vw, 40px);
+}
+.personalize-screen h2 {
+  font-size: 27px;
+}
+.personalize-screen h3 {
+  font-size: 22px;
+}
+.personalize-screen p {
+  margin: 10px 0;
+}
+.personalize-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #247dac;
+}
+.personalize-card {
+  background: rgba(249, 252, 254, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  padding: clamp(18px, 3vw, 30px);
+  margin: 24px 0;
+  box-shadow: 0 12px 35px #25485d12;
+}
+.personalize-screen label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0;
+}
+.personalize-screen textarea,
+.personalize-screen input:not([type='checkbox']),
+.personalize-screen select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #bad0df;
+  border-radius: 12px;
+  background: #fff;
+  color: #183f5b;
+  padding: 12px;
+  font: inherit;
+  margin-top: 8px;
+}
+.personalize-screen textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+.personalize-screen button {
+  cursor: pointer;
+  border: 1px solid #65b3de;
+  background: #9edcff;
+  color: #153a55;
+  border-radius: 999px;
+  padding: 10px 17px;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 44px;
+}
+.personalize-screen button.secondary {
+  background: #ffffffbd;
+  border-color: #c8d9e4;
+}
+.personalize-screen button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.personalize-screen button:focus-visible,
+.personalize-screen textarea:focus-visible,
+.personalize-screen input:focus-visible,
+.personalize-screen select:focus-visible {
+  outline: 3px solid #207eaf;
+  outline-offset: 3px;
+}
+.personalize-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+.personalize-small {
+  font-size: 12px;
+  color: #506a7b;
+}
+.personalize-review,
+.personalize-consent {
+  padding: 16px;
+  border: 1px solid #c5dbe7;
+  background: #ecf7ff;
+  border-radius: 16px;
+  margin: 16px 0;
+  overflow-wrap: anywhere;
+}
+.personalize-screen .personalize-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-weight: 400;
+}
+.personalize-check input {
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .personalize-actions button {
+    flex-grow: 1;
+  }
+  .personalize-card {
+    border-radius: 18px;
+  }
+}

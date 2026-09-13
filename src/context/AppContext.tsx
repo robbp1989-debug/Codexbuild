@@ -1,3 +1,4 @@
+import { usePersonalization } from '../personalization/usePersonalization';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { normalizeLifeContext, type LifeContextId } from '../data/lifeContexts';
 import {
@@ -36,7 +37,7 @@ interface GamePersonalizationContext {
 
 type PracticeInput = Omit<PracticeSession, 'id' | 'date'> | { gameId: ArcadeModeType; score: number; durationSeconds: number; theme: string };
 
-interface AppContextType {
+interface AppContextType extends ReturnType<typeof usePersonalization> {
   approvedSummary: string;
   summaryRemembered: boolean;
   approveSummary: (text: string, remember: boolean) => boolean;
@@ -132,6 +133,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const STORAGE_KEY = 'shift_platform_storage_v2';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const personalization = usePersonalization();
   const [approvedSummary, setApprovedSummary] = useState('');
   const [summaryRemembered, setSummaryRemembered] = useState(false);
   const approveSummary = (text: string, remember: boolean): boolean => {
@@ -507,6 +509,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetToDefaults = () => {
+    personalization.clearPersonalization();
     approveSummary('', false);
     setLifeContext('everyday');
     setShifts(INITIAL_DEMO_SHIFTS);
@@ -519,6 +522,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const clearAllData = () => {
+    personalization.clearPersonalization();
     approveSummary('', false);
     setLifeContext('everyday');
     setShifts([]);
@@ -643,6 +647,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
         value={{
+          ...personalization,
           approvedSummary,
           summaryRemembered,
           approveSummary,

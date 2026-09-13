@@ -1,3 +1,4 @@
+import { PERSONAL_CONTEXT_RULES } from './personalContext.js';
 import { evidencePrompt, selectCards } from '../src/second-brain/knowledge.js';
 import { PRIMARY_MODEL, FALLBACK_MODELS, SHIFT_SYSTEM_INSTRUCTION } from './config.js';
 import { type ShiftBreakdownOutput, generateFallbackBreakdown } from './fallbackAnalysis.js';
@@ -167,6 +168,7 @@ async function callModelWithFallback(options: GenerateOptions): Promise<string> 
 export async function analyzeShiftReflection(
   situationText: string,
   userMemoryContext?: string[],
+  personalContext = '',
 ): Promise<ShiftBreakdownOutput> {
   if (!process.env.OPENAI_API_KEY) {
     console.info('[SHIFT Engine] No OPENAI_API_KEY detected. Using educational fallback.');
@@ -178,11 +180,11 @@ export async function analyzeShiftReflection(
       ? `\nRELEVANT HISTORICAL LEARNING (use only when it genuinely fits):\n${userMemoryContext.join('\n')}\n\nMemory is historical evidence, not a verdict about the current event. If you use it, compare the present situation with the earlier learning and preserve uncertainty. Do not say the user "always" reacts a certain way.`
       : '';
 
-    const prompt = `USER REFLECTION SITUATION:\n"${situationText}"\n${memoryPrompt}\nProvide a structured Shift Breakdown following the S-H-I-F-T framework and all governing principles. Distinguish observation from interpretation, present protective rules strictly as a working hypothesis, provide a believable non-toxic updated perspective, and suggest real-world experiments and arcade games. Return strictly JSON.`;
+    const prompt = `USER REFLECTION SITUATION:\n"${situationText}"\n${memoryPrompt}\n${personalContext}\nProvide a structured Shift Breakdown following the S-H-I-F-T framework and all governing principles. Distinguish observation from interpretation, present protective rules strictly as a working hypothesis, provide a believable non-toxic updated perspective, and suggest real-world experiments and arcade games. Return strictly JSON.`;
 
     const responseText = await callModelWithFallback({
       contents: prompt,
-      systemInstruction: SHIFT_SYSTEM_INSTRUCTION + "\n" + evidencePrompt(situationText),
+      systemInstruction: SHIFT_SYSTEM_INSTRUCTION + "\n" + PERSONAL_CONTEXT_RULES + "\n" + evidencePrompt(situationText),
       jsonResponse: true,
     });
 
@@ -308,8 +310,9 @@ export async function continueShiftConversation(args: {
   userMessage: string;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
   memoryContext?: string[];
+  personalContext?: string;
 }): Promise<ShiftConversationResult> {
-  const { currentShift, userMessage, history = [], memoryContext = [] } = args;
+  const { currentShift, userMessage, history = [], memoryContext = [], personalContext = '' } = args;
 
   if (!process.env.OPENAI_API_KEY) {
     return {
@@ -341,8 +344,8 @@ export async function continueShiftConversation(args: {
   try {
     const responseText = await callModelWithFallback({
       jsonResponse: true,
-      systemInstruction: conversationInstruction + "\n" + evidencePrompt(userMessage),
-      contents: `CURRENT SHIFT:\n${JSON.stringify(shiftSnapshot)}\n\nRELEVANT HISTORICAL LEARNING:\n${memoryContext.length ? memoryContext.join('\n') : 'None retrieved.'}\n\nRECENT CONVERSATION:\n${safeHistory || 'No prior turns.'}\n\nUSER:\n${userMessage}`,
+      systemInstruction: conversationInstruction + "\n" + PERSONAL_CONTEXT_RULES + "\n" + evidencePrompt(userMessage),
+      contents: `${personalContext}\nCURRENT SHIFT:\n${JSON.stringify(shiftSnapshot)}\n\nRELEVANT HISTORICAL LEARNING:\n${memoryContext.length ? memoryContext.join('\n') : 'None retrieved.'}\n\nRECENT CONVERSATION:\n${safeHistory || 'No prior turns.'}\n\nUSER:\n${userMessage}`,
     });
     const parsed = JSON.parse(responseText) as ShiftConversationResult;
     if (!parsed.reply) {
