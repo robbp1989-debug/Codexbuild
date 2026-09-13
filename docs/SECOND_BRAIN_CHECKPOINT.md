@@ -49,3 +49,9 @@ No application code changes or clinical validation have occurred at this checkpo
 - Server responses expose selected source-card IDs and version. Account memory remains unavailable on this Vercel adapter; relevant consented device memories can be used per request.
 - Six backend tests PASSED in addition to the six knowledge tests. This validates local fallback behavior, not live model or Vercel execution. Preview build passes. Live deployment/access remains blocked pending reconnection.
 - New code uses documented Vercel Node Web Standard fetch export. Validate the exact deployment after access returns before merging or promoting.
+
+## Deployment discovery — 2026-09-13
+- Correction: GitHub commit status confirms checkpoint 482171c automatically deployed successfully through the existing GitHub/Vercel integration to the office-workspace preview project. Earlier statements that it was not deployed were incorrect.
+- The preview requires Vercel authentication: an unauthenticated health request redirects to the Vercel login page. The Vercel connector still cannot inspect it. A successful build/deployment does not verify runtime responses or API credentials.
+- Added per-conversation source-context disclosure and browser-side crisis interruption before conversation requests. This preserves the office layout and does not claim sources establish individual interpretations.
+- All 12 focused tests and the preview build pass after these edits. Model-backed live behavior remains unverified.
