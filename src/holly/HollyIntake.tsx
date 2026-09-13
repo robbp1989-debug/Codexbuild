@@ -44,7 +44,7 @@ export function HollyIntake() {
     provider.current?.stop();
   }
   function speak(text: string) {
-    if (consent) provider.current?.speak(text, voiceId);
+    if (consent) provider.current?.speak(text, voiceId, true);
   }
   function interrupt(text: string) {
     const safety = intakeSafety(text);
@@ -84,6 +84,43 @@ export function HollyIntake() {
     }
     return true;
   }
+  function answer() {
+    submitAnswer(draft, source, confidence);
+  }
+  function submitAnswer(
+    text: string,
+    answerSource: ContextItem['source'],
+    answerConfidence: number | null,
+  ) {
+    if (
+      !text.trim() ||
+      text.length > 600 ||
+      intake.phase !== 'questions' ||
+      !question
+    )
+      return;
+    if (interrupt(text) || command(text)) return;
+    stop();
+    setDraft('');
+    setReady(false);
+    dispatchIntake({
+      type: 'answer',
+      answer: {
+        id: crypto.randomUUID(),
+        question_id: question.id,
+        label: question.target.replace(/_/g, ' '),
+        raw_user_text: text.trim(),
+        text: text.trim(),
+        source: answerSource,
+        confidence: answerConfidence,
+        structured_value: question.options.includes(text.trim())
+          ? text.trim()
+          : null,
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
   useEffect(() => {
     callbacks.current.onTranscript = (text, final, c) => {
       if (interrupt(text)) return;
@@ -92,10 +129,20 @@ export function HollyIntake() {
       setSource('user_direct_voice');
       setConfidence(c);
       setReady(final);
-      if (final)
+      if (final && text.trim()) {
+        if (text.length > 600) {
+          stop();
+          setNotice(
+            'That answer was long. Please say a shorter version, or edit the transcript.',
+          );
+          speak('Please give me a shorter version of that answer.');
+          return;
+        }
+        submitAnswer(text, 'user_direct_voice', c);
         setNotice(
-          'Check what I heard before continuing. You can correct any words.',
+          'Answer captured. Say go back to correct it. You will review everything before it is used.',
         );
+      }
     };
   });
   useEffect(() => {
@@ -105,8 +152,7 @@ export function HollyIntake() {
       onTranscript: (...args) => callbacks.current.onTranscript(...args),
       onError: (message) => {
         setNotice(message);
-        setMode('type');
-        setReady(true);
+        setReady(true); // Keep voice controls available for a microphone retry.
       },
     });
     const refresh = () => setVoices(provider.current?.voices() || []);
@@ -120,40 +166,15 @@ export function HollyIntake() {
   // Speech begins only after a user has explicitly chosen and consented to voice mode.
   useEffect(() => {
     if (mode === 'voice' && consent && intake.phase === 'questions' && question)
-      provider.current?.speak(question.prompt, voiceId);
+      provider.current?.speak(question.prompt, voiceId, true);
+    else if (mode === 'voice' && consent && intake.phase === 'review')
+      provider.current?.speak(
+        'That gives me enough to get started. Review what I understood below. Nothing is used until you approve it.',
+        voiceId,
+      );
   }, [intake.index, intake.phase, mode, consent, question, voiceId]);
   function startVoice() {
     setConsentOpen(true);
-  }
-  function answer() {
-    if (
-      !draft.trim() ||
-      draft.length > 600 ||
-      intake.phase !== 'questions' ||
-      !question
-    )
-      return;
-    if (interrupt(draft) || command(draft)) return;
-    stop();
-    setDraft('');
-    setReady(false);
-    dispatchIntake({
-      type: 'answer',
-      answer: {
-        id: crypto.randomUUID(),
-        question_id: question.id,
-        label: question.target.replace(/_/g, ' '),
-        raw_user_text: draft.trim(),
-        text: draft.trim(),
-        source,
-        confidence,
-        structured_value: question.options.includes(draft.trim())
-          ? draft.trim()
-          : null,
-        status: 'pending',
-        timestamp: new Date().toISOString(),
-      },
-    });
   }
   function finish() {
     const approved = intake.answers.filter((x) => x.status !== 'pending');
@@ -183,8 +204,11 @@ export function HollyIntake() {
         is an intake guide, not a therapist or emergency service.
       </p>
       <p className="personalize-small">
-        Temporary demo voice · No raw audio is recorded by SHIFT. Voice
-        availability varies by browser and device.
+        Holly asks, then listens for your spoken answer and continues
+        automatically. You do not need to type or press Use this answer. Say
+        skip, go back, repeat that, or pause while listening. Temporary demo
+        voice · No raw audio is recorded by SHIFT. Voice availability varies by
+        browser and device.
       </p>
       {consentOpen && (
         <fieldset className="personalize-consent">
@@ -278,7 +302,7 @@ export function HollyIntake() {
                   provider.current?.listen();
                 }}
               >
-                Answer by voice / Interrupt Holly
+                Speak now / Interrupt Holly
               </button>
               <button
                 className="secondary"

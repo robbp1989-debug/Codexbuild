@@ -83,3 +83,67 @@ test('unsupported recognition provides typed fallback without requesting audio',
   delete globalThis.window;
 });
 test.after(() => rm(dir, { recursive: true, force: true }));
+
+test('Holly opens the microphone after each question and stopping cancels queued listening', () => {
+  let utterance,
+    recognition,
+    starts = 0;
+  const heard = [];
+  class Recognizer {
+    constructor() {
+      recognition = this;
+    }
+    start() {
+      starts++;
+    }
+    abort() {}
+  }
+  class Utterance {
+    constructor(text) {
+      this.text = text;
+    }
+  }
+  globalThis.SpeechSynthesisUtterance = Utterance;
+  globalThis.window = {
+    SpeechSynthesisUtterance: Utterance,
+    SpeechRecognition: Recognizer,
+    speechSynthesis: {
+      getVoices: () => [],
+      speak: (u) => {
+        utterance = u;
+      },
+      cancel() {},
+    },
+  };
+  const voice = new BrowserVoiceProvider({
+    onState() {},
+    onTranscript: (text, final) => {
+      if (final) {
+        heard.push(text);
+        voice.speak('Next question', undefined, true);
+      }
+    },
+    onError: (message) => {
+      throw new Error(message);
+    },
+  });
+  voice.speak('What would you like me to call you?', undefined, true);
+  assert.equal(starts, 0, 'microphone stays off while the question is spoken');
+  utterance.onend();
+  assert.equal(starts, 1);
+  recognition.onresult({
+    results: [{ isFinal: true, 0: { transcript: 'Taylor', confidence: 0.95 } }],
+  });
+  assert.deepEqual(heard, ['Taylor']);
+  assert.equal(utterance.text, 'Next question');
+  utterance.onend();
+  assert.equal(starts, 2, 'next turn listens without another click');
+  voice.speak('A cancelled question', undefined, true);
+  const lateEnd = utterance.onend;
+  voice.stop();
+  lateEnd();
+  assert.equal(starts, 2, 'stop prevents late microphone restart');
+  voice.dispose();
+  delete globalThis.window;
+  delete globalThis.SpeechSynthesisUtterance;
+});

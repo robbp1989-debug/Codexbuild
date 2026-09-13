@@ -44,7 +44,7 @@ export class BrowserVoiceProvider implements VoiceProvider {
     window.speechSynthesis?.cancel();
     this.callbacks.onState('paused');
   }
-  speak(text: string, voiceId?: string) {
+  speak(text: string, voiceId?: string, listenAfter = false) {
     this.stop();
     const generation = this.generation;
     if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
@@ -67,7 +67,9 @@ export class BrowserVoiceProvider implements VoiceProvider {
     utterance.lang = 'en-US';
     utterance.rate = 0.95;
     utterance.onend = () => {
-      if (generation === this.generation) this.callbacks.onState('idle');
+      if (generation !== this.generation) return;
+      if (listenAfter) this.listen();
+      else this.callbacks.onState('idle');
     };
     utterance.onerror = () => {
       if (generation === this.generation)
@@ -98,12 +100,12 @@ export class BrowserVoiceProvider implements VoiceProvider {
     recognition.onresult = (event) => {
       if (generation !== this.generation) return;
       let transcript = '';
-      let final = false;
+      let final = event.results.length > 0;
       let confidence: number | null = null;
       for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
-        transcript += result[0].transcript;
-        final ||= result.isFinal;
+        transcript += (transcript ? ' ' : '') + result[0].transcript;
+        final &&= result.isFinal;
         if (result.isFinal) confidence = result[0].confidence || null;
       }
       this.callbacks.onTranscript(transcript, final, confidence);

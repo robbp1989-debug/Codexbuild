@@ -27,7 +27,7 @@ CI now watches main, master and integration PR targets and builds the actual Ver
 ## Manual preview acceptance still required
 1. Arrival/scroll/Keep Talking match the existing composition on desktop and mobile.
 2. Choose typed intake, answer V1–V7, switch to Holly at V8. Check the transcript, continue, and verify all seven earlier answers remain at review.
-3. Choose voice and approve consent. Hear the prompt. Press **Answer by voice / Interrupt Holly**, speak, check the visible transcript, then **Use this answer**. Reject microphone permission and verify typing works.
+3. Choose voice and approve consent. Hear the prompt, allow microphone access, and speak when Listening appears. Verify the next question follows without typing or pressing Use this answer. Use Speak now / Interrupt Holly to retry or interrupt. Reject microphone permission and verify the retry and typing options remain available.
 4. Skip, repeat, back/correct, pause/end, resume, and remove at review. Keep one item, mark another historical/uncertain, confirm; only kept items should influence a new fictional reflection.
 5. Save draft deliberately; refresh and resume at the same question. Remove context and confirm future requests omit it.
 6. Import small TXT/DOCX and a text PDF; use scanned PDF and corrupted files to check readable errors. Approve an excerpt; no file or unapproved text should appear in outgoing requests.
@@ -37,7 +37,7 @@ CI now watches main, master and integration PR targets and builds the actual Ver
 ## Honest limitations and production gates
 - Browser visual/E2E and real microphone checks were not completed in this environment: agent-browser daemon did not start; the supported cloud browser blocked the local development URL. Unit/provider mocks are not substitutes for real-device checks.
 - The Vercel connector returns no projects/project 404 despite recognizing the account. GitHub PR deployment status is the available deployment evidence; do not claim a live verified demo merely from a Ready build.
-- Voice currently uses button-initiated listening and button barge-in, with transcript confirmation for each answer. It is not a hands-free realtime agent. Spoken commands work while listening. Automatic acoustic barge-in, robust silence handling, semantic normalization and conversational clarification remain future work.
+- Voice now automatically starts listening after each spoken question. A final spoken answer advances the shared intake without typing or pressing Use this answer. Say go back to correct an answer; final profile review is still required. Speak now / Interrupt Holly remains available to interrupt or retry. Stop cancels queued listening. Spoken commands work while listening. Simultaneous acoustic barge-in, robust silence handling, semantic normalization and conversational clarification remain future work.
 - Speech output availability and female-sounding voice choice vary by browser/OS. No guarantee of offline audio processing. PDF parsing is built but still needs browser-file verification. There is no OCR, account sync, clinical report authentication, or autonomous medical-record retrieval.
 - Safety uses SHIFT's existing heuristic plus a few explicit immediate-medical/danger phrases. It is not clinically validated and may over-trigger or miss risks. Production clinical review, age/under-18 policy, locale resources, retention/provider terms, final wording/usability, and future voice-owner consent/license remain open, as required by the blueprint.
 - This is an isolated draft integration; no merge to main or production promotion is authorized by this handoff.
@@ -55,7 +55,10 @@ CI now watches main, master and integration PR targets and builds the actual Ver
 - Terminal Git push lacked credentials; the authenticated GitHub connector saved the exact tested tree atomically. Local history was aligned with that remote commit while preserving local/holly-tested-307057a.
 
 ## Next implementation increments after preview review
-1. Verify the present tap-to-speak demo with real device audio and fix observed usability errors.
+1. Verify automatic spoken-answer turn-taking with real device audio and fix observed usability errors.
 2. Add optional automatic turn-taking and constrained clarification; retain a visible microphone state and immediate stop. Do not claim acoustic barge-in without testing echo behavior on real hardware.
 3. Add a consented, bounded AI-assisted report-candidate extraction route, if desired; candidates must retain source excerpts and remain inactive until review. This is distinct from the currently implemented manual excerpt selection.
 4. Finish production clinical/age/privacy decisions from the blueprint before real-user release.
+
+## Spoken-answer follow-up
+The owner clarified that answering aloud must be the normal voice flow. Implemented automatic question → microphone → spoken answer → next question. The microphone is off during Holly playback to avoid transcribing her own voice. End-of-intake review remains explicit. Microphone-denied/unsupported browsers show a clear error and keep retry and typing options available. Real-device audio verification remains required.

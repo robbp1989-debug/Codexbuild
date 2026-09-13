@@ -14,7 +14,7 @@ export interface VoiceCallbacks {
 }
 export interface VoiceProvider {
   voices(): VoiceOption[];
-  speak(text: string, voiceId?: string): void;
+  speak(text: string, voiceId?: string, listenAfter?: boolean): void;
   listen(): void;
   stop(): void;
   dispose(): void;
