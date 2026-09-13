@@ -2,6 +2,7 @@ import { analyzeShiftReflection, continueShiftConversation, generatePersonalized
 import { evaluateSafety } from './safetyCheck.js';
 import { sanitizeMemoryItems, selectRelevantMemoryContext } from './memoryContext.js';
 import { KNOWLEDGE_CARDS, KNOWLEDGE_VERSION, selectCards } from '../src/second-brain/knowledge.js';
+import { PRIMARY_MODEL } from './config.js';
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
@@ -12,7 +13,7 @@ function value(input: Record<string, unknown>, key: string, max = 12000): string
 export async function handlePreviewApi(request: Request): Promise<Response> {
   const path = new URL(request.url).pathname.replace(/\/$/, '');
   if (request.method === 'GET' && path === '/api/health') {
-    return json({ ok: true, modelConfigured: Boolean(process.env.OPENAI_API_KEY), knowledgeVersion: KNOWLEDGE_VERSION, sourceCheckedCards: KNOWLEDGE_CARDS.length, accountMemoryAvailable: false, researchSync: 'versioned_snapshot' });
+    return json({ ok: true, modelConfigured: Boolean(process.env.OPENAI_API_KEY), configuredModel: PRIMARY_MODEL, knowledgeVersion: KNOWLEDGE_VERSION, sourceCheckedCards: KNOWLEDGE_CARDS.length, accountMemoryAvailable: false, researchSync: 'versioned_snapshot' });
   }
   if (request.method === 'GET' && path === '/api/shift/knowledge') {
     return json({ version: KNOWLEDGE_VERSION, cards: KNOWLEDGE_CARDS.map(({ terms, ...card }) => card), clinicalReview: 'pending' });

@@ -21,6 +21,7 @@ interface ConversationTurn {
   role: 'user' | 'assistant';
   content: string;
   evidence?: { version: string; sources: Array<{title: string; url: string}> };
+  responseMode?: 'model' | 'unavailable';
 }
 
 interface MemorySuggestion {
@@ -117,6 +118,7 @@ export const KeepTalkingScreen: React.FC = () => {
         evidence?: ConversationTurn['evidence'];
         relevantMemory?: string[];
         memorySuggestion?: MemorySuggestion | null;
+        responseMode?: 'model' | 'unavailable';
       };
 
       if (data.safetyInterruption) {
@@ -125,16 +127,22 @@ export const KeepTalkingScreen: React.FC = () => {
       }
 
       const reply = data.reply || 'What part of that feels most important to name before we explain it?';
-      setTurns((current) => [...current, { role: 'assistant', content: reply, evidence: data.evidence }]);
-      setMemoryUsed(Array.isArray(data.relevantMemory) ? data.relevantMemory : []);
-      setMemorySuggestion(data.memorySuggestion || null);
+      setTurns((current) => [...current, {
+        role: 'assistant',
+        content: reply,
+        evidence: data.responseMode === 'model' ? data.evidence : undefined,
+        responseMode: data.responseMode,
+      }]);
+      setMemoryUsed(data.responseMode === 'model' && Array.isArray(data.relevantMemory) ? data.relevantMemory : []);
+      setMemorySuggestion(data.responseMode === 'model' ? data.memorySuggestion || null : null);
       playSoftSound('chime');
     } catch {
       setTurns((current) => [
         ...current,
         {
           role: 'assistant',
-          content: 'We can stay with this. What part is bothering you most right now — what happened, what you felt, what you think it meant, or what you wanted instead?',
+          content: 'The live conversation could not be reached, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',
+          responseMode: 'unavailable',
         },
       ]);
     } finally {
@@ -215,6 +223,11 @@ export const KeepTalkingScreen: React.FC = () => {
             <div key={`${turn.role}-${index}`} className={`keep-talking-turn keep-talking-turn--${turn.role}`}>
               <div className="keep-talking-turn__label">{turn.role === 'user' ? 'You' : 'SHIFT'}</div>
               <div className="keep-talking-turn__body">{turn.content}</div>
+              {turn.responseMode === 'unavailable' && (
+                <output className="mt-3 block rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  No AI-generated interpretation was returned for this message.
+                </output>
+              )}
               {turn.evidence && <details className="mt-3 text-sm">
                 <summary className="cursor-pointer font-medium">Research context for this response</summary>
                 <p className="mt-2">These educational sources were selected for this request. They do not verify personal interpretations or establish that SHIFT is a validated treatment.</p>

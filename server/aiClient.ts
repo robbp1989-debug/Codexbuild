@@ -36,6 +36,53 @@ export interface LearningMemoryCandidate {
 export interface ShiftConversationResult {
   reply: string;
   memorySuggestion?: LearningMemoryCandidate | null;
+  responseMode: 'model' | 'unavailable';
+  unavailableReason?: 'not_configured' | 'provider_error';
+}
+
+interface ProviderError extends Error {
+  status?: number;
+  code?: string;
+  type?: string;
+  requestId?: string;
+  model?: string;
+}
+
+function safeDiagnostic(value: unknown, max = 80): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const cleaned = value.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, max);
+  return cleaned || undefined;
+}
+
+function providerFailureSummary(error: unknown) {
+  const err = error as ProviderError;
+  const isTimeout = err?.name === 'TimeoutError' || err?.name === 'AbortError';
+  const category = isTimeout
+    ? 'timeout'
+    : typeof err?.status === 'number'
+      ? 'http_error'
+      : err?.code === 'empty_response'
+        ? 'empty_response'
+        : err?.code === 'invalid_schema'
+          ? 'invalid_output'
+          : err?.name === 'SyntaxError'
+            ? 'invalid_json'
+            : 'unknown';
+
+  return {
+    category,
+    model: safeDiagnostic(err?.model),
+    status: typeof err?.status === 'number' ? err.status : undefined,
+    code: safeDiagnostic(err?.code),
+    type: safeDiagnostic(err?.type),
+    requestId: safeDiagnostic(err?.requestId, 120),
+    errorName: safeDiagnostic(err?.name),
+  };
+}
+
+function logProviderFailure(scope: string, error: unknown) {
+  // Never log the API key, provider response body, prompt, or user narrative.
+  console.warn(`[SHIFT ${scope}] Model request unavailable`, providerFailureSummary(error));
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -57,7 +104,7 @@ async function callOpenAI(model: string, options: GenerateOptions): Promise<stri
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(20000),
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
@@ -66,29 +113,45 @@ async function callOpenAI(model: string, options: GenerateOptions): Promise<stri
   });
 
   if (!response.ok) {
-    const errText = await response.text().catch(() => '');
-    const err: any = new Error(`OpenAI request failed with status ${response.status}: ${errText}`);
+    const payload = await response.json().catch(() => null) as {
+      error?: { code?: unknown; type?: unknown };
+    } | null;
+    const err: ProviderError = new Error(`OpenAI request failed with status ${response.status}`);
     err.status = response.status;
+    err.code = safeDiagnostic(payload?.error?.code);
+    err.type = safeDiagnostic(payload?.error?.type);
+    err.requestId = safeDiagnostic(response.headers.get('x-request-id'), 120);
+    err.model = model;
     throw err;
   }
 
-  const data = (await response.json()) as any;
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
   const text = data?.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error('OpenAI response contained no content');
+  if (!text) {
+    const err: ProviderError = new Error('OpenAI response contained no content');
+    err.code = 'empty_response';
+    err.requestId = safeDiagnostic(response.headers.get('x-request-id'), 120);
+    err.model = model;
+    throw err;
+  }
   return text;
 }
 
 async function callModelWithFallback(options: GenerateOptions): Promise<string> {
   const candidateModels = [PRIMARY_MODEL, ...FALLBACK_MODELS];
-  let lastError: any = null;
+  let lastError: unknown = null;
 
   for (const model of candidateModels) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         return await callOpenAI(model, options);
-      } catch (err: any) {
+      } catch (error: unknown) {
+        const err = error instanceof Error ? error as ProviderError : new Error('Unknown model failure') as ProviderError;
+        if (!err.model) err.model = model;
         lastError = err;
-        const retryable = typeof err?.status === 'number' && isRetryableStatus(err.status);
+        const retryable = typeof err.status === 'number' && isRetryableStatus(err.status);
         if (retryable && attempt < 2) {
           await sleep(600);
           continue;
@@ -128,8 +191,8 @@ export async function analyzeShiftReflection(
       throw new Error('Invalid schema structure in model response');
     }
     return parsed;
-  } catch (err: any) {
-    console.info('[SHIFT Engine] Transitioning to structured heuristic engine:', 'Model unavailable');
+  } catch (err: unknown) {
+    logProviderFailure('Breakdown', err);
     return generateFallbackBreakdown(situationText);
   }
 }
@@ -234,8 +297,8 @@ export async function extractLearningMemories(
         summary: text(item.summary).slice(0, 320),
         tags: list(item.tags).map((tag) => tag.toLowerCase().slice(0, 60)).slice(0, 6),
       }));
-  } catch (err: any) {
-    console.info('[SHIFT Memory] Using deterministic learning extraction:', 'Model unavailable');
+  } catch (err: unknown) {
+    logProviderFailure('Memory', err);
     return fallbackLearningMemories(shift);
   }
 }
@@ -249,12 +312,11 @@ export async function continueShiftConversation(args: {
   const { currentShift, userMessage, history = [], memoryContext = [] } = args;
 
   if (!process.env.OPENAI_API_KEY) {
-    const prior = memoryContext[0]
-      ? ` One earlier learning may be relevant, but it is only a comparison point: ${memoryContext[0]}`
-      : '';
     return {
-      reply: `We can stay with this instead of moving into practice.${prior} Before we explain it further, what happened inside you at the part that feels most important right now?`,
+      reply: 'The live conversation is temporarily unavailable, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',
       memorySuggestion: null,
+      responseMode: 'unavailable',
+      unavailableReason: 'not_configured',
     };
   }
 
@@ -283,13 +345,20 @@ export async function continueShiftConversation(args: {
       contents: `CURRENT SHIFT:\n${JSON.stringify(shiftSnapshot)}\n\nRELEVANT HISTORICAL LEARNING:\n${memoryContext.length ? memoryContext.join('\n') : 'None retrieved.'}\n\nRECENT CONVERSATION:\n${safeHistory || 'No prior turns.'}\n\nUSER:\n${userMessage}`,
     });
     const parsed = JSON.parse(responseText) as ShiftConversationResult;
-    if (!parsed.reply) throw new Error('Conversation response missing reply');
-    return parsed;
-  } catch (err: any) {
-    console.info('[SHIFT Conversation] Using reflective fallback:', 'Model unavailable');
+    if (!parsed.reply) {
+      const err: ProviderError = new Error('Conversation response missing reply');
+      err.code = 'invalid_schema';
+      err.model = PRIMARY_MODEL;
+      throw err;
+    }
+    return { ...parsed, responseMode: 'model' };
+  } catch (err: unknown) {
+    logProviderFailure('Conversation', err);
     return {
-      reply: 'We can keep talking about this without trying to solve it yet. What part of what happened is landing hardest right now — what happened, what you felt, what you think it meant, or what you wanted instead?',
+      reply: 'The live conversation is temporarily unavailable, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',
       memorySuggestion: null,
+      responseMode: 'unavailable',
+      unavailableReason: 'provider_error',
     };
   }
 }
@@ -300,15 +369,15 @@ export async function generatePersonalizedGameContent(
   observation: string,
   interpretation: string,
   updatedPerspective: string,
-): Promise<any> {
+): Promise<Record<string, unknown> | null> {
   if (!process.env.OPENAI_API_KEY || !selectCards([theme, observation, interpretation].join(" "), gameId).length) return null;
 
   try {
     const prompt = `Generate 4 personalized game items for arcade game engine "${gameId}".\nActive User Theme: "${theme}"\nObjective Observation: "${observation}"\nUser Automatic Interpretation: "${interpretation}"\nUpdated Perspective: "${updatedPerspective}"\n\nFormat as JSON with an "items" array tailored to this game engine.`;
     const responseText = await callModelWithFallback({ contents: prompt, jsonResponse: true, systemInstruction: evidencePrompt([theme, observation, interpretation].join(" "), gameId) });
     return JSON.parse(responseText || '{}');
-  } catch (err: any) {
-    console.info('[SHIFT Game Content] Using local game items:', 'Local items active');
+  } catch (err: unknown) {
+    logProviderFailure('Game Content', err);
     return null;
   }
 }
