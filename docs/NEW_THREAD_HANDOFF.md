@@ -1,70 +1,68 @@
-# SHIFT — new-thread handoff, 2026-09-13
+# SHIFT — resume here (2026-09-13)
 
-## Start here
-Continue the existing SHIFT second-brain integration. Preserve the office visuals and scroll behavior. The owner authorized implementation and website updates, but requested this pause/savepoint because usage is nearly exhausted. Do not restart the project, merge into main blindly, or repeat the entire research audit. First resolve the missing-key fallback described below, then verify a real model conversation. Save incremental GitHub checkpoints. Never request API secrets in chat.
+## Copy into the next conversation
+Continue robbp1989-debug/Codexbuild from branch `integration/holly-report-import-2026-09-13`, draft PR #28. Read `docs/NEW_THREAD_HANDOFF.md` and `HOLLY.md` first. Preserve the working office/scroll, AI configuration, automatic spoken-answer intake, reference choices, and reviewed report context. Begin with real-device voice/visual verification if access permits, then improve observed issues. Do not rebuild from main, repeat the API-key investigation, or implement every suggestion at once. Fetch the branch's latest commit before changes. Save small checkpoints and report actual verification limits. Patrick requested this handoff because usage was nearly exhausted.
 
-## Durable source of truth
+## Verified save point
 - Repository: https://github.com/robbp1989-debug/Codexbuild
-- Branch: `integration/second-brain-2026-09-12`
-- Draft PR: https://github.com/robbp1989-debug/Codexbuild/pull/27
-- Last application-code commit: `a89f9fae373837b16b7034c8c42470f8f0511332` (Node ESM runtime fix).
-- This handoff is a later documentation-only savepoint on that branch. Fetch the latest branch before editing.
-- Earlier detailed history: `docs/SECOND_BRAIN_CHECKPOINT.md`. Its earlier pending/deployment statements are historical; this document supersedes them.
-- Original base: `preview/vercel-demo-2026-09-11`, commit `009bd6a2b04ee2defd4e3b17c1a468f86bb1f1e3`. Main is older; preserve the newer office/Keep Talking baseline.
+- Working branch: `integration/holly-report-import-2026-09-13`
+- Draft PR: https://github.com/robbp1989-debug/Codexbuild/pull/28
+- Latest application commit: `2503fc2ce33b79880be558f9e3a065b4600b2973`
+- Application tree: `d862ab43cc75e90b599f3a2aac18256b728f03c9`
+- This handoff is a later documentation-only commit on the same branch.
+- Recovery branch: `backup/holly-reports-working-2026-09-13`, pinned to the application commit above.
+- PR base: `integration/second-brain-2026-09-12` (PR #27), commit `9c0ca0bff682f6ad677f6342933438a7e43c0dfb`. Main is older. Neither PR was merged or promoted to production in this work.
+- Primary preview: https://shift-office-workspace-previe-git-194874-patrick-robbs-projects.vercel.app
 
-## Immediate issue: repeated response is a missing-key fallback
-The latest user screenshot shows identical replies to two different messages. The exact opening is “We can stay with this instead of moving into practice.” This matches `continueShiftConversation` in `server/aiClient.ts`, specifically `if (!process.env.OPENAI_API_KEY)`. It is deterministic fallback text, not evidence of successful live AI. The model-error catch uses different wording (“We can keep talking about this…”).
+## Latest verification
+At the pause, GitHub Validate SHIFT run **34774701182**, run number 75, succeeded for application commit 2503fc2. Both Vercel deployments succeeded:
+- shift-office-workspace-preview: 68kan39pHVftc8ryXJxrYmyhUrKm
+- shift-approved-keep-talking-preview: 5RJQSRL17ddXanmxFhx7joSVnkCx
 
-Earlier authenticated health screenshot:
-```json
-{"ok":true,"modelConfigured":false,"knowledgeVersion":"2026-09-12.1","sourceCheckedCards":4,"accountMemoryAvailable":false,"researchSync":"versioned_snapshot"}
-```
-The interface and backend runtime now work. Live AI is still unverified. No fix to fallback behavior was made at this pause.
+Initial integration passed 26 focused tests. The voice follow-up added an automatic-turn-taking test; nine intake/provider tests passed after the latest reference-choice change. Targeted lint and the actual Vercel build passed. The CI workflow runs the combined suite, architecture check and preview build. Project-wide TypeScript has pre-existing errors in storage-check and old QA files missing Playwright types; do not present that as clean.
 
-The user's last environment screenshot showed BOTH `OPENAI_API_KEY` and `OPENAI_API_KEY_Preview` scoped only to Production. Instructions given: edit the exact `OPENAI_API_KEY`, enable Preview (Production can remain selected), save, then redeploy the actual integration preview. Preview is an environment, not a suffix in the variable name. No custom branch restriction is needed. Do not overwrite an existing valid saved secret unless replacing intentionally. Creating a second OpenAI key is valid; the friendly OpenAI key name is irrelevant. Do not revoke keys used by other apps.
+Real microphone tests, desktop/mobile visual inspection and PDF import in a browser remain unverified. The cloud browser reached Vercel sign-in; connector temporary access failed. Local browser utility failed to start, and the supported cloud browser blocked localhost. Do not disable protection or repeatedly reconnect Vercel. Patrick said the result looked great; that is user feedback, not independent browser QA.
 
-## Deployment facts
-- Correct Vercel project: `shift-office-workspace-preview` under the owner's team.
-- GitHub commit statuses and PR deployment bot confirm automatic preview deployment for the integration branch. Find the latest preview via PR #27 and its commit checks.
-- Preview requires Vercel authentication. Unauthenticated requests redirect to login; they do not establish API failure.
-- Vercel connector repeatedly listed zero projects / returned 404 despite reconnection. Do not waste the next session repeating reconnection. GitHub statuses were usable; the user can open the authenticated preview.
-- The user also deployed an unrelated CLI placeholder to Production showing only “SHIFT preview test”. Do not redeploy/promote that placeholder or treat its health 404 as the integration's failure. Check source branch/commit before redeploying.
-- A previous `FUNCTION_INVOCATION_FAILED` was caused by extensionless Node ESM imports. It is fixed in a89f9fa; the user's health screenshot confirms runtime recovery. Keep explicit emitted `.js` imports throughout the function dependency chain.
-- Private Drive and deployment URLs are intentionally omitted from this public-repository handoff. Ask the owner for the private research folder again only when needed; use PR checks for preview links.
+## What is implemented
+1. **Report context:** PDF, DOCX, TXT, Markdown, CSV and JSON read in browser; manual excerpt selection and approval. No raw-file upload/storage or AI summarization. Files up to 4 MB, PDFs up to 80 pages, extracted text up to 80,000 characters; no OCR. DOCX expansion bounded. Source attribution is retained.
+2. **Holly voice intake:** AI/browser-service consent, shared V1–V22 questions, automatic question → listening → spoken answer → next question. Users do not need to type or press Use this answer between spoken turns. Voice and typing share one reducer. Final review/approval is still required. Microphone is off while Holly speaks; Speak now / Interrupt Holly permits a manual interruption or retry. This is not simultaneous acoustic barge-in.
+3. **Reference choices:** Visible examples before the answer field. Holly reads up to three; “hear options” or Hear all examples reads the full list. Users can answer freely, combine ideas, or skip. Original intake photos were not available: options use blueprint choices plus clearly documented adapted examples, not an exact photo transcription.
+4. **Personalization:** Only confirmed current context reaches Reflection and Keep Talking; original personal summary is now connected too. Uncertain/historical items are excluded. Raw wording and reviewed wording stay distinct. Context is session-only by default, with separate opt-ins for unfinished intake and approved context in unencrypted device storage. No account/cloud synchronization claim.
+5. **Entry:** Arrival → Personalize SHIFT, or Memory → Import reports or talk with Holly. Existing office/cinematic assets were preserved.
 
-## Implemented
-- `src/second-brain/knowledge.ts`: four original NHS-source-checked educational cards, version 2026-09-12.1, with source links, limits, and clinical review pending. Covers thought record, balanced perspective, practical choice, worry plan. Bounded lexical selection, game eligibility, conservative high-risk exclusions, shared evidence instructions.
-- `src/data/research-candidates.json`: 72 public bibliographic URLs, all inactive/pending verification. Full research corpus is not reviewed or ingested. No live Drive sync.
-- `src/second-brain/EvidencePanel.tsx`: optional unscored exercises and visible sources/limits in Reflection and Learn. Older Learn modules labeled draft pending review.
-- `server/aiClient.ts`: shared evidence instructions for reflection, Keep Talking and generated game content. Server-only key. Existing model client uses 8-second per-call timeout and 1,800 completion tokens; diagnose actual errors before tuning these.
-- `server/fallbackAnalysis.ts`: neutral fallback preserves input, removes invented narrative, does not confirm feelings or needs.
-- Home/Keep Talking: pre-request safety checks; suggestions are not automatically user-confirmed. Keep Talking displays per-response research context; source selection does not prove an interpretation.
-- `server/previewApi.ts`, `api/shift.ts`, `vercel.json`: Vercel Node fetch handler, API routing before SPA; health, knowledge, breakdown, conversation, confirmed game-content endpoints. Bounded requests, origin/method checks, no-store, explicit unsupported account endpoints.
-- Account memory is unavailable on this adapter. Existing consented device memory can supply request context. Do not claim account persistence or cloud sync.
+## Code map
+- `src/holly/questions.ts`: shared prompts, reference options, spokenQuestion helper.
+- `src/holly/intakeReducer.ts`: progress, skip/back, correction history, review, commands.
+- `src/holly/HollyIntake.tsx`: interface, automatic spoken-answer submission, review admission.
+- `src/holly/{voiceProvider,browserVoiceProvider}.ts`: replaceable speech contract and current browser implementation. Provider construction is in HollyIntake.tsx.
+- `src/holly/safetyInterrupt.ts`: existing safety checks plus limited immediate-risk patterns; not clinically validated.
+- `src/personalization/`: report parsing, local state, context records, review screen and styles.
+- `src/context/AppContext.tsx`: owns shared intake/profile state and deletion integration.
+- `server/personalContext.ts`: bounded confirmed-only prompt construction and source rules.
+- `server/previewApi.ts`, `server/aiClient.ts`, corresponding `app/api/shift` routes: approved context delivery.
+- `HOLLY.md`: detailed behavior, limits and manual acceptance steps.
+- `docs/HOLLY_REPORT_IMPLEMENTATION.md`: original plan; this handoff supersedes stale progress statements.
 
-## Verification already completed
-All 13 focused tests and the Vite preview build passed at the last code checkpoint:
+## Next priorities discussed — proposed, not yet implemented
+Work incrementally; confirm scope from Patrick's next request.
+1. Verify voice permissions, automatic turns, pause/stop, corrections, mobile layout, report parsing, and draft resume using fictional data. Fix observed failures first.
+2. Smooth Holly: pause tolerance, concise uncertainty clarification, clearer turn indicators and retry messaging. Preserve free answers and final consent; do not treat a recognition confidence score as factual certainty.
+3. Optional consent-based AI report suggestions: show a proposed preference/goal/context beside its supporting excerpt; require approval. Add a bounded extraction route rather than activating old unsupported upload/account APIs.
+4. Offer short intake versus complete intake, prioritizing entry reason, preferred support and response style.
+5. Add “What SHIFT kept in mind” with correction and exclude-for-this-conversation controls.
+6. Improve session/device save clarity and export/deletion UX. Final age policy, clinical safety review, locale resources and voice-provider retention terms remain open before real-user production release.
+
+## Preserve the working AI setup
+Patrick previously reported live AI working. This work did not modify API keys, model selection or provider routing. `server/config.ts` remains inherited. Model success was not independently reverified during this task; do not invent a working-model diagnosis or replace configuration based on model-name assumptions. Never ask Patrick to paste secrets into chat or commit secrets. Health/key presence and deployment success do not prove actual model output.
+
+## Resume commands
 ```sh
-node --test tests/second-brain.test.mjs tests/preview-api.test.mjs tests/runtime-import.test.mjs
+git fetch origin
+git switch integration/holly-report-import-2026-09-13
+npm ci
+npm run check:memory
+npx oxlint src/holly src/personalization server/personalContext.ts
+node --experimental-strip-types --test tests/second-brain.test.mjs tests/preview-api.test.mjs tests/runtime-import.test.mjs tests/personalization.test.mjs tests/holly-voice.test.mjs tests/report-import.test.mjs
 npx vite build --config vite.preview.config.ts
 ```
-The runtime test compiles an unbundled NodeNext entry and calls health, catching the ESM issue missed by bundled tests. Full typecheck has pre-existing storage-check typing / missing Playwright QA dependency failures. Successful build, health, or key-presence checks are not proof of a working model or clinical efficacy. This documentation-only checkpoint did not rerun unchanged tests.
-
-## Next actions, in order
-1. Open health on the SAME current integration deployment used for conversation. Resolve Preview-scoped `OPENAI_API_KEY` and redeploy the correct branch. `modelConfigured:true` only proves key presence.
-2. Test two ordinary fictional messages with distinct context. Confirm responses change and refer appropriately to latest input/history. Inspect sanitized runtime errors if fallback persists; check key validity, API billing, model access, timeout/empty-output/JSON failures. Never log keys or private narratives.
-3. Make unavailable-AI behavior transparent instead of silently impersonating a contextual conversation. Consider explicit response mode/reason metadata and a user-facing unavailable state; test missing-key and provider-error paths. Merely rotating canned prompts would conceal the issue.
-4. Verify the existing source panel and optional exercises on the live preview. Preserve visual baseline. Do not promote until actual behavior is checked.
-5. Continue source-by-source primary-evidence review of the 72 inactive candidates, scope/limitations and independent clinical review of adaptations. The research summary reviewed earlier overclaimed support for the app's exact sequence; do not repeat that claim. Review older game answer keys and whether generated-game endpoints are mounted in the intended UI.
-6. Plan authenticated research synchronization and account memory separately if still desired; neither is implemented here.
-
-## Working-copy cautions
-The previous workspace was `/workspace/scratch/31d6523761bc/shift`; it may expire. Code was saved through GitHub tools because shell push lacked credentials. Local HEAD/status may not match remote saved commits and can display already-saved code as dirty. Do not reset or force-push blindly; use a fresh checkout of the remote integration branch if needed. Prior public-repository approval rejected private links, so only sanitized code, public research sources, and operational notes were committed. No user conversation examples or secret values belong in public docs.
-
-## Later runtime-log finding — 2026-09-13
-- New deployment host conversation and breakdown requests return HTTP 200 but log `Model unavailable`, so the server catches a failed OpenAI call and supplies deterministic fallback text.
-- An older host logged `No OPENAI_API_KEY detected`; the new host no longer logs that. This confirms the Preview-scoped variable reached the new deployment.
-- Current logging intentionally discards the actual provider error. The next code change should record only safe diagnostics: attempted model, HTTP status, OpenAI error code/type, request ID, or timeout name. Never log the key, response body, prompt, or user narrative.
-- The configured primary model `gpt-5-mini` officially supports Chat Completions and structured outputs, so do not assume the model name/endpoint combination is invalid. Check 401 authentication, 429 credit/project/org limits, timeout, empty output, and JSON parse failure using safe diagnostics.
-- `/api/shift/memory/extract` returning 404 is expected on the preview adapter because account persistence is explicitly unavailable. It does not cause the repeated Keep Talking response. The frontend should later stop calling that unsupported endpoint or suppress the expected request.
-- As a user-side diagnostic, OpenAI dashboard “Test models” is optional but now useful: choose `gpt-5-mini` and send a tiny test. It validates the OpenAI project/model/billing path, though it does not prove the exact secret copied into Vercel.
+Run only checks justified by the next changes; do not spend the new session repeating settled work. Terminal Git fetch worked but push lacked credentials. The authenticated GitHub connector successfully created trees/commits and advanced refs without force. Compare remote tree SHA to local tree before claiming exact preservation. No private reports or personal narratives were committed; the DOCX fixture is fictional.

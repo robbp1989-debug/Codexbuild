@@ -1,3 +1,5 @@
+> Current resume instructions and verified latest checkpoint: `docs/NEW_THREAD_HANDOFF.md`. It supersedes older progress notes below.
+
 # Holly and report personalization — integration handoff
 
 ## Current implementation
@@ -56,7 +58,7 @@ CI now watches main, master and integration PR targets and builds the actual Ver
 
 ## Next implementation increments after preview review
 1. Verify automatic spoken-answer turn-taking with real device audio and fix observed usability errors.
-2. Add optional automatic turn-taking and constrained clarification; retain a visible microphone state and immediate stop. Do not claim acoustic barge-in without testing echo behavior on real hardware.
+2. Improve pause tolerance and constrained clarification; automatic turn-taking is already implemented. retain a visible microphone state and immediate stop. Do not claim acoustic barge-in without testing echo behavior on real hardware.
 3. Add a consented, bounded AI-assisted report-candidate extraction route, if desired; candidates must retain source excerpts and remain inactive until review. This is distinct from the currently implemented manual excerpt selection.
 4. Finish production clinical/age/privacy decisions from the blueprint before real-user release.
 
