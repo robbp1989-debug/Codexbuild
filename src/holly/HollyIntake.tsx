@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { QUESTIONS } from './questions';
+import { QUESTIONS, spokenQuestion } from './questions';
 import { parseCommand } from './intakeReducer';
 import { BrowserVoiceProvider } from './browserVoiceProvider';
 import type { VoiceProvider, VoiceState, VoiceOption } from './voiceProvider';
@@ -64,7 +64,12 @@ export function HollyIntake() {
     stop();
     setDraft('');
     if (intent === 'repeat')
-      speak(question?.prompt || 'Review what you want SHIFT to use.');
+      speak(
+        question
+          ? spokenQuestion(question)
+          : 'Review what you want SHIFT to use.',
+      );
+    if (intent === 'options' && question) speak(spokenQuestion(question, true));
     if (intent === 'skip' || intent === 'back') {
       dispatchIntake({ type: intent });
       setReady(false);
@@ -166,7 +171,7 @@ export function HollyIntake() {
   // Speech begins only after a user has explicitly chosen and consented to voice mode.
   useEffect(() => {
     if (mode === 'voice' && consent && intake.phase === 'questions' && question)
-      provider.current?.speak(question.prompt, voiceId, true);
+      provider.current?.speak(spokenQuestion(question), voiceId, true);
     else if (mode === 'voice' && consent && intake.phase === 'review')
       provider.current?.speak(
         'That gives me enough to get started. Review what I understood below. Nothing is used until you approve it.',
@@ -306,7 +311,7 @@ export function HollyIntake() {
               </button>
               <button
                 className="secondary"
-                onClick={() => speak(question.prompt)}
+                onClick={() => speak(spokenQuestion(question))}
               >
                 Repeat question
               </button>
@@ -349,6 +354,40 @@ export function HollyIntake() {
               </select>
             </label>
           )}
+          {question.options.length > 0 && (
+            <div className="personalize-examples">
+              <p>
+                <strong>Some starting points</strong> — these are examples, not
+                a required answer. Speak in your own words, combine ideas, or
+                skip.
+              </p>
+              <div className="personalize-actions">
+                {question.options.map((option) => (
+                  <button
+                    className="secondary"
+                    key={option}
+                    onClick={() => {
+                      stop();
+                      setDraft(option);
+                      setSource('user_direct_form');
+                      setConfidence(null);
+                      setReady(true);
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              {mode === 'voice' && (
+                <button
+                  className="secondary"
+                  onClick={() => speak(spokenQuestion(question, true))}
+                >
+                  Hear all examples
+                </button>
+              )}
+            </div>
+          )}
           <label>
             Your answer / transcript
             <textarea
@@ -373,25 +412,6 @@ export function HollyIntake() {
               ? 'Please check names and sensitive details; Holly will not guess what you meant.'
               : ''}
           </p>
-          {question.options.length > 0 && (
-            <div className="personalize-actions">
-              {question.options.map((option) => (
-                <button
-                  className="secondary"
-                  key={option}
-                  onClick={() => {
-                    stop();
-                    setDraft(option);
-                    setSource('user_direct_form');
-                    setConfidence(null);
-                    setReady(true);
-                  }}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
           <div className="personalize-actions">
             <button
               disabled={!draft.trim() || draft.length > 600 || !ready}

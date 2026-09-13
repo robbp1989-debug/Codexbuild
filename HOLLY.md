@@ -62,3 +62,6 @@ CI now watches main, master and integration PR targets and builds the actual Ver
 
 ## Spoken-answer follow-up
 The owner clarified that answering aloud must be the normal voice flow. Implemented automatic question → microphone → spoken answer → next question. The microphone is off during Holly playback to avoid transcribing her own voice. End-of-intake review remains explicit. Microphone-denied/unsupported browsers show a clear error and keep retry and typing options available. Real-device audio verification remains required.
+
+## Intake reference choices
+Added visible example choices above the answer field, with explicit permission to answer freely, combine ideas, or skip. Holly reads up to three examples after the question; say “hear options” or press Hear all examples for the complete list. Examples are drawn from the supplied blueprint where enumerated; identity, relationship, accommodation, recurring-pattern and interaction-preference examples are adapted starting points, not exact transcriptions of the original photos (those photos were not available in this workspace). Raw spoken/typed answers remain unchanged and free-form wording is not forced into an example label.
