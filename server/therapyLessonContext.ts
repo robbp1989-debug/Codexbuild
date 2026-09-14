@@ -129,6 +129,15 @@ export function therapyLessonPrompt(lessons: TherapyLesson[]): string {
   return `\nRELEVANT USER-CONFIRMED PROFESSIONAL / THERAPY LEARNING:\n${JSON.stringify(compact)}\nUse only when it materially fits the current situation. Treat each item as the user's report of what was learned, not as a medical order from SHIFT. A therapist/counselor/recovery lesson may guide practice, but current observable facts and the user's present correction still outrank it. Do not force a historical lesson onto a different situation.\n`;
 }
 
+export function therapyLessonsAsMemoryContext(lessons: TherapyLesson[]): string[] {
+  return lessons.slice(0, 4).map((lesson) => {
+    const evidence = lesson.evidenceObserved.length ? ` Evidence observed: ${lesson.evidenceObserved.slice(0, 2).join('; ')}.` : '';
+    const skill = lesson.newSkill ? ` Practice: ${lesson.newSkill}.` : '';
+    const rule = lesson.replacementRule ? ` Updated rule: ${lesson.replacementRule}.` : '';
+    return `[THERAPY_LESSON source=${lesson.sourceType}; user_confirmed=true] ${lesson.title}: ${lesson.lessonSummary}.${skill}${rule}${evidence}`.slice(0, 900);
+  });
+}
+
 export function publicTherapyLessonSummary(lessons: TherapyLesson[]) {
   return lessons.slice(0, 4).map((lesson) => ({
     id: lesson.id,
