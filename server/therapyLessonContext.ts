@@ -1,5 +1,6 @@
 import type {
   TherapyLesson,
+  TherapyLessonDraft,
   TherapyLessonSourceType,
   TherapyLessonSuggestion,
 } from '../lib/shift-intelligence-types.js';
@@ -186,5 +187,51 @@ export function sanitizeTherapyLessonSuggestion(
     sensitivityLevel: record.sensitivityLevel === 'low' || record.sensitivityLevel === 'high'
       ? record.sensitivityLevel
       : 'medium',
+  };
+}
+
+export function sanitizeTherapyLessonRevision(
+  existing: TherapyLesson,
+  value: unknown,
+): TherapyLessonDraft | null {
+  if (!existing?.id || !value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const title = clean(record.title, 120) || existing.title;
+  const lessonSummary = clean(record.lessonSummary, 700) || existing.lessonSummary;
+  if (!title || !lessonSummary) return null;
+
+  const suppliedTriggers = Array.isArray(record.triggerConditions);
+  const suppliedEvidence = Array.isArray(record.evidenceObserved);
+  return {
+    title,
+    // Provenance is immutable across revisions. Editing the wording must never
+    // silently change "my therapist taught me" into a different source category.
+    sourceType: existing.sourceType,
+    lessonSummary,
+    triggerConditions: suppliedTriggers
+      ? cleanList(record.triggerConditions, 8, 180)
+      : existing.triggerConditions.slice(0, 8),
+    oldPattern: record.oldPattern !== undefined ? clean(record.oldPattern, 600) : existing.oldPattern,
+    newSkill: record.newSkill !== undefined ? clean(record.newSkill, 600) : existing.newSkill,
+    replacementRule: record.replacementRule !== undefined ? clean(record.replacementRule, 600) : existing.replacementRule,
+    example: record.example !== undefined ? clean(record.example, 600) : existing.example,
+    prediction: record.prediction !== undefined ? clean(record.prediction, 500) : existing.prediction,
+    desiredExperiment: record.desiredExperiment !== undefined
+      ? clean(record.desiredExperiment, 600)
+      : existing.desiredExperiment,
+    evidenceObserved: suppliedEvidence
+      ? cleanList(record.evidenceObserved, 12, 240)
+      : existing.evidenceObserved.slice(0, 12),
+    confidence: existing.sourceType === 'shift_working_hypothesis'
+      ? Math.max(0, Math.min(1, Number(record.confidence ?? existing.confidence) || existing.confidence || 0.5))
+      : 1,
+    sensitivityLevel: record.sensitivityLevel === 'low' || record.sensitivityLevel === 'high'
+      ? record.sensitivityLevel
+      : record.sensitivityLevel === 'medium'
+        ? 'medium'
+        : existing.sensitivityLevel,
+    userConfirmed: true,
+    active: true,
+    supersedesId: existing.id,
   };
 }
