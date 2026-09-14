@@ -64,16 +64,20 @@
 .keep-talking-secondary-action { font-size: .875rem; }
 @media (min-width: 1180px) {
   .workspace-office--conversation {
-    --painting-panel-left: 3.95vw;
-    --painting-panel-width: 22.4vw;
+    /* Measured from the 1672x941 reference after correcting the office crop:
+       painting x ~= 80-410px; answer card x ~= 65-440px. The card intentionally
+       overlaps the painting bounds slightly so it reads as mounted over it. */
+    --painting-frame-left: 4.78vw;
+    --painting-frame-width: 19.74vw;
+    --painting-panel-left: 3.89vw;
+    --painting-panel-width: 22.43vw;
     --workspace-right-start: 31.85vw;
     --workspace-right-edge: 7vw;
   }
 
-  /* The painting and the wall card are one composition. Earlier CSS enlarged
-     the held video to 130vw and pulled it 30vw left, which kept the chair in
-     view but pushed the painting offscreen. Hold the same office frame at the
-     viewport bounds so the card actually lands on top of the painting. */
+  /* The painting and the wall card are one composition. Do not reintroduce
+     the old 130vw / -30vw crop: it pushed the painting almost entirely
+     offscreen and made the answer card land over the cabinet and chair. */
   .workspace-office--conversation .workspace-office__background-video {
     inset: 0 !important;
     width: 100vw !important;
