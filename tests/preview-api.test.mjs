@@ -54,12 +54,13 @@ test('provider failure is transparent instead of returning a pretend conversatio
   assert.ok(!JSON.stringify(warnings).includes('must not be logged'));
  } finally { globalThis.fetch=priorFetch; console.warn=priorWarn; process.env.OPENAI_API_KEY=''; }
 });
-test('both AI routes receive approved context and summary without pending or historical text',async()=>{
+test('both AI routes receive relevant approved context and summary without pending or historical text',async()=>{
  const priorFetch=globalThis.fetch;process.env.OPENAI_API_KEY='test-key';const prompts=[];
  globalThis.fetch=async(_url,options)=>{prompts.push(JSON.stringify(JSON.parse(options.body).messages));return Response.json({choices:[{message:{content:JSON.stringify({reply:'Fictional reply.',observation:'A fictional event',updated_perspective:'An alternative',choice:'Pause',therapyLessonSuggestion:null})}}]});};
  const approved={text:'Use short examples',label:'Preference',source:'user_direct_form',status:'confirmed'};
+ const relevantQuestion='Please answer this in plain words and use short examples.';
  try {
-  for(const path of ['breakdown','conversation']) await post('/api/shift/'+path,{situation:'A fictional event',message:'An ordinary question',currentShift:{observation:'A fictional event'},approvedSummary:'I prefer plain words',personalContext:[approved,{...approved,status:'pending',text:'DO_NOT_SEND_PENDING'},{...approved,status:'historical',text:'DO_NOT_SEND_HISTORICAL'}]});
+  for(const path of ['breakdown','conversation']) await post('/api/shift/'+path,{situation:relevantQuestion,message:relevantQuestion,currentShift:{observation:'A fictional event.'},approvedSummary:'I prefer plain words',personalContext:[approved,{...approved,status:'pending',text:'DO_NOT_SEND_PENDING'},{...approved,status:'historical',text:'DO_NOT_SEND_HISTORICAL'}]});
   assert.equal(prompts.length,2);for(const prompt of prompts){assert.match(prompt,/Use short examples/);assert.match(prompt,/I prefer plain words/);assert.doesNotMatch(prompt,/DO_NOT_SEND/);}
  } finally {globalThis.fetch=priorFetch;process.env.OPENAI_API_KEY='';}
 });
