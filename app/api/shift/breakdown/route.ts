@@ -69,8 +69,11 @@ export async function POST(request: Request) {
       safetyInterruption: false,
       isSubstanceUrge: safety.isSubstanceUrge,
       substanceDetails: safety.substanceDetails,
-      memoryUsed: context,
-      therapyLessonsUsed: publicTherapyLessonSummary(relevantTherapyLessons),
+      // Keep public provenance categories separate. `context` is the compact model
+      // input; these public fields show what type of prior learning influenced it
+      // without exposing hidden reasoning or duplicating professional lessons.
+      memoryUsed: retrieved,
+      professionalLearningUsed: publicTherapyLessonSummary(relevantTherapyLessons),
       memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
       memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
       breakdown,
