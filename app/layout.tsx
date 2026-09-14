@@ -10,6 +10,7 @@ import '../src/golden-pixel-fixes.css';
 import '../src/approved-keep-talking.css';
 import '../src/approved-keep-talking-v2.css';
 import '../src/perspective-reference.css';
+import '../src/desktop-reference-final.css';
 
 export const metadata: Metadata = {
   title: 'SHIFT — Mind over matter',
