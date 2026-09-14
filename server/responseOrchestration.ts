@@ -8,21 +8,26 @@ const PRACTICE_WORDS = /\b(practice this|help me practice|what can i try|behavio
 const RESEARCH_WORDS = /\b(research|studies|study|evidence|science|scientific|source|citation|look up|fact check|is there evidence)\b/i;
 const EXTERNAL_DOMAIN_WORDS = /\b(dog|cat|animal|pet|brain|neuroscience|psychology|trauma|ptsd|bipolar|medication|medicine|medical|withdrawal|alcohol|drug|substance|legal|law|rights|employment|payroll|financial|finance|history|historical|statistics|risk|recognize|memory)\b/i;
 const FACTUAL_QUESTION = /\b(can|could|does|do|did|is|are|will|would|how|what|when|where|which)\b[\s\S]{0,180}\?/i;
+const FACTUAL_REQUEST = /\b(tell me|explain|i want to know|i'd like to know|help me understand|check|verify|find out)\b[\s\S]{0,180}\b(can|could|does|do|did|is|are|will|would|how|what|when|where|which|whether)\b/i;
 const INTELLECTUALIZING = /\b(because|maybe (he|she|they)|i think (he|she|they)|probably (he|she|they)|must have|the reason (he|she|they)|their trauma|his trauma|her trauma|narciss|attachment style)\b/i;
+
+function isExternalFactualRequest(message: string): boolean {
+  return EXTERNAL_DOMAIN_WORDS.test(message) && (FACTUAL_QUESTION.test(message) || FACTUAL_REQUEST.test(message));
+}
 
 export function inferResponseMode(message: string): ShiftResponseMode {
   if (WITNESS_WORDS.test(message)) return 'WITNESS';
   if (THERAPY_PREP_WORDS.test(message)) return 'THERAPY_PREP';
   if (PROCESS_WORDS.test(message)) return 'PROCESS';
   if (PRACTICE_WORDS.test(message)) return 'PRACTICE';
-  if (RESEARCH_WORDS.test(message) || (FACTUAL_QUESTION.test(message) && EXTERNAL_DOMAIN_WORDS.test(message))) return 'RESEARCH';
+  if (RESEARCH_WORDS.test(message) || isExternalFactualRequest(message)) return 'RESEARCH';
   return 'UNDERSTAND';
 }
 
 export function needsExternalResearch(message: string, mode = inferResponseMode(message)): boolean {
   if (mode === 'WITNESS' || mode === 'THERAPY_PREP') return false;
   if (mode === 'RESEARCH') return true;
-  return FACTUAL_QUESTION.test(message) && EXTERNAL_DOMAIN_WORDS.test(message);
+  return isExternalFactualRequest(message);
 }
 
 export function appearsToExplainBeforeFeeling(message: string): boolean {
