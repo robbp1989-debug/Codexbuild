@@ -28,6 +28,9 @@ const RELATION_TERMS = [
   'dog', 'cat', 'pet', 'work', 'workplace', 'alcohol', 'sobriety', 'recovery',
 ];
 
+const EXPLICIT_CORRECTION = /\b(correction|that(?:'s| is) wrong|not anymore|no longer|i was wrong|scratch that|please update that)\b/i;
+const CONVERSATION_CARRYOVER = /\b(this|that|it|same thing|same issue|again|earlier|before|still|what we just talked about|what i just said)\b/i;
+
 function tokens(value: string): string[] {
   return Array.from(new Set(
     value
@@ -66,22 +69,50 @@ function validItem(item: any): item is {
   );
 }
 
-function itemScore(item: { text: string; label: string; source: PersonalContextSource; timestamp?: string }, queryTokens: string[], queryText: string): number {
-  const haystack = `${item.label} ${item.text}`.toLowerCase();
-  let score = 0;
+function lexicalHits(haystack: string, queryTokens: string[]): number {
+  let hits = 0;
   for (const token of queryTokens) {
-    if (haystack.includes(token)) score += token.length >= 6 ? 4 : 2;
+    if (haystack.includes(token)) hits += 1;
+  }
+  return hits;
+}
+
+function itemScore(
+  item: { text: string; label: string; source: PersonalContextSource; timestamp?: string },
+  currentTokens: string[],
+  recentTokens: string[],
+  currentText: string,
+  recentText: string,
+): { score: number; currentHits: number; recentHits: number } {
+  const haystack = `${item.label} ${item.text}`.toLowerCase();
+  const currentHits = lexicalHits(haystack, currentTokens);
+  const recentHits = lexicalHits(haystack, recentTokens);
+  let score = 0;
+
+  for (const token of currentTokens) {
+    if (haystack.includes(token)) score += token.length >= 6 ? 5 : 3;
+  }
+  for (const token of recentTokens) {
+    if (haystack.includes(token)) score += token.length >= 6 ? 1.5 : 0.75;
   }
   for (const term of RELATION_TERMS) {
-    if (queryText.includes(term) && haystack.includes(term)) score += 7;
+    if (currentText.includes(term) && haystack.includes(term)) score += 8;
+    else if (recentText.includes(term) && haystack.includes(term)) score += 1.5;
   }
   if (item.source !== 'document_report') score += 0.75;
   if (parseTime(item.timestamp) > Date.now() - 1000 * 60 * 60 * 24 * 180) score += 0.25;
-  return score;
+  return { score, currentHits, recentHits };
 }
 
-function relevantSummary(summary: string, queryTokens: string[], queryText: string): string {
-  if (!summary.trim() || !queryTokens.length) return '';
+function relevantSummary(
+  summary: string,
+  currentTokens: string[],
+  recentTokens: string[],
+  currentText: string,
+  recentText: string,
+  allowCarryover: boolean,
+): string {
+  if (!summary.trim() || (!currentTokens.length && !allowCarryover)) return '';
   const sentences = summary
     .replace(/\s+/g, ' ')
     .split(/(?<=[.!?])\s+/)
@@ -89,13 +120,16 @@ function relevantSummary(summary: string, queryTokens: string[], queryText: stri
     .filter(Boolean)
     .map((sentence) => {
       const lower = sentence.toLowerCase();
-      let score = queryTokens.reduce((sum, token) => sum + (lower.includes(token) ? 1 : 0), 0);
+      const currentHits = lexicalHits(lower, currentTokens);
+      const recentHits = lexicalHits(lower, recentTokens);
+      let score = currentHits * 3 + (allowCarryover ? recentHits : 0) * 0.75;
       for (const term of RELATION_TERMS) {
-        if (queryText.includes(term) && lower.includes(term)) score += 3;
+        if (currentText.includes(term) && lower.includes(term)) score += 4;
+        else if (allowCarryover && recentText.includes(term) && lower.includes(term)) score += 1;
       }
-      return { sentence, score };
+      return { sentence, score, currentHits };
     })
-    .filter((candidate) => candidate.score > 0)
+    .filter((candidate) => candidate.currentHits > 0 || (allowCarryover && candidate.score > 0))
     .sort((a, b) => b.score - a.score)
     .slice(0, 2)
     .map((candidate) => candidate.sentence);
@@ -108,17 +142,25 @@ export function selectRelevantPersonalContext(
   currentMessage: string,
   recentConversation = '',
 ): { userSummary: string; records: PersonalContextRecord[] } {
-  const queryText = `${currentMessage} ${recentConversation}`.toLowerCase().slice(0, 8000);
-  const queryTokens = tokens(queryText);
-  if (!queryTokens.length) return { userSummary: '', records: [] };
+  // A correction turn should not be contaminated by the very stored context the
+  // user is correcting. The current statement remains available to the model in
+  // the ordinary conversation input and can be saved later through explicit flow.
+  if (EXPLICIT_CORRECTION.test(currentMessage)) return { userSummary: '', records: [] };
+
+  const currentText = currentMessage.toLowerCase().slice(0, 4000);
+  const recentText = recentConversation.toLowerCase().slice(0, 6000);
+  const currentTokens = tokens(currentText);
+  const recentTokens = tokens(recentText);
+  const allowCarryover = CONVERSATION_CARRYOVER.test(currentMessage);
+  if (!currentTokens.length && !allowCarryover) return { userSummary: '', records: [] };
 
   const rawItems = Array.isArray(input) ? input.slice(0, 100).filter(validItem) : [];
   const supersededIds = new Set(rawItems.map((item) => item.supersedes).filter((id): id is string => typeof id === 'string'));
 
   const ranked = rawItems
     .filter((item) => !item.id || !supersededIds.has(item.id))
-    .map((item) => ({ item, score: itemScore(item, queryTokens, queryText) }))
-    .filter(({ score }) => score >= 2)
+    .map((item) => ({ item, ...itemScore(item, currentTokens, recentTokens, currentText, recentText) }))
+    .filter(({ score, currentHits, recentHits }) => score >= 2 && (currentHits > 0 || (allowCarryover && recentHits > 0)))
     .sort((a, b) => b.score - a.score || parseTime(b.item.timestamp) - parseTime(a.item.timestamp));
 
   const records: PersonalContextRecord[] = [];
@@ -139,7 +181,14 @@ export function selectRelevantPersonalContext(
 
   const approvedSummary = typeof summary === 'string' ? summary.slice(0, 4000) : '';
   return {
-    userSummary: relevantSummary(approvedSummary, queryTokens, queryText),
+    userSummary: relevantSummary(
+      approvedSummary,
+      currentTokens,
+      recentTokens,
+      currentText,
+      recentText,
+      allowCarryover,
+    ),
     records,
   };
 }
