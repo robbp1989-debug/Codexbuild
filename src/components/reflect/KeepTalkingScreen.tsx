@@ -1,7 +1,7 @@
 'use client';
 
 import { activeContext } from '../../personalization/model';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bookmark,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { evaluateSafety } from '../../../server/safetyCheck';
 import { useApp } from '../../context/AppContext';
+import { shiftPerspective } from '../layout/perspectiveTransition';
 
 interface ConversationTurn {
   role: 'user' | 'assistant';
@@ -57,6 +58,14 @@ export const KeepTalkingScreen: React.FC = () => {
   const [memorySuggestion, setMemorySuggestion] = useState<MemorySuggestion | null>(null);
   const [memorySaved, setMemorySaved] = useState(false);
   const [memoryUsed, setMemoryUsed] = useState<string[]>([]);
+  const [visibleAnswer, setVisibleAnswer] = useState<string | null>(null);
+  const perspectiveRef = useRef<HTMLElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const thread = threadRef.current;
+    if (thread) thread.scrollTop = thread.scrollHeight;
+  }, [turns.length, loading]);
 
   if (!activeShift) {
     return (
@@ -72,6 +81,7 @@ export const KeepTalkingScreen: React.FC = () => {
   }
 
   const perspectiveText = (
+    visibleAnswer ||
     activeShift.userEditedPerspective ||
     activeShift.updated_perspective ||
     activeShift.userEditedInterpretation ||
@@ -81,6 +91,19 @@ export const KeepTalkingScreen: React.FC = () => {
   const perspectiveSentences = perspectiveText.split(/(?<=[.!?])\s+/).filter(Boolean);
   const perspectiveHeadline = perspectiveSentences[0] || 'A more current perspective.';
   const perspectiveBody = perspectiveSentences.slice(1).join(' ');
+
+  const moveAnswerLeft = (content: string, source: HTMLElement) => {
+    const target = perspectiveRef.current;
+    // Give the chosen answer the old snapshot and the wall card the new one.
+    // The content stays verbatim and this does not save anything to memory.
+    if (target) target.style.viewTransitionName = 'none';
+    source.style.viewTransitionName = 'shift-perspective';
+    shiftPerspective(() => {
+      source.style.removeProperty('view-transition-name');
+      target?.style.removeProperty('view-transition-name');
+      setVisibleAnswer(content);
+    });
+  };
 
   const sendMessage = async () => {
     const message = input.trim();
@@ -180,11 +203,12 @@ export const KeepTalkingScreen: React.FC = () => {
 
   return (
     <div className="keep-talking-immersive">
-      <aside className="keep-talking-perspective" aria-live="polite" aria-label="Current SHIFT perspective">
+      <aside ref={perspectiveRef} className="keep-talking-perspective" aria-live="polite" aria-label="Current SHIFT perspective">
         <div className="keep-talking-perspective__eyebrow"><Sparkles className="w-4 h-4" /> Perspective shift</div>
         <h2>{perspectiveHeadline}</h2>
         {perspectiveBody && <p className="keep-talking-perspective__answer">{perspectiveBody}</p>}
         <p className="keep-talking-perspective__note">A working reflection, not a verdict about you or anyone else.</p>
+        {visibleAnswer && <button type="button" className="perspective-reset" onClick={() => shiftPerspective(() => setVisibleAnswer(null))}>Original perspective</button>}
 
         {memoryUsed.length > 0 && (
           <div className="keep-talking-perspective__memory">
@@ -221,10 +245,22 @@ export const KeepTalkingScreen: React.FC = () => {
           </p>
         </div>
 
-        <div className="keep-talking-thread" aria-label="Conversation history">
+        <div ref={threadRef} className="keep-talking-thread" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation history">
           {turns.map((turn, index) => (
             <div key={`${turn.role}-${index}`} className={`keep-talking-turn keep-talking-turn--${turn.role}`}>
               <div className="keep-talking-turn__label">{turn.role === 'user' ? 'You' : 'SHIFT'}</div>
+              {turn.role === 'assistant' && turn.responseMode === 'model' && (
+                <button
+                  type="button"
+                  className="keep-talking-shift-answer"
+                  aria-label="Shift this answer to the perspective card"
+                  aria-pressed={visibleAnswer === turn.content}
+                  title="Shift this answer left"
+                  onClick={(event) => moveAnswerLeft(turn.content, event.currentTarget.parentElement!)}
+                >
+                  <ArrowLeft className="w-4 h-4" aria-hidden="true" /><span>Shift left</span>
+                </button>
+              )}
               <div className="keep-talking-turn__body">{turn.content}</div>
               {turn.responseMode === 'unavailable' && (
                 <output className="mt-3 block rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -285,6 +321,7 @@ export const KeepTalkingScreen: React.FC = () => {
               }}
               disabled={loading}
               rows={2}
+              aria-label="Your message to SHIFT"
               placeholder="What’s on your mind right now?"
               className="keep-talking-composer__input"
             />

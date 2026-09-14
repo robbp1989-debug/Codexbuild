@@ -1,4 +1,5 @@
 import { usePersonalization } from '../personalization/usePersonalization';
+import { shiftPerspective } from '../components/layout/perspectiveTransition';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { normalizeLifeContext, type LifeContextId } from '../data/lifeContexts';
 import {
@@ -152,7 +153,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (summary) { setApprovedSummary(summary.slice(0, 4000)); setSummaryRemembered(true); }
     } catch { /* Session-only use remains available. */ }
   }, []);
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTabState] = useState<string>('home');
+  const setActiveTab = useCallback((tab: string) => {
+    shiftPerspective(() => {
+      setActiveTabState(tab);
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    });
+  }, []);
   const [lifeContext, setLifeContext] = useState<LifeContextId>('everyday');
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
 

@@ -11,6 +11,7 @@ import './golden-scroll-source.css';
 import './golden-pixel-fixes.css';
 import './approved-keep-talking.css';
 import './approved-keep-talking-v2.css';
+import './perspective-reference.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

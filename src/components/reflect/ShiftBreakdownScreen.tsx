@@ -345,7 +345,7 @@ export const ShiftBreakdownScreen: React.FC = () => {
             </div>
 
             <div className="grid gap-3 md:grid-cols-[1.35fr_1fr]">
-              <div className="rounded-2xl border border-sky-200 bg-sky-50/72 p-4">
+              <div className="perspective-source rounded-2xl border border-sky-200 bg-sky-50/72 p-4">
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-sky-700">Updated perspective</p>
                 {editingPerspective ? (
                   <textarea
