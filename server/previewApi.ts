@@ -20,11 +20,16 @@ export async function handlePreviewApi(request: Request): Promise<Response> {
   if (request.method === 'GET' && path === '/api/shift/knowledge') {
     return json({ version: KNOWLEDGE_VERSION, cards: KNOWLEDGE_CARDS.map(({ terms, ...card }) => card), clinicalReview: 'pending' });
   }
+  if (request.method === 'GET' && path === '/api/shift/continuity/latest') {
+    return json({ artifact: null, accountRequired: true, persisted: false });
+  }
+  if (request.method === 'POST' && (path === '/api/shift/therapy-lessons/remember' || path === '/api/shift/continuity/remember')) {
+    return json({ persisted: false, accountRequired: true });
+  }
   const supported = ['/api/shift/breakdown', '/api/shift/conversation', '/api/shift/game-content'];
   if (!supported.includes(path)) return json({ error: 'This endpoint is not available in this deployment. No account data was saved.', persisted: false }, 404);
   if (request.method !== 'POST') return json({ error: 'POST required.' }, 405);
   if (!(request.headers.get('content-type') || '').includes('application/json')) return json({ error: 'JSON required.' }, 415);
-  // Browser cross-origin calls must not send reflections to this endpoint.
   const origin = request.headers.get('origin');
   if (origin && origin !== new URL(request.url).origin) return json({ error: 'Origin not allowed.' }, 403);
   if (Number(request.headers.get('content-length') || 0) > 64000) return json({ error: 'Request too large.' }, 413);
@@ -75,6 +80,7 @@ export async function handlePreviewApi(request: Request): Promise<Response> {
         userMessage: message,
         history,
         memoryContext: memory,
+        therapyLessons: [],
         personalContext: personalContextPrompt(input.personalContext, input.approvedSummary, message, recentConversation),
       });
       const evidence = result.research.status === 'grounded'
@@ -83,7 +89,7 @@ export async function handlePreviewApi(request: Request): Promise<Response> {
             sources: result.research.sources.map((source) => ({ title: source.title, url: source.url, sourceType: source.sourceType })),
           }
         : staticEvidence;
-      return json({ ...result, safetyInterruption: false, evidence, relevantMemory: memory, memorySource: 'device_or_none' });
+      return json({ ...result, safetyInterruption: false, evidence, relevantMemory: memory, memorySource: 'device_or_none', therapyLessonRetrieval: 'unavailable_in_preview' });
     }
     if (input.confirmed !== true) return json({ error: 'Confirm the reflection before generating practice.', content: null }, 400);
     const content = await generatePersonalizedGameContent(value(input, 'gameId', 80), value(input, 'theme', 160), observation, value(input, 'interpretation'), value(input, 'updatedPerspective'));
