@@ -14,6 +14,12 @@ const ALLOWED_TYPES = new Set([
   'HELPFUL_STRATEGY',
 ]);
 
+const USER_CONFIRMATION_REQUIRED = new Set([
+  'CONFIRMED_PATTERN',
+  'REJECTED_HYPOTHESIS',
+  'HELPFUL_STRATEGY',
+]);
+
 function cleanString(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 }
@@ -36,6 +42,12 @@ export async function POST(request: Request) {
 
     if (!ALLOWED_TYPES.has(type) || !label || !summary) {
       return Response.json({ error: 'The proposed memory is not valid.' }, { status: 400 });
+    }
+    if (USER_CONFIRMATION_REQUIRED.has(type) && confidence !== 'user_confirmed') {
+      return Response.json({ error: 'This learning type requires explicit user confirmation.' }, { status: 400 });
+    }
+    if (type === 'OUTCOME' && confidence === 'working') {
+      return Response.json({ error: 'An outcome must reflect an observed or user-confirmed result.' }, { status: 400 });
     }
 
     const user = await getChatGPTUser();
