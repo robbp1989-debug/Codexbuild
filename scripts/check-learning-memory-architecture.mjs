@@ -10,6 +10,8 @@ const semanticMigration = read('migrations/0002_semantic_memory.sql');
 const retrieval = read('server/memoryContext.ts');
 const persistence = read('server/persistence.ts');
 const semanticMemory = read('server/semanticMemory.ts');
+const outcomeLearning = read('server/outcomeLearning.ts');
+const outcomeLearningStore = read('server/outcomeLearningStore.ts');
 const breakdownRoute = read('app/api/shift/breakdown/route.ts');
 const conversationRoute = read('app/api/shift/conversation/route.ts');
 const sourceUpload = read('app/api/shift/source/upload/route.ts');
@@ -60,8 +62,13 @@ assert(aiClient.includes('Do not save it automatically'), 'Keep Talking must not
 assert(aiClient.includes('A suggestion is not a HELPFUL_STRATEGY until a real outcome shows it helped'), 'Advice must not become a helpful strategy without outcome evidence.');
 
 assert(evidenceRoute.includes('rememberForFuture'), 'Prediction outcomes must remain opt-in for durable account memory.');
-assert(evidenceRoute.includes('strategyHelped && intendedAction'), 'Helpful strategies require an explicit user-reported helpful outcome.');
-assert(evidenceRoute.includes("type: 'HELPFUL_STRATEGY'"), 'Helpful strategy promotion path is missing.');
+assert(evidenceRoute.includes('strategyHelped ? buildHelpfulStrategyMemory(intendedAction)'), 'Helpful strategies require an explicit user-reported helpful outcome.');
+assert(outcomeLearning.includes("type: 'HELPFUL_STRATEGY'"), 'Helpful strategy promotion path is missing.');
+assert(outcomeLearning.includes("type: 'UPDATED_PERSPECTIVE'"), 'User-authored outcome learning must remain an updated perspective, not an auto-confirmed pattern.');
+assert(outcomeLearning.includes('does not by itself establish a confirmed pattern'), 'One outcome must not silently establish a confirmed pattern.');
+assert(outcomeLearningStore.includes("evidence_type = 'memory_confirmation'"), 'Repeated learning must count independent prediction sources idempotently.');
+assert(outcomeLearningStore.includes('consolidateAcrossPredictions'), 'Repeated learning must have an explicit cross-prediction consolidation gate.');
+assert(outcomeLearningStore.includes("source_kind = 'prediction_outcome'"), 'Prediction outcome learning must preserve its provenance.');
 
 assert(persistence.includes('CONSOLIDATABLE_MEMORY_TYPES'), 'Repeated durable learning must have a conservative consolidation path.');
 assert(persistence.includes('canonicalLearningText'), 'Learning consolidation must compare normalized compact learning text.');
