@@ -155,6 +155,12 @@ export interface ReflectionRecord {
   lastStepCompleted?: ReflectionStep;
 }
 
+export interface ShiftProfessionalLearningInfluence {
+  id: string;
+  title: string;
+  sourceType: string;
+}
+
 // Strict AI Shift Breakdown Output Schema
 export interface ShiftBreakdown {
   id: string;
@@ -197,10 +203,12 @@ export interface ShiftBreakdown {
   recommended_skills: string[];
   recommended_games: ArcadeModeType[];
 
-  // Personalization transparency: the compact historical learning that was
-  // considered for this breakdown. These are comparison points, not conclusions.
+  // Personalization transparency. These fields describe compact provenance that
+  // materially influenced the response; they are not hidden reasoning or chain-of-thought.
   memoryUsed?: string[];
+  professionalLearningUsed?: ShiftProfessionalLearningInfluence[];
   memorySource?: 'account' | 'device_or_none' | string;
+  memoryRetrieval?: 'lexical' | 'semantic_and_lexical' | string;
 
   // State flags
   isSavedToProfile: boolean;
