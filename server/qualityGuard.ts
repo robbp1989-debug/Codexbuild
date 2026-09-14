@@ -51,7 +51,7 @@ export function evaluateResponseQuality(args: {
   }
 
   if (/\btrauma (?:is|gets|becomes) stored in (?:the |your )?(?:body|hips|shoulders|muscles|fascia|cells)\b/i.test(reply)
-    || /\b(release|releasing) trauma (?:from|out of) (?:the |your )?(?:body|hips|shoulders|muscles|fascia|cells)\b/i.test(reply)) {
+    || /\breleas(?:e|es|ing) trauma (?:from|out of) (?:the |your )?(?:body|hips|shoulders|muscles|fascia|cells)\b/i.test(reply)) {
     criticalFailures.push('body_trauma_storage_claim');
   }
 
