@@ -17,11 +17,19 @@ import {
 } from 'lucide-react';
 import { evaluateSafety } from '../../../server/safetyCheck';
 import { useApp } from '../../context/AppContext';
+import {
+  buildContinuityArtifact,
+  CONTINUITY_STORAGE_KEY,
+  type StoredContinuityArtifact,
+} from '../../../lib/continuity-artifact';
 
 interface ConversationTurn {
   role: 'user' | 'assistant';
   content: string;
-  evidence?: { version: string; sources: Array<{title: string; url: string}> };
+  evidence?: {
+    version: string;
+    sources: Array<{title: string; url: string; sourceType?: string}>;
+  };
   responseMode?: 'model' | 'unavailable';
 }
 
@@ -31,6 +39,15 @@ interface MemorySuggestion {
   summary: string;
   tags?: string[];
   confidence?: string;
+}
+
+function safeResearchUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 export const KeepTalkingScreen: React.FC = () => {
@@ -57,6 +74,8 @@ export const KeepTalkingScreen: React.FC = () => {
   const [memorySuggestion, setMemorySuggestion] = useState<MemorySuggestion | null>(null);
   const [memorySaved, setMemorySaved] = useState(false);
   const [memoryUsed, setMemoryUsed] = useState<string[]>([]);
+  const [offerContinuity, setOfferContinuity] = useState(false);
+  const [continuitySaved, setContinuitySaved] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,6 +107,32 @@ export const KeepTalkingScreen: React.FC = () => {
   const perspectiveHeadline = perspectiveSentences[0] || 'A more current perspective.';
   const perspectiveBody = perspectiveSentences.slice(1).join(' ');
 
+  const saveContinuityArtifact = () => {
+    const artifact = buildContinuityArtifact({
+      currentShift: activeShift as unknown as Record<string, unknown>,
+      history: turns.map((turn) => ({ role: turn.role, content: turn.content })),
+      relevantMemory: memoryUsed,
+    });
+    const record: StoredContinuityArtifact = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      shiftId: activeShift.id,
+      artifact,
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem(CONTINUITY_STORAGE_KEY) || '[]') as StoredContinuityArtifact[];
+      const next = [record, ...(Array.isArray(existing) ? existing : [])].slice(0, 20);
+      localStorage.setItem(CONTINUITY_STORAGE_KEY, JSON.stringify(next));
+      setContinuitySaved(true);
+      playSoftSound('complete');
+      setActiveTab('therapy-prep');
+    } catch {
+      // If browser storage is unavailable, Therapy Prep can still synthesize from the Shift itself.
+      setActiveTab('therapy-prep');
+    }
+  };
+
   const sendMessage = async () => {
     const message = input.trim();
     if (!message || loading) return;
@@ -104,6 +149,8 @@ export const KeepTalkingScreen: React.FC = () => {
     setLoading(true);
     setMemorySuggestion(null);
     setMemorySaved(false);
+    setOfferContinuity(false);
+    setContinuitySaved(false);
 
     try {
       const response = await fetch('/api/shift/conversation', {
@@ -128,6 +175,7 @@ export const KeepTalkingScreen: React.FC = () => {
         relevantMemory?: string[];
         memorySuggestion?: MemorySuggestion | null;
         responseMode?: 'model' | 'unavailable';
+        offerContinuity?: boolean;
       };
 
       if (data.safetyInterruption) {
@@ -144,6 +192,7 @@ export const KeepTalkingScreen: React.FC = () => {
       }]);
       setMemoryUsed(data.responseMode === 'model' && Array.isArray(data.relevantMemory) ? data.relevantMemory : []);
       setMemorySuggestion(data.responseMode === 'model' ? data.memorySuggestion || null : null);
+      setOfferContinuity(data.responseMode === 'model' && data.offerContinuity === true);
       playSoftSound('chime');
     } catch {
       setTurns((current) => [
@@ -239,11 +288,13 @@ export const KeepTalkingScreen: React.FC = () => {
               )}
               {turn.evidence && <details className="mt-3 text-sm">
                 <summary className="cursor-pointer font-medium">Research context for this response</summary>
-                <p className="mt-2">These educational sources were selected for this request. They do not verify personal interpretations or establish that SHIFT is a validated treatment.</p>
-                {turn.evidence.sources.length === 0 && <p className="mt-2">No source-backed exercise was selected; this response should remain exploratory.</p>}
-                {turn.evidence.sources.filter(source => {
-                  try { return new URL(source.url).hostname === 'www.nhs.uk'; } catch { return false; }
-                }).map(source => <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="mt-2 block text-blue-700 underline">{source.title}</a>)}
+                <p className="mt-2">These sources support external factual claims only. They do not verify personal interpretations, motives, diagnoses, or what another person or animal subjectively intended.</p>
+                {turn.evidence.sources.length === 0 && <p className="mt-2">No source-backed factual claim was selected; this response should remain exploratory.</p>}
+                {turn.evidence.sources.slice(0, 8).map(source => {
+                  const href = safeResearchUrl(source.url);
+                  if (!href) return null;
+                  return <a key={source.url} href={href} target="_blank" rel="noreferrer" className="mt-2 block text-blue-700 underline">{source.title}</a>;
+                })}
               </details>}
             </div>
           ))}
@@ -273,6 +324,23 @@ export const KeepTalkingScreen: React.FC = () => {
               >
                 {memorySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                 {memorySaved ? 'Remembered' : 'Remember this'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {offerContinuity && !continuitySaved && (
+          <div className="keep-talking-memory-suggestion" aria-live="polite">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold text-sky-700 flex items-center gap-1.5">
+                  <Bookmark className="w-3.5 h-3.5" /> Carry this into the next session
+                </div>
+                <p className="text-sm mt-1">This exchange contains enough new learning to make a short therapist-continuity note useful.</p>
+                <p className="text-[11px] text-slate-500 mt-1">The note keeps facts, interpretations, working hypotheses, experiments, outcomes, and open questions separate.</p>
+              </div>
+              <button type="button" onClick={saveContinuityArtifact} className="keep-talking-remember-button">
+                <Save className="w-4 h-4" /> Save this for my next session
               </button>
             </div>
           </div>
@@ -315,7 +383,7 @@ export const KeepTalkingScreen: React.FC = () => {
               <LineChart className="w-4 h-4" aria-hidden="true" />
               <span>Test a prediction</span>
             </button>
-            <button onClick={() => setActiveTab('therapy-prep')} className="keep-talking-secondary-action">
+            <button onClick={saveContinuityArtifact} className="keep-talking-secondary-action">
               <Bookmark className="w-4 h-4" aria-hidden="true" />
               <span>Save for therapy</span>
             </button>
