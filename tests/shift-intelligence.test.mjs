@@ -13,6 +13,7 @@ await build({
     'server/qualityGuard.ts',
     'server/therapyLessonContext.ts',
     'server/researchEngine.ts',
+    'server/memorySuggestion.ts',
   ],
   bundle: true,
   platform: 'node',
@@ -25,6 +26,7 @@ const orchestration = await import(pathToFileURL(join(dir, 'responseOrchestratio
 const quality = await import(pathToFileURL(join(dir, 'qualityGuard.js')).href);
 const lessons = await import(pathToFileURL(join(dir, 'therapyLessonContext.js')).href);
 const research = await import(pathToFileURL(join(dir, 'researchEngine.js')).href);
+const memorySuggestion = await import(pathToFileURL(join(dir, 'memorySuggestion.js')).href);
 
 const emptyResearch = {
   required: false,
@@ -176,6 +178,29 @@ test('professional lesson suggestions require explicit professional attribution 
   assert.ok(accepted);
   assert.equal(accepted.sourceType, 'therapist');
   assert.equal(accepted.confidence, 1);
+});
+
+test('generic learning suggestions are allowlisted, bounded, and evidence-aware', () => {
+  assert.equal(memorySuggestion.sanitizeGenericMemorySuggestion({
+    type: 'DIAGNOSIS', label: 'Bad type', summary: 'Should never pass', confidence: 'user_confirmed',
+  }), null);
+  assert.equal(memorySuggestion.sanitizeGenericMemorySuggestion({
+    type: 'HELPFUL_STRATEGY', label: 'Try it', summary: 'An untested suggestion', confidence: 'working',
+  }), null);
+  assert.equal(memorySuggestion.sanitizeGenericMemorySuggestion({
+    type: 'CONFIRMED_PATTERN', label: 'Pattern', summary: 'Maybe a pattern', confidence: 'working',
+  }), null);
+
+  const valid = memorySuggestion.sanitizeGenericMemorySuggestion({
+    type: 'UPDATED_PERSPECTIVE',
+    label: '  More current view  ',
+    summary: '  I can separate what happened from what I predicted.  ',
+    tags: [' Facts ', 'facts', 'Prediction'],
+    confidence: 'user_confirmed',
+  });
+  assert.ok(valid);
+  assert.equal(valid.label, 'More current view');
+  assert.deepEqual(valid.tags, ['facts', 'prediction']);
 });
 
 test('research plan strips private narrative and keeps only broad public topic plus controlled jurisdiction', () => {
