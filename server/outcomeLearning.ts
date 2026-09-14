@@ -96,3 +96,21 @@ export function repeatedLearningMessage(evidenceCount: number): string | null {
   if (evidenceCount === 2) return 'You have now reported this same learning after two separate real-world tests.';
   return `You have now reported this same learning after ${Math.floor(evidenceCount)} separate real-world tests.`;
 }
+
+export function buildRecurringPatternCandidate(
+  learning: unknown,
+  evidenceCount: number,
+): LearningMemoryCandidate | null {
+  const summary = clean(learning, 390);
+  if (!summary || !Number.isFinite(evidenceCount) || evidenceCount < 2) return null;
+
+  // This is deliberately only a candidate. Repetition earns a question, not a
+  // verdict. It becomes CONFIRMED_PATTERN only after a separate explicit user click.
+  return {
+    type: 'CONFIRMED_PATTERN',
+    label: 'A recurring pattern I confirm',
+    summary: `Across ${Math.floor(evidenceCount)} separate real-world tests, I noticed this recurring learning: ${summary}`.slice(0, 500),
+    tags: ['user-confirmed-pattern', 'repeated-real-world-learning'],
+    confidence: 'user_confirmed',
+  };
+}
