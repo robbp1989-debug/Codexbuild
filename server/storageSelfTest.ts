@@ -5,6 +5,7 @@ export interface StorageSelfTestResult {
   authenticatedUser: boolean;
   d1Binding: boolean;
   d1SchemaReady: boolean;
+  missingTables: string[];
   d1RoundTrip: boolean;
   r2Binding: boolean;
   r2RoundTrip: boolean;
@@ -13,12 +14,20 @@ export interface StorageSelfTestResult {
   checkedAt: string;
 }
 
+// Storage readiness must cover the entire currently supported intelligence
+// schema. A deployment with only the original memory tables is not ready for
+// professional learning, semantic retrieval, patterns, or continuity even if
+// generic memory can still round-trip successfully.
 const REQUIRED_TABLES = [
   'users',
   'learning_memories',
   'source_documents',
   'learning_evidence',
-];
+  'learning_memory_embeddings',
+  'therapy_lessons',
+  'user_patterns',
+  'continuity_artifacts',
+] as const;
 
 function getDb(): D1Database | null {
   try {
@@ -40,6 +49,7 @@ export async function inspectStorageReadiness(userId?: string): Promise<StorageS
   const database = getDb();
   const bucket = getBucket();
   let d1SchemaReady = false;
+  let missingTables: string[] = [...REQUIRED_TABLES];
 
   if (database) {
     try {
@@ -49,9 +59,11 @@ export async function inspectStorageReadiness(userId?: string): Promise<StorageS
         .bind(...REQUIRED_TABLES)
         .all<{ name: string }>();
       const names = new Set((result.results || []).map((row) => row.name));
-      d1SchemaReady = REQUIRED_TABLES.every((name) => names.has(name));
+      missingTables = REQUIRED_TABLES.filter((name) => !names.has(name));
+      d1SchemaReady = missingTables.length === 0;
     } catch {
       d1SchemaReady = false;
+      missingTables = [...REQUIRED_TABLES];
     }
   }
 
@@ -59,6 +71,7 @@ export async function inspectStorageReadiness(userId?: string): Promise<StorageS
     authenticatedUser: Boolean(userId),
     d1Binding: Boolean(database),
     d1SchemaReady,
+    missingTables,
     d1RoundTrip: false,
     r2Binding: Boolean(bucket),
     r2RoundTrip: false,
