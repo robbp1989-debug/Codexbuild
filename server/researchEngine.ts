@@ -26,6 +26,11 @@ interface ResponsesPayload {
   output?: ResponseOutputItem[];
 }
 
+export interface ResearchPlan {
+  topic: string;
+  propositions: string[];
+}
+
 const US_JURISDICTIONS = [
   'alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia',
   'hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts',
@@ -79,6 +84,16 @@ function propositionsFor(message: string): string[] {
   return ['What reliable external evidence is needed to answer the factual part of this question, and what remains uncertain?'];
 }
 
+export function buildResearchPlan(message: string): ResearchPlan {
+  // This is the only user-message-derived input allowed to cross into web search.
+  // It intentionally emits a broad topic plus generic propositions, never raw
+  // names, quotations, workplace details, case identifiers, or private narrative.
+  return {
+    topic: safeTopic(message),
+    propositions: propositionsFor(message),
+  };
+}
+
 function classifySource(url: string): ResearchSource['sourceType'] {
   const lower = url.toLowerCase();
   if (/pubmed\.ncbi\.nlm\.nih\.gov|doi\.org|nature\.com|sciencedirect\.com|springer\.com|wiley\.com|oup\.com|cambridge\.org/.test(lower)) return 'peer_reviewed_primary';
@@ -118,8 +133,7 @@ export async function runGroundedResearch(message: string, mode: ShiftResponseMo
   if (!required) return { required: false, status: 'not_needed', propositions: [], synthesis: '', sources: [] };
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const propositions = propositionsFor(message);
-  const topic = safeTopic(message);
+  const { topic, propositions } = buildResearchPlan(message);
   if (!apiKey) return { required: true, status: 'unavailable', topic, propositions, synthesis: '', sources: [] };
 
   const prompt = `Research only the generalized external factual propositions below for a SHIFT between-session support response.
