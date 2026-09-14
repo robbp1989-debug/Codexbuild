@@ -26,20 +26,35 @@ interface ResponsesPayload {
   output?: ResponseOutputItem[];
 }
 
+const US_JURISDICTIONS = [
+  'alabama','alaska','arizona','arkansas','california','colorado','connecticut','delaware','florida','georgia',
+  'hawaii','idaho','illinois','indiana','iowa','kansas','kentucky','louisiana','maine','maryland','massachusetts',
+  'michigan','minnesota','mississippi','missouri','montana','nebraska','nevada','new hampshire','new jersey',
+  'new mexico','new york','north carolina','north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island',
+  'south carolina','south dakota','tennessee','texas','utah','vermont','virginia','washington','west virginia',
+  'wisconsin','wyoming','district of columbia','federal',
+];
+
+function detectedJurisdiction(message: string): string {
+  const lower = message.toLowerCase();
+  return US_JURISDICTIONS.find((name) => lower.includes(name)) || '';
+}
+
 function safeTopic(message: string): string {
-  return message
-    .replace(/["“”][^"“”]{1,160}["“”]/g, '[quoted detail]')
-    .replace(/\bmy\s+(brother|sister|mother|mom|father|dad|friend|partner|wife|husband|coworker|boss|therapist|counselor|dog|cat|pet)\b/gi, 'a person\'s $1')
-    .replace(/\bI\b/g, 'the user')
-    .replace(/\bme\b/gi, 'the user')
-    .replace(/\bmy\b/gi, 'the user\'s')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 900);
+  const lower = message.toLowerCase();
+  const jurisdiction = detectedJurisdiction(message);
+  if (/\b(dog|canine|pet)\b/.test(lower)) return 'animal recognition, learning, and memory';
+  if (/\b(cat|feline)\b/.test(lower)) return 'animal recognition, learning, and memory';
+  if (/\b(alcohol|drug|substance|withdrawal)\b/.test(lower)) return 'substance use, urges, recovery, and safety';
+  if (/\b(medication|medical|bipolar|ptsd|trauma|brain|psychology|neuroscience)\b/.test(lower)) return 'mental health, behavior, and clinical science';
+  if (/\b(legal|law|rights|employment|payroll)\b/.test(lower)) return jurisdiction ? `${jurisdiction} law and official guidance` : 'law and official guidance';
+  if (/\b(financial|finance|money|bank|credit|debt)\b/.test(lower)) return 'financial rules and consumer guidance';
+  return 'external factual evidence relevant to the user question';
 }
 
 function propositionsFor(message: string): string[] {
   const lower = message.toLowerCase();
+  const jurisdiction = detectedJurisdiction(message);
   if (/\b(dog|canine|pet)\b/.test(lower)) {
     const propositions: string[] = [];
     if (/\b(voice|recording|sound|heard|hear)\b/.test(lower)) propositions.push('Can dogs distinguish or recognize familiar humans from voice cues, including recordings?');
@@ -57,7 +72,7 @@ function propositionsFor(message: string): string[] {
   }
   if (/\b(legal|law|rights|employment|payroll|financial|finance)\b/.test(lower)) {
     return [
-      'What current primary or authoritative sources govern the factual rule asked about?',
+      `What current primary or authoritative sources govern the factual rule asked about${jurisdiction ? ` in ${jurisdiction}` : ''}?`,
       'What jurisdictional, timing, or factual conditions limit application of that rule?',
     ];
   }
@@ -104,19 +119,19 @@ export async function runGroundedResearch(message: string, mode: ShiftResponseMo
 
   const apiKey = process.env.OPENAI_API_KEY;
   const propositions = propositionsFor(message);
-  if (!apiKey) return { required: true, status: 'unavailable', topic: safeTopic(message), propositions, synthesis: '', sources: [] };
+  const topic = safeTopic(message);
+  if (!apiKey) return { required: true, status: 'unavailable', topic, propositions, synthesis: '', sources: [] };
 
-  const prompt = `Research the general external factual propositions needed for a SHIFT between-session support response.
+  const prompt = `Research only the generalized external factual propositions below for a SHIFT between-session support response.
 
-Privacy rule: never issue web searches containing personal names, identifying details, workplaces, case numbers, street addresses, or private narrative details. Translate personal references into generic categories before searching.
+Privacy rule: the web-search plan contains no personal names, workplaces, case numbers, street addresses, private relationship details, quotations, or private event narrative. Do not attempt to infer or reconstruct them. Search only the generalized propositions and the broad public topic supplied here.
 
 Source priority: peer-reviewed primary research; systematic reviews/meta-analyses; major clinical practice guidelines; government sources; recognized academic institutions; major professional organizations; then high-quality secondary sources. For legal questions, prefer current primary law or official government sources. Never treat a search snippet as proof of more than the source establishes.
 
+Broad public topic: ${topic}
+
 Research propositions:
 ${propositions.map((item, index) => `${index + 1}. ${item}`).join('\n')}
-
-Privacy-minimized topic:
-${safeTopic(message)}
 
 Produce a concise evidence synthesis organized internally as: what evidence establishes; what it makes plausible; important alternatives/limits; what remains unknown. Do not diagnose the user, another person, or an animal. Use web citations for material factual claims.`;
 
@@ -137,19 +152,19 @@ Produce a concise evidence synthesis organized internally as: what evidence esta
     });
     if (!response.ok) {
       console.warn('[SHIFT Research] Grounded research unavailable', { status: response.status });
-      return { required: true, status: 'unavailable', topic: safeTopic(message), propositions, synthesis: '', sources: [] };
+      return { required: true, status: 'unavailable', topic, propositions, synthesis: '', sources: [] };
     }
 
     const parsed = parseResponse(await response.json() as ResponsesPayload);
     if (!parsed.text || !parsed.sources.length) {
       console.warn('[SHIFT Research] Research response lacked grounded citations');
-      return { required: true, status: 'unavailable', topic: safeTopic(message), propositions, synthesis: '', sources: [] };
+      return { required: true, status: 'unavailable', topic, propositions, synthesis: '', sources: [] };
     }
 
     return {
       required: true,
       status: 'grounded',
-      topic: safeTopic(message),
+      topic,
       propositions,
       synthesis: parsed.text.slice(0, 9000),
       sources: parsed.sources,
@@ -158,7 +173,7 @@ Produce a concise evidence synthesis organized internally as: what evidence esta
     console.warn('[SHIFT Research] Research request failed safely', {
       name: error instanceof Error ? error.name : 'unknown',
     });
-    return { required: true, status: 'unavailable', topic: safeTopic(message), propositions, synthesis: '', sources: [] };
+    return { required: true, status: 'unavailable', topic, propositions, synthesis: '', sources: [] };
   }
 }
 
