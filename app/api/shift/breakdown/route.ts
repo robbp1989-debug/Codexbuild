@@ -5,6 +5,12 @@ import { mergeMemoryContext, sanitizeMemoryItems, selectRelevantMemoryContext } 
 import { loadLearningMemories } from '@/server/persistence';
 import { evaluateSafety } from '@/server/safetyCheck';
 import { embedMemoryQuery } from '@/server/semanticMemory';
+import {
+  publicTherapyLessonSummary,
+  selectRelevantTherapyLessons,
+  therapyLessonsAsMemoryContext,
+} from '@/server/therapyLessonContext';
+import { loadTherapyLessons } from '@/server/therapyLessonStore';
 
 export async function POST(request: Request) {
   try {
@@ -24,18 +30,20 @@ export async function POST(request: Request) {
 
     const user = await getChatGPTUser();
     let durableMemory: Awaited<ReturnType<typeof loadLearningMemories>> = [];
+    let therapyLessons: Awaited<ReturnType<typeof loadTherapyLessons>> = [];
     if (user) {
       try {
         durableMemory = await loadLearningMemories(user.userId, 120);
       } catch (error) {
         console.info('[SHIFT Memory] Durable retrieval unavailable; using device memory for this request.', error);
       }
+      try {
+        therapyLessons = await loadTherapyLessons(user.userId, 60);
+      } catch (error) {
+        console.info('[SHIFT Therapy Lessons] Professional learning unavailable for this breakdown.', error);
+      }
     }
 
-    // During the migration period, authenticated D1 memory and device-local compact
-    // memory can coexist. Raw narratives/unconfirmed interpretations are excluded.
-    // Semantic recall is only attempted when this account already has stored compact
-    // memory vectors; otherwise the conservative lexical selector remains unchanged.
     const combinedMemory = [...durableMemory, ...sanitizeMemoryItems(memoryItems)];
     let queryEmbedding: number[] | null = null;
     if (durableMemory.some((memory) => Array.isArray(memory.embedding) && memory.embedding.length > 0)) {
@@ -46,7 +54,11 @@ export async function POST(request: Request) {
       }
     }
     const retrieved = selectRelevantMemoryContext(situation, combinedMemory, 6, queryEmbedding);
-    const context = mergeMemoryContext(retrieved, memoryContext);
+    const relevantTherapyLessons = selectRelevantTherapyLessons(situation, therapyLessons, 3);
+    const context = mergeMemoryContext(
+      [...therapyLessonsAsMemoryContext(relevantTherapyLessons), ...retrieved].slice(0, 8),
+      memoryContext,
+    );
     const breakdown = await analyzeShiftReflection(
       situation,
       context,
@@ -58,6 +70,7 @@ export async function POST(request: Request) {
       isSubstanceUrge: safety.isSubstanceUrge,
       substanceDetails: safety.substanceDetails,
       memoryUsed: context,
+      therapyLessonsUsed: publicTherapyLessonSummary(relevantTherapyLessons),
       memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
       memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
       breakdown,
