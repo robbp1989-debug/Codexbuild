@@ -124,6 +124,48 @@ test('only relevant approved bounded provenance reaches prompt; report text is n
   assert.ok(contextSize([approved]) > approved.text.length);
   assert.deepEqual(restoreItems([{ ...approved, text: 'x'.repeat(601) }]), []);
 });
+
+test('current turn outranks stale recent-conversation topics', () => {
+  const familyContext = {
+    ...answer('V8', 'My brother and I usually talk by phone.'),
+    label: 'family communication',
+    status: 'confirmed',
+  };
+  const prompt = personalContextPrompt(
+    [familyContext],
+    '',
+    'I want help organizing my work schedule.',
+    'user: Earlier I was talking about my brother and family communication.',
+  );
+  assert.equal(prompt, '');
+});
+
+test('explicit correction turns suppress stored context being corrected', () => {
+  const stored = {
+    ...answer('V1', 'I prefer detailed examples.'),
+    status: 'confirmed',
+  };
+  assert.equal(
+    personalContextPrompt([stored], 'I prefer detailed examples.', 'Correction: I no longer prefer detailed examples.'),
+    '',
+  );
+});
+
+test('explicit refer-back language can intentionally carry relevant recent context forward', () => {
+  const familyContext = {
+    ...answer('V8', 'My brother and I usually talk by phone.'),
+    label: 'family communication',
+    status: 'confirmed',
+  };
+  const prompt = personalContextPrompt(
+    [familyContext],
+    '',
+    'That same issue is happening again.',
+    'user: I was talking about my brother and family communication.',
+  );
+  assert.match(prompt, /family communication|brother/i);
+});
+
 test('corrupt draft does not create active context or invalid question positions', () => {
   assert.deepEqual(
     restoreIntake({ index: 999, answers: [], history: [] }),
