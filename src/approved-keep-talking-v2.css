@@ -37,26 +37,25 @@
 
 @media (min-width: 1180px) {
   .workspace-office--conversation {
-    /* Measured from the approved 1672×941 reference. Keep these values
-       viewport-relative instead of capping them in px. That preserves the
-       premium painting-zone / inset-workspace composition even when Chrome is
-       zoomed out and its CSS viewport becomes much wider than the monitor. */
-    --painting-panel-left: 3.9vw;
-    --painting-panel-width: 22.2vw;
+    /* Reference size: 1672x941. The painting itself is approximately x=80-410,
+       while the perspective card is intentionally a little wider at x=65-440. */
+    --painting-panel-left: 3.89vw;
+    --painting-panel-width: 22.43vw;
     --workspace-right-start: 31.45vw;
     --workspace-right-edge: 8.3vw;
   }
 
-  /* Keep the chair prominent on the left while retaining the same real
-     cinematic office. The actual held timestamp is selected in WorkspaceShell
-     from browser-rendered frame samples rather than video.duration. */
+  /* Preserve the whole office frame. The old 130vw / -30vw crop pushed the
+     painting nearly offscreen and made the answer card land over the cabinet
+     and chair instead. The held video now stays aligned to the viewport. */
   .workspace-office--conversation .workspace-office__background-video {
-    inset: 0 0 0 -30vw;
-    width: auto !important;
-    min-width: 130vw;
+    inset: 0;
+    width: 100vw !important;
+    min-width: 100vw !important;
     max-width: none !important;
-    height: 100vh !important;
+    height: 100dvh !important;
     transform: none;
+    object-fit: cover;
     object-position: center center;
   }
 
