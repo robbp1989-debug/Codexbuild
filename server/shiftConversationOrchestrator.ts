@@ -1,5 +1,10 @@
 import { SHIFT_BEHAVIOR_POLICY_PROMPT } from '../lib/shift-behavior-policy.js';
-import type { ResearchPacket, ShiftResponseMode } from '../lib/shift-intelligence-types.js';
+import type {
+  ResearchPacket,
+  ShiftResponseMode,
+  TherapyLesson,
+  TherapyLessonSuggestion,
+} from '../lib/shift-intelligence-types.js';
 import { evidencePrompt } from '../src/second-brain/knowledge.js';
 import { PRIMARY_MODEL } from './config.js';
 import type { LearningMemoryCandidate } from './aiClient.js';
@@ -13,14 +18,21 @@ import {
   orchestrationPrompt,
   shouldOfferContinuityArtifact,
 } from './responseOrchestration.js';
+import {
+  publicTherapyLessonSummary,
+  sanitizeTherapyLessonSuggestion,
+  therapyLessonPrompt,
+} from './therapyLessonContext.js';
 
 export interface OrchestratedConversationResult {
   reply: string;
   memorySuggestion?: LearningMemoryCandidate | null;
+  therapyLessonSuggestion?: TherapyLessonSuggestion | null;
   responseMode: 'model' | 'unavailable';
   unavailableReason?: 'not_configured' | 'provider_error';
   shiftMode: ShiftResponseMode;
   research: Pick<ResearchPacket, 'required' | 'status' | 'propositions' | 'sources'>;
+  therapyLessonsUsed: Array<{ id: string; title: string; sourceType: TherapyLesson['sourceType'] }>;
   offerContinuity: boolean;
   quality: { passed: boolean; warnings: string[] };
 }
@@ -89,9 +101,11 @@ export async function orchestrateShiftConversation(args: {
   userMessage: string;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
   memoryContext?: string[];
+  therapyLessons?: TherapyLesson[];
   personalContext?: string;
 }): Promise<OrchestratedConversationResult> {
   const history = (args.history || []).slice(-8);
+  const therapyLessons = (args.therapyLessons || []).slice(0, 4);
   const mode = inferResponseMode(args.userMessage);
   const research = await runGroundedResearch(args.userMessage, mode);
   const evidence = buildEvidenceContext({
@@ -105,10 +119,12 @@ export async function orchestrateShiftConversation(args: {
     return {
       reply: 'The live conversation is temporarily unavailable, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',
       memorySuggestion: null,
+      therapyLessonSuggestion: null,
       responseMode: 'unavailable',
       unavailableReason: 'not_configured',
       shiftMode: mode,
       research: publicResearch(research),
+      therapyLessonsUsed: publicTherapyLessonSummary(therapyLessons),
       offerContinuity: false,
       quality: { passed: true, warnings: [] },
     };
@@ -135,24 +151,27 @@ export async function orchestrateShiftConversation(args: {
     intellectualizationDetected: appearsToExplainBeforeFeeling(args.userMessage),
   });
 
-  const outputContract = `Return valid JSON only: {"reply":"user-facing response, normally 2-6 compact paragraphs","memorySuggestion":null OR {"type":"CONFIRMED_PATTERN|WORKING_HYPOTHESIS|REJECTED_HYPOTHESIS|UPDATED_PERSPECTIVE|USER_PREFERENCE|BOUNDARY|CURRENT_EXPERIMENT|OUTCOME|HELPFUL_STRATEGY","label":"max 8 words","summary":"privacy-minimized durable learning, no unnecessary names","tags":["2-6 tags"],"confidence":"user_confirmed|observed|working"}}.
-Only offer memorySuggestion when THIS user message supplies or explicitly confirms a durable learning, preference, boundary, rejected hypothesis, real-world outcome, therapy/professional lesson, or strategy that actually helped. Never save it automatically. Do not label a SHIFT suggestion as user-confirmed.`;
+  const outputContract = `Return valid JSON only:
+{"reply":"user-facing response, normally 2-6 compact paragraphs","memorySuggestion":null OR {"type":"CONFIRMED_PATTERN|WORKING_HYPOTHESIS|REJECTED_HYPOTHESIS|UPDATED_PERSPECTIVE|USER_PREFERENCE|BOUNDARY|CURRENT_EXPERIMENT|OUTCOME|HELPFUL_STRATEGY","label":"max 8 words","summary":"privacy-minimized durable learning, no unnecessary names","tags":["2-6 tags"],"confidence":"user_confirmed|observed|working"},"therapyLessonSuggestion":null OR {"title":"max 10 words","lessonSummary":"the lesson the user explicitly attributed to a therapist/counselor/recovery/medical professional","triggerConditions":["when it applies"],"oldPattern":"optional","newSkill":"optional","replacementRule":"optional","example":"optional","prediction":"optional","desiredExperiment":"optional","sensitivityLevel":"low|medium|high"}}.
+Only offer memorySuggestion when THIS user message supplies or explicitly confirms a durable non-professional learning, preference, boundary, rejected hypothesis, real-world outcome, or strategy that actually helped. Never save it automatically. Do not label a SHIFT suggestion as user-confirmed.
+Professional or therapy lessons must NOT be placed in generic memorySuggestion. Only offer therapyLessonSuggestion when the user explicitly attributes the lesson to their therapist, counselor, recovery support, doctor, psychiatrist, or other medical professional and clearly states what they learned or were asked to practice. Never infer a professional lesson from vague context. The server independently verifies that attribution before it can be offered for saving.`;
 
-  const system = `${SHIFT_BEHAVIOR_POLICY_PROMPT}\n${PERSONAL_CONTEXT_RULES}\n${routing}\n${researchPrompt(research)}\n${evidencePrompt(args.userMessage)}\n${outputContract}`;
+  const system = `${SHIFT_BEHAVIOR_POLICY_PROMPT}\n${PERSONAL_CONTEXT_RULES}\n${routing}\n${researchPrompt(research)}\n${therapyLessonPrompt(therapyLessons)}\n${evidencePrompt(args.userMessage)}\n${outputContract}`;
   const input = `${args.personalContext || ''}\nCURRENT SHIFT:\n${JSON.stringify(shiftSnapshot)}\n\nRELEVANT HISTORICAL LEARNING:\n${args.memoryContext?.length ? args.memoryContext.join('\n') : 'None retrieved.'}\n\nRECENT CONVERSATION:\n${safeHistory || 'No prior turns.'}\n\nUSER:\n${args.userMessage}`;
 
   try {
     const first = JSON.parse(await modelCall({ system, input, json: true })) as {
       reply?: string;
       memorySuggestion?: LearningMemoryCandidate | null;
+      therapyLessonSuggestion?: unknown;
     };
     if (!first.reply?.trim()) throw new Error('Conversation response missing reply');
 
     let reply = first.reply.trim();
     let quality = evaluateResponseQuality({ reply, mode, research });
-    if (!quality.passed) {
+    if (!quality.passed || quality.warnings.length > 0) {
       const revised = await modelCall({
-        system: `${SHIFT_BEHAVIOR_POLICY_PROMPT}\n${PERSONAL_CONTEXT_RULES}\n${researchPrompt(research)}`,
+        system: `${SHIFT_BEHAVIOR_POLICY_PROMPT}\n${PERSONAL_CONTEXT_RULES}\n${researchPrompt(research)}\n${therapyLessonPrompt(therapyLessons)}`,
         input: `DRAFT RESPONSE:\n${reply}\n\n${qualityRevisionInstruction(quality)}\n\nUSER QUESTION:\n${args.userMessage}`,
         json: false,
         maxTokens: 1500,
@@ -167,9 +186,11 @@ Only offer memorySuggestion when THIS user message supplies or explicitly confir
     return {
       reply,
       memorySuggestion: first.memorySuggestion || null,
+      therapyLessonSuggestion: sanitizeTherapyLessonSuggestion(first.therapyLessonSuggestion, args.userMessage),
       responseMode: 'model',
       shiftMode: mode,
       research: publicResearch(research),
+      therapyLessonsUsed: publicTherapyLessonSummary(therapyLessons),
       offerContinuity,
       quality: { passed: quality.passed, warnings: quality.warnings },
     };
@@ -180,10 +201,12 @@ Only offer memorySuggestion when THIS user message supplies or explicitly confir
     return {
       reply: 'The live conversation is temporarily unavailable, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',
       memorySuggestion: null,
+      therapyLessonSuggestion: null,
       responseMode: 'unavailable',
       unavailableReason: 'provider_error',
       shiftMode: mode,
       research: publicResearch(research),
+      therapyLessonsUsed: publicTherapyLessonSummary(therapyLessons),
       offerContinuity: false,
       quality: { passed: true, warnings: [] },
     };
