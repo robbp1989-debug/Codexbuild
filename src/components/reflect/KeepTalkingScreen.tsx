@@ -28,7 +28,7 @@ interface ConversationTurn {
   content: string;
   evidence?: {
     version: string;
-    sources: Array<{title: string; url: string; sourceType?: string}>;
+    sources: Array<{ title: string; url: string; sourceType?: string }>;
   };
   responseMode?: 'model' | 'unavailable';
 }
@@ -41,12 +41,46 @@ interface MemorySuggestion {
   confidence?: string;
 }
 
+interface TherapyLessonSuggestion {
+  sourceType: 'therapist' | 'counselor' | 'recovery_support' | 'medical_professional';
+  title: string;
+  lessonSummary: string;
+  triggerConditions: string[];
+  oldPattern: string;
+  newSkill: string;
+  replacementRule: string;
+  example: string;
+  prediction: string;
+  desiredExperiment: string;
+  evidenceObserved: string[];
+  confidence: number;
+  sensitivityLevel: 'low' | 'medium' | 'high';
+}
+
+interface TherapyLessonUsed {
+  id: string;
+  title: string;
+  sourceType: string;
+}
+
+type TherapySaveState = 'idle' | 'saving' | 'saved' | 'account_required' | 'error';
+
 function safeResearchUrl(value: string): string | null {
   try {
     const url = new URL(value);
     return url.protocol === 'https:' ? url.toString() : null;
   } catch {
     return null;
+  }
+}
+
+function sourceLabel(source: string): string {
+  switch (source) {
+    case 'therapist': return 'therapist';
+    case 'counselor': return 'counselor';
+    case 'recovery_support': return 'recovery support';
+    case 'medical_professional': return 'medical professional';
+    default: return 'professional support';
   }
 }
 
@@ -58,7 +92,8 @@ export const KeepTalkingScreen: React.FC = () => {
     setActiveTab,
     setCrisisInterruption,
     playSoftSound,
-    personalContext, approvedSummary,
+    personalContext,
+    approvedSummary,
   } = useApp();
 
   const initialMessage = useMemo(() => {
@@ -74,6 +109,9 @@ export const KeepTalkingScreen: React.FC = () => {
   const [memorySuggestion, setMemorySuggestion] = useState<MemorySuggestion | null>(null);
   const [memorySaved, setMemorySaved] = useState(false);
   const [memoryUsed, setMemoryUsed] = useState<string[]>([]);
+  const [therapyLessonsUsed, setTherapyLessonsUsed] = useState<TherapyLessonUsed[]>([]);
+  const [therapyLessonSuggestion, setTherapyLessonSuggestion] = useState<TherapyLessonSuggestion | null>(null);
+  const [therapyLessonSaveState, setTherapyLessonSaveState] = useState<TherapySaveState>('idle');
   const [offerContinuity, setOfferContinuity] = useState(false);
   const [continuitySaved, setContinuitySaved] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
@@ -107,11 +145,15 @@ export const KeepTalkingScreen: React.FC = () => {
   const perspectiveHeadline = perspectiveSentences[0] || 'A more current perspective.';
   const perspectiveBody = perspectiveSentences.slice(1).join(' ');
 
-  const saveContinuityArtifact = () => {
+  const saveContinuityArtifact = async () => {
+    const professionalLesson = therapyLessonsUsed[0]
+      ? `${therapyLessonsUsed[0].title} (${sourceLabel(therapyLessonsUsed[0].sourceType)})`
+      : undefined;
     const artifact = buildContinuityArtifact({
       currentShift: activeShift as unknown as Record<string, unknown>,
       history: turns.map((turn) => ({ role: turn.role, content: turn.content })),
       relevantMemory: memoryUsed,
+      professionalLesson,
     });
     const record: StoredContinuityArtifact = {
       id: crypto.randomUUID(),
@@ -124,13 +166,23 @@ export const KeepTalkingScreen: React.FC = () => {
       const existing = JSON.parse(localStorage.getItem(CONTINUITY_STORAGE_KEY) || '[]') as StoredContinuityArtifact[];
       const next = [record, ...(Array.isArray(existing) ? existing : [])].slice(0, 20);
       localStorage.setItem(CONTINUITY_STORAGE_KEY, JSON.stringify(next));
-      setContinuitySaved(true);
-      playSoftSound('complete');
-      setActiveTab('therapy-prep');
     } catch {
-      // If browser storage is unavailable, Therapy Prep can still synthesize from the Shift itself.
-      setActiveTab('therapy-prep');
+      // Account persistence below may still succeed when browser storage is unavailable.
     }
+
+    try {
+      await fetch('/api/shift/continuity/remember', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceShiftId: activeShift.id, artifact }),
+      });
+    } catch {
+      // Local continuity remains available when account storage is unavailable.
+    }
+
+    setContinuitySaved(true);
+    playSoftSound('complete');
+    setActiveTab('therapy-prep');
   };
 
   const sendMessage = async () => {
@@ -138,7 +190,7 @@ export const KeepTalkingScreen: React.FC = () => {
     if (!message || loading) return;
     const safety = evaluateSafety(message);
     if (safety.isCrisis) {
-      setCrisisInterruption({isOpen: true, type: safety.crisisType, message: safety.crisisMessage});
+      setCrisisInterruption({ isOpen: true, type: safety.crisisType, message: safety.crisisMessage });
       return;
     }
 
@@ -149,6 +201,8 @@ export const KeepTalkingScreen: React.FC = () => {
     setLoading(true);
     setMemorySuggestion(null);
     setMemorySaved(false);
+    setTherapyLessonSuggestion(null);
+    setTherapyLessonSaveState('idle');
     setOfferContinuity(false);
     setContinuitySaved(false);
 
@@ -157,7 +211,8 @@ export const KeepTalkingScreen: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          personalContext: activeContext(personalContext), approvedSummary,
+          personalContext: activeContext(personalContext),
+          approvedSummary,
           message,
           currentShift: activeShift,
           history: turns.slice(-8),
@@ -174,6 +229,8 @@ export const KeepTalkingScreen: React.FC = () => {
         evidence?: ConversationTurn['evidence'];
         relevantMemory?: string[];
         memorySuggestion?: MemorySuggestion | null;
+        therapyLessonSuggestion?: TherapyLessonSuggestion | null;
+        therapyLessonsUsed?: TherapyLessonUsed[];
         responseMode?: 'model' | 'unavailable';
         offerContinuity?: boolean;
       };
@@ -192,6 +249,8 @@ export const KeepTalkingScreen: React.FC = () => {
       }]);
       setMemoryUsed(data.responseMode === 'model' && Array.isArray(data.relevantMemory) ? data.relevantMemory : []);
       setMemorySuggestion(data.responseMode === 'model' ? data.memorySuggestion || null : null);
+      setTherapyLessonsUsed(data.responseMode === 'model' && Array.isArray(data.therapyLessonsUsed) ? data.therapyLessonsUsed : []);
+      setTherapyLessonSuggestion(data.responseMode === 'model' ? data.therapyLessonSuggestion || null : null);
       setOfferContinuity(data.responseMode === 'model' && data.offerContinuity === true);
       playSoftSound('chime');
     } catch {
@@ -233,6 +292,30 @@ export const KeepTalkingScreen: React.FC = () => {
     playSoftSound('complete');
   };
 
+  const saveTherapyLesson = async () => {
+    if (!therapyLessonSuggestion || therapyLessonSaveState === 'saving' || therapyLessonSaveState === 'saved') return;
+    setTherapyLessonSaveState('saving');
+    try {
+      const response = await fetch('/api/shift/therapy-lessons/remember', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(therapyLessonSuggestion),
+      });
+      if (!response.ok) throw new Error('Unable to save professional lesson');
+      const data = await response.json() as { persisted?: boolean; accountRequired?: boolean };
+      if (data.persisted) {
+        setTherapyLessonSaveState('saved');
+        playSoftSound('complete');
+      } else if (data.accountRequired) {
+        setTherapyLessonSaveState('account_required');
+      } else {
+        setTherapyLessonSaveState('error');
+      }
+    } catch {
+      setTherapyLessonSaveState('error');
+    }
+  };
+
   return (
     <div className="keep-talking-immersive">
       <aside className="keep-talking-perspective" aria-live="polite" aria-label="Current SHIFT perspective">
@@ -240,6 +323,20 @@ export const KeepTalkingScreen: React.FC = () => {
         <h2>{perspectiveHeadline}</h2>
         {perspectiveBody && <p className="keep-talking-perspective__answer">{perspectiveBody}</p>}
         <p className="keep-talking-perspective__note">A working reflection, not a verdict about you or anyone else.</p>
+
+        {therapyLessonsUsed.length > 0 && (
+          <div className="keep-talking-perspective__memory">
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <Bookmark className="w-4 h-4" /> Earlier professional learning may be relevant
+            </div>
+            <p>User-confirmed learning is being used as a comparison point, not as proof that this situation is the same.</p>
+            <div className="keep-talking-perspective__memory-list">
+              {therapyLessonsUsed.slice(0, 3).map((lesson) => (
+                <span key={lesson.id}>{lesson.title} · {sourceLabel(lesson.sourceType)}</span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {memoryUsed.length > 0 && (
           <div className="keep-talking-perspective__memory">
@@ -290,7 +387,7 @@ export const KeepTalkingScreen: React.FC = () => {
                 <summary className="cursor-pointer font-medium">Research context for this response</summary>
                 <p className="mt-2">These sources support external factual claims only. They do not verify personal interpretations, motives, diagnoses, or what another person or animal subjectively intended.</p>
                 {turn.evidence.sources.length === 0 && <p className="mt-2">No source-backed factual claim was selected; this response should remain exploratory.</p>}
-                {turn.evidence.sources.slice(0, 8).map(source => {
+                {turn.evidence.sources.slice(0, 8).map((source) => {
                   const href = safeResearchUrl(source.url);
                   if (!href) return null;
                   return <a key={source.url} href={href} target="_blank" rel="noreferrer" className="mt-2 block text-blue-700 underline">{source.title}</a>;
@@ -305,6 +402,33 @@ export const KeepTalkingScreen: React.FC = () => {
             </div>
           )}
         </div>
+
+        {therapyLessonSuggestion && (
+          <div className="keep-talking-memory-suggestion" aria-live="polite">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold text-sky-700 flex items-center gap-1.5">
+                  <Bookmark className="w-3.5 h-3.5" /> Professional lesson you may want to remember
+                </div>
+                <p className="text-sm mt-1"><strong>{therapyLessonSuggestion.title}:</strong> {therapyLessonSuggestion.lessonSummary}</p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  SHIFT detected this only because you explicitly attributed the lesson to {sourceLabel(therapyLessonSuggestion.sourceType)}. Nothing is saved unless you choose to save it.
+                </p>
+                {therapyLessonSaveState === 'account_required' && <p className="text-[11px] text-amber-700 mt-1">Sign-in account storage is required to keep professional lessons across devices.</p>}
+                {therapyLessonSaveState === 'error' && <p className="text-[11px] text-amber-700 mt-1">This lesson could not be saved right now.</p>}
+              </div>
+              <button
+                type="button"
+                onClick={() => void saveTherapyLesson()}
+                disabled={therapyLessonSaveState === 'saving' || therapyLessonSaveState === 'saved'}
+                className="keep-talking-remember-button"
+              >
+                {therapyLessonSaveState === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : therapyLessonSaveState === 'saved' ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                {therapyLessonSaveState === 'saved' ? 'Lesson remembered' : therapyLessonSaveState === 'saving' ? 'Saving…' : 'Remember lesson'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {memorySuggestion && (
           <div className="keep-talking-memory-suggestion">
@@ -336,10 +460,10 @@ export const KeepTalkingScreen: React.FC = () => {
                 <div className="text-xs font-semibold text-sky-700 flex items-center gap-1.5">
                   <Bookmark className="w-3.5 h-3.5" /> Carry this into the next session
                 </div>
-                <p className="text-sm mt-1">This exchange contains enough new learning to make a short therapist-continuity note useful.</p>
-                <p className="text-[11px] text-slate-500 mt-1">The note keeps facts, interpretations, working hypotheses, experiments, outcomes, and open questions separate.</p>
+                <p className="text-sm mt-1">This exchange contains enough new learning to make a short professional-continuity note useful.</p>
+                <p className="text-[11px] text-slate-500 mt-1">The note keeps facts, interpretations, working hypotheses, professional learning, experiments, outcomes, and open questions separate.</p>
               </div>
-              <button type="button" onClick={saveContinuityArtifact} className="keep-talking-remember-button">
+              <button type="button" onClick={() => void saveContinuityArtifact()} className="keep-talking-remember-button">
                 <Save className="w-4 h-4" /> Save this for my next session
               </button>
             </div>
@@ -383,7 +507,7 @@ export const KeepTalkingScreen: React.FC = () => {
               <LineChart className="w-4 h-4" aria-hidden="true" />
               <span>Test a prediction</span>
             </button>
-            <button onClick={saveContinuityArtifact} className="keep-talking-secondary-action">
+            <button onClick={() => void saveContinuityArtifact()} className="keep-talking-secondary-action">
               <Bookmark className="w-4 h-4" aria-hidden="true" />
               <span>Save for therapy</span>
             </button>
