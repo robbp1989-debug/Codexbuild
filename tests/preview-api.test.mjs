@@ -43,6 +43,22 @@ test('a successful model conversation is labeled and uses the verified model',as
   assert.equal(r.status,200);assert.equal(d.responseMode,'model');assert.equal(d.reply,'A response tied to this message.');
  } finally { globalThis.fetch=priorFetch; process.env.OPENAI_API_KEY=''; }
 });
+test('explicit professional learning is never duplicated into generic memory',async()=>{
+ const priorFetch=globalThis.fetch; process.env.OPENAI_API_KEY='test-key';
+ globalThis.fetch=async(_url,options)=>{
+  const request=JSON.parse(options.body);
+  assert.equal(request.model,'gpt-5.6-luna');
+  return Response.json({choices:[{message:{content:JSON.stringify({
+   reply:'That is a professional lesson you explicitly described.',
+   memorySuggestion:{type:'UPDATED_PERSPECTIVE',label:'Feel first',summary:'Name the feeling before explaining.',tags:['emotion'],confidence:'user_confirmed'},
+   therapyLessonSuggestion:{title:'Feel before explaining',lessonSummary:'Name my feeling before explaining the other person.',triggerConditions:['interpersonal conflict'],oldPattern:'Explain first',newSkill:'Name my feeling first',replacementRule:'Feel before explaining',example:'',prediction:'',desiredExperiment:'Name one feeling first',sensitivityLevel:'medium'}
+  })}}]});
+ };
+ try {
+  const r=await post('/api/shift/conversation',{message:'My therapist taught me to name my feeling before I explain the other person.',currentShift:{observation:'A fictional event.'}});const d=await r.json();
+  assert.equal(r.status,200);assert.equal(d.responseMode,'model');assert.equal(d.memorySuggestion,null);assert.ok(d.therapyLessonSuggestion);assert.equal(d.therapyLessonSuggestion.sourceType,'therapist');
+ } finally { globalThis.fetch=priorFetch; process.env.OPENAI_API_KEY=''; }
+});
 test('provider failure is transparent instead of returning a pretend conversation',async()=>{
  const priorFetch=globalThis.fetch; const priorWarn=console.warn; process.env.OPENAI_API_KEY='test-key';
  globalThis.fetch=async()=>Response.json({error:{type:'invalid_request_error',code:'model_not_found',message:'must not be logged'}},{status:404,headers:{'x-request-id':'req_safe_test'}});
