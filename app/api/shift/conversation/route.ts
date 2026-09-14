@@ -5,6 +5,8 @@ import { loadLearningMemories } from '@/server/persistence';
 import { evaluateSafety } from '@/server/safetyCheck';
 import { embedMemoryQuery } from '@/server/semanticMemory';
 import { orchestrateShiftConversation } from '@/server/shiftConversationOrchestrator';
+import { selectRelevantTherapyLessons } from '@/server/therapyLessonContext';
+import { loadTherapyLessons } from '@/server/therapyLessonStore';
 
 function compact(value: string) {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -62,11 +64,17 @@ export async function POST(request: Request) {
 
     const user = await getChatGPTUser();
     let durableMemory: Awaited<ReturnType<typeof loadLearningMemories>> = [];
+    let therapyLessons: Awaited<ReturnType<typeof loadTherapyLessons>> = [];
     if (user) {
       try {
         durableMemory = await loadLearningMemories(user.userId, 120);
       } catch (error) {
         console.info('[SHIFT Memory] Account memory unavailable in Keep Talking; using device learning.', error);
+      }
+      try {
+        therapyLessons = await loadTherapyLessons(user.userId, 60);
+      } catch (error) {
+        console.info('[SHIFT Therapy Lessons] Professional learning unavailable for this request.', error);
       }
     }
 
@@ -81,6 +89,7 @@ export async function POST(request: Request) {
       }
     }
     const relevantMemory = selectRelevantMemoryContext(retrievalQuery, combinedMemory, 6, queryEmbedding);
+    const relevantTherapyLessons = selectRelevantTherapyLessons(retrievalQuery, therapyLessons, 3);
     const safeHistory = Array.isArray(history)
       ? history
           .filter((turn): turn is { role: 'user' | 'assistant'; content: string } => {
@@ -99,6 +108,7 @@ export async function POST(request: Request) {
       userMessage: message.trim(),
       history: safeHistory,
       memoryContext: relevantMemory,
+      therapyLessons: relevantTherapyLessons,
       personalContext: personalContextPrompt(
         personalContext,
         approvedSummary,
@@ -107,8 +117,6 @@ export async function POST(request: Request) {
       ),
     });
 
-    // Keep Talking should not repeat the previous generated response verbatim.
-    // Do not substitute reflective content for an explicit provider-unavailable message.
     const previousAssistant = [...safeHistory].reverse().find((turn) => turn.role === 'assistant');
     const reply = result.responseMode === 'model' && previousAssistant && compact(previousAssistant.content) === compact(result.reply)
       ? nonRepeatingFallback(message.trim(), safeHistory)
@@ -130,6 +138,7 @@ export async function POST(request: Request) {
       relevantMemory,
       memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
       memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
+      therapyLessonRetrieval: relevantTherapyLessons.length ? 'relevant_user_confirmed' : 'none',
       ...result,
       evidence,
       reply,
