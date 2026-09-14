@@ -14,6 +14,19 @@ import {
   type StoredContinuityArtifact,
 } from '../../../lib/continuity-artifact';
 
+function newerArtifact(
+  current: StoredContinuityArtifact | null,
+  candidate: StoredContinuityArtifact | null,
+): StoredContinuityArtifact | null {
+  if (!candidate) return current;
+  if (!current) return candidate;
+  const currentTime = Date.parse(current.createdAt);
+  const candidateTime = Date.parse(candidate.createdAt);
+  if (!Number.isFinite(candidateTime)) return current;
+  if (!Number.isFinite(currentTime) || candidateTime > currentTime) return candidate;
+  return current;
+}
+
 export const TherapyPrepScreen: React.FC = () => {
   const { shifts, predictions, playSoftSound } = useApp();
   const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>(
@@ -23,12 +36,45 @@ export const TherapyPrepScreen: React.FC = () => {
   const [continuity, setContinuity] = useState<StoredContinuityArtifact | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    let localArtifact: StoredContinuityArtifact | null = null;
     try {
       const stored = JSON.parse(localStorage.getItem(CONTINUITY_STORAGE_KEY) || '[]') as StoredContinuityArtifact[];
-      setContinuity(Array.isArray(stored) && stored.length ? stored[0] : null);
+      localArtifact = Array.isArray(stored) && stored.length ? stored[0] : null;
+      setContinuity(localArtifact);
     } catch {
-      setContinuity(null);
+      localArtifact = null;
     }
+
+    void fetch('/api/shift/continuity/latest', { headers: { Accept: 'application/json' } })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return response.json() as Promise<{
+          artifact?: {
+            id: string;
+            createdAt: string;
+            sourceShiftId?: string;
+            artifact: StoredContinuityArtifact['artifact'];
+          } | null;
+        }>;
+      })
+      .then((data) => {
+        if (cancelled || !data?.artifact) return;
+        const accountArtifact: StoredContinuityArtifact = {
+          id: data.artifact.id,
+          createdAt: data.artifact.createdAt,
+          shiftId: data.artifact.sourceShiftId,
+          artifact: data.artifact.artifact,
+        };
+        setContinuity((current) => newerArtifact(current || localArtifact, accountArtifact));
+      })
+      .catch(() => {
+        // Local continuity remains usable when account storage is unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const toggleSelect = (id: string) => {
@@ -188,7 +234,7 @@ export const TherapyPrepScreen: React.FC = () => {
         <div className="text-xs text-slate-400 space-y-0.5">
           <span className="font-semibold text-slate-200 block">User-controlled continuity note</span>
           <p>
-            SHIFT keeps working hypotheses labeled as hypotheses and does not treat this note as a diagnosis or medical record. A Keep Talking note is created only when you choose Save for therapy.
+            SHIFT keeps working hypotheses labeled as hypotheses and does not treat this note as a diagnosis or medical record. A Keep Talking note is created only when you choose Save for therapy. When account continuity is available, the latest user-saved note can follow you across devices.
           </p>
         </div>
       </div>
