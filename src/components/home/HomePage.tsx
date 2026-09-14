@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { evaluateSafety } from '../../../server/safetyCheck';
 import { generateFallbackBreakdown } from '../../../server/fallbackAnalysis';
-import { ShiftBreakdown } from '../../types';
+import { ShiftBreakdown, ShiftProfessionalLearningInfluence } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { LifeContextPicker } from '../layout/LifeContextPicker';
 import { PersonalSummary } from './PersonalSummary';
@@ -125,7 +125,9 @@ export const HomePage: React.FC = () => {
         crisisType?: string;
         crisisMessage?: string;
         memoryUsed?: string[];
+        professionalLearningUsed?: ShiftProfessionalLearningInfluence[];
         memorySource?: string;
+        memoryRetrieval?: string;
         breakdown?: ReturnType<typeof generateFallbackBreakdown>;
       };
 
@@ -160,7 +162,9 @@ export const HomePage: React.FC = () => {
         recommended_skills: breakdownData.recommended_skills || ['fact_vs_interpretation'],
         recommended_games: breakdownData.recommended_games || ['fact_or_story', 'prediction_lab'],
         memoryUsed: Array.isArray(data.memoryUsed) ? data.memoryUsed : [],
+        professionalLearningUsed: Array.isArray(data.professionalLearningUsed) ? data.professionalLearningUsed : [],
         memorySource: data.memorySource || 'device_or_none',
+        memoryRetrieval: data.memoryRetrieval || 'lexical',
         isSavedToProfile: false,
         // Nothing becomes durable memory before the user deliberately chooses Remember.
         savePreference: 'session_only',
@@ -199,7 +203,9 @@ export const HomePage: React.FC = () => {
         recommended_skills: fallback.recommended_skills,
         recommended_games: fallback.recommended_games as ShiftBreakdown['recommended_games'],
         memoryUsed: [],
+        professionalLearningUsed: [],
         memorySource: 'device_or_none',
+        memoryRetrieval: 'lexical',
         isSavedToProfile: false,
         savePreference: 'session_only',
       };
