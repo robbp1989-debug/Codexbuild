@@ -39,6 +39,7 @@ test('breakdown provenance separates current input, historical learning, and pro
 test('public conversation influence summary exposes categories and counts, not reasoning text', async () => {
   const source = await read('server/influenceSummary.ts');
   const orchestrator = await read('server/shiftConversationOrchestrator.ts');
+  const keepTalking = await read('src/components/reflect/KeepTalkingScreen.tsx');
 
   assert.match(source, /historicalLearning:/);
   assert.match(source, /professionalLearning:/);
@@ -47,6 +48,10 @@ test('public conversation influence summary exposes categories and counts, not r
   assert.doesNotMatch(source, /reasoningSteps|chainOfThought|internalReasoning/);
   assert.match(orchestrator, /buildPublicInfluenceSummary/);
   assert.match(orchestrator, /influence,/);
+  assert.match(keepTalking, /What influenced this response/);
+  assert.match(keepTalking, /Provenance only — this does not expose hidden reasoning or chain-of-thought\./);
+  assert.match(keepTalking, /User-approved personal context/);
+  assert.match(keepTalking, /External research/);
 });
 
 test('confirmed-pattern UX requires explicit user confirmation rather than evidence count alone', async () => {
