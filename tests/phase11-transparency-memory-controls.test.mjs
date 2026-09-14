@@ -16,7 +16,7 @@ test('professional learning review supports versioned revision and archive contr
   assert.match(panel, /Source attribution stays fixed across revisions/i);
 
   assert.match(route, /sanitizeTherapyLessonRevision/);
-  assert.match(route, /Provenance is preserved from the existing lesson/);
+  assert.match(route, /Provenance is preserved from the[\s\S]*existing lesson/);
   assert.match(route, /archiveTherapyLesson/);
 });
 
