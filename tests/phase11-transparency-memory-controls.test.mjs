@@ -20,7 +20,7 @@ test('professional learning review supports versioned revision and archive contr
   assert.match(route, /archiveTherapyLesson/);
 });
 
-test('breakdown provenance separates historical learning from professional learning', async () => {
+test('breakdown provenance separates current input, historical learning, and professional learning', async () => {
   const route = await read('app/api/shift/breakdown/route.ts');
   const home = await read('src/components/home/HomePage.tsx');
   const panel = await read('src/components/reflect/MemoryInfluencePanel.tsx');
@@ -29,8 +29,10 @@ test('breakdown provenance separates historical learning from professional learn
   assert.match(route, /professionalLearningUsed: publicTherapyLessonSummary/);
   assert.match(home, /professionalLearningUsed/);
   assert.match(home, /memoryRetrieval/);
+  assert.match(panel, /Current report · primary/);
   assert.match(panel, /Professional learning considered/);
   assert.match(panel, /Historical learning considered/);
+  assert.match(panel, /No stored historical or professional learning passed the relevance gate/);
   assert.match(panel, /compact provenance, not hidden reasoning or chain-of-thought/i);
 });
 
@@ -57,4 +59,11 @@ test('professional learning is integrated into the main memory review surface', 
   const accountPanel = await read('src/components/memory/AccountMemoryPanel.tsx');
   assert.match(accountPanel, /ProfessionalLearningPanel/);
   assert.match(accountPanel, /<ProfessionalLearningPanel \/>/);
+});
+
+test('preview runtime remains honest about unavailable durable professional-learning controls', async () => {
+  const preview = await read('server/previewApi.ts');
+  assert.match(preview, /path === '\/api\/shift\/therapy-lessons'/);
+  assert.match(preview, /lessons: \[\], accountRequired: true/);
+  assert.match(preview, /persisted: false, accountRequired: true/);
 });
