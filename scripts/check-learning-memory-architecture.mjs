@@ -64,8 +64,12 @@ assert(aiClient.includes('A suggestion is not a HELPFUL_STRATEGY until a real ou
 assert(evidenceRoute.includes('rememberForFuture'), 'Prediction outcomes must remain opt-in for durable account memory.');
 assert(evidenceRoute.includes('strategyHelped ? buildHelpfulStrategyMemory(intendedAction)'), 'Helpful strategies require an explicit user-reported helpful outcome.');
 assert(outcomeLearning.includes("type: 'HELPFUL_STRATEGY'"), 'Helpful strategy promotion path is missing.');
-assert(outcomeLearning.includes("type: 'UPDATED_PERSPECTIVE'"), 'User-authored outcome learning must remain an updated perspective, not an auto-confirmed pattern.');
-assert(!outcomeLearning.includes("type: 'CONFIRMED_PATTERN'"), 'One outcome must not silently establish a confirmed pattern.');
+const oneOutcomeLearning = outcomeLearning.split('export function buildUserLearningMemory')[1]?.split('export function buildHelpfulStrategyMemory')[0] || '';
+assert(oneOutcomeLearning.includes("type: 'UPDATED_PERSPECTIVE'"), 'One real-world outcome must remain an updated perspective.');
+assert(!oneOutcomeLearning.includes("type: 'CONFIRMED_PATTERN'"), 'One outcome must not silently establish a confirmed pattern.');
+assert(outcomeLearning.includes('export function buildRecurringPatternCandidate'), 'Repeated evidence must have a separately gated pattern-candidate path.');
+assert(outcomeLearning.includes('separate explicit user click'), 'Pattern promotion must require a separate explicit user action.');
+assert(rememberRoute.includes('USER_CONFIRMATION_REQUIRED'), 'Confirmed pattern storage must enforce user-confirmed epistemic status.');
 assert(outcomeLearningStore.includes("evidence_type = 'memory_confirmation'"), 'Repeated learning must count independent prediction sources idempotently.');
 assert(outcomeLearningStore.includes('consolidateAcrossPredictions'), 'Repeated learning must have an explicit cross-prediction consolidation gate.');
 assert(outcomeLearningStore.includes("source_kind = 'prediction_outcome'"), 'Prediction outcome learning must preserve its provenance.');
