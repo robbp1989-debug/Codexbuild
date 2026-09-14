@@ -16,7 +16,7 @@ export function evaluateResponseQuality(args: {
   if (!reply) criticalFailures.push('empty_response');
   if (/\b(i am|i'm) (your|a) therapist\b/i.test(reply)) criticalFailures.push('therapist_impersonation');
   if (/\b(we diagnosed|i diagnosed|this proves you have|this proves (he|she|they) (has|have))\b/i.test(reply)) criticalFailures.push('unsupported_diagnosis');
-  if (/\b(he|she|they) (did|said|reacted|acted) (that|this) because\b/i.test(reply)) criticalFailures.push('motive_presented_as_fact');
+  if (/\b(he|she|they) (did|said|reacted|acted) (that|this)(?: way)? because\b/i.test(reply)) criticalFailures.push('motive_presented_as_fact');
   if (/\b(definitely|certainly|without a doubt)\b[^.!?]{0,120}\b(knows|remembered|remembers|protecting|protects|thinks|feels|intends|meant to)\b/i.test(reply)) criticalFailures.push('subjective_state_overcertainty');
   if (/\b(research|science|studies?) (proves?|proven)\b/i.test(reply)) warnings.push('research_overstatement_language');
   if (/\b(always|never)\b[^.!?]{0,100}\b(your pattern|you react|you do this|people like you)\b/i.test(reply)) warnings.push('overgeneralized_user_pattern');
