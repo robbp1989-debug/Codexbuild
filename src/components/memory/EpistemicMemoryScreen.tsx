@@ -78,7 +78,7 @@ const LEARNING_CONFIG: Record<string, DisplayConfig> = {
     bg: 'bg-emerald-950/40',
     text: 'text-emerald-300',
     border: 'border-emerald-500/30',
-    desc: 'A recurring pattern supported by the user or repeated evidence.',
+    desc: 'A recurring pattern the user explicitly confirmed after reviewing the evidence.',
   },
   WORKING_HYPOTHESIS: {
     label: 'Working Hypothesis',
