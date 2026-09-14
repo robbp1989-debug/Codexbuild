@@ -24,6 +24,12 @@ export async function handlePreviewApi(request: Request): Promise<Response> {
   if (request.method === 'GET' && path === '/api/shift/continuity/latest') {
     return json({ artifact: null, accountRequired: true, persisted: false });
   }
+  if (request.method === 'GET' && path === '/api/shift/therapy-lessons') {
+    return json({ lessons: [], accountRequired: true, includeHistory: new URL(request.url).searchParams.get('includeHistory') === '1' });
+  }
+  if (request.method === 'PATCH' && path === '/api/shift/therapy-lessons') {
+    return json({ persisted: false, accountRequired: true });
+  }
   if (request.method === 'POST' && (path === '/api/shift/therapy-lessons/remember' || path === '/api/shift/continuity/remember')) {
     return json({ persisted: false, accountRequired: true });
   }
