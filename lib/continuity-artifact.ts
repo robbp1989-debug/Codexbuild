@@ -22,6 +22,7 @@ export function buildContinuityArtifact(args: {
   currentShift: Record<string, unknown>;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
   relevantMemory?: string[];
+  professionalLesson?: string;
 }): ContinuityArtifact {
   const shift = args.currentShift;
   const history = (args.history || []).slice(-12);
@@ -54,7 +55,9 @@ export function buildContinuityArtifact(args: {
     else possiblePattern = `Working hypothesis only: ${hypothesis}`;
   }
 
-  const priorLesson = clean(args.relevantMemory?.[0], 520) || 'No prior lesson was clearly linked in this exchange.';
+  const priorLesson = clean(args.professionalLesson, 520)
+    || clean(args.relevantMemory?.[0], 520)
+    || 'No prior lesson was clearly linked in this exchange.';
   const plan = experiment || choice;
   const reportedResult = latestUser && resultLooksReported(latestUser) ? latestUser : '';
 
