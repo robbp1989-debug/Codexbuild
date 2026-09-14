@@ -29,7 +29,10 @@ const chatgptAuth = read('app/chatgpt-auth.ts');
 for (const table of ['users', 'learning_memories', 'source_documents', 'learning_evidence']) {
   assert(migration.includes(`CREATE TABLE IF NOT EXISTS ${table}`), `Missing required D1 table: ${table}`);
 }
-assert(continuityMigration.includes('CREATE TABLE IF NOT EXISTS therapy_lessons'), 'Professional learning table is missing.');
+assert(semanticMigration.includes('CREATE TABLE IF NOT EXISTS learning_memory_embeddings'), 'Semantic embedding migration is missing.');
+for (const table of ['therapy_lessons', 'user_patterns', 'continuity_artifacts']) {
+  assert(continuityMigration.includes(`CREATE TABLE IF NOT EXISTS ${table}`), `SHIFT intelligence migration is missing table: ${table}`);
+}
 assert(continuityMigration.includes('supersedes_lesson_id'), 'Professional lesson version lineage is missing.');
 assert(continuityMigration.includes('superseded_at'), 'Professional lesson supersession state is missing.');
 
@@ -51,7 +54,6 @@ for (const route of [breakdownRoute, conversationRoute]) {
   assert(route.includes("memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical'"), 'Reflection paths must expose whether semantic retrieval actually ran.');
 }
 
-assert(semanticMigration.includes('CREATE TABLE IF NOT EXISTS learning_memory_embeddings'), 'Semantic embedding migration is missing.');
 assert(semanticMemory.includes("const EMBEDDING_MODEL = 'text-embedding-3-small'"), 'Semantic memory must use the configured embedding model.');
 assert(semanticMemory.includes('dimensions: EMBEDDING_DIMENSIONS'), 'Embedding requests must use the compact configured dimensions.');
 assert(semanticMemory.includes("https://api.openai.com/v1/embeddings"), 'Semantic memory must use the embeddings endpoint.');
@@ -99,6 +101,19 @@ assert(persistence.includes('canonicalLearningText'), 'Learning consolidation mu
 assert(persistence.includes('evidence_count = ?'), 'Independent confirmations must be able to strengthen an existing learning record.');
 assert(!persistence.includes("'OUTCOME',\n  'HELPFUL_STRATEGY'"), 'Distinct real-world outcomes must not be collapsed merely because they are outcomes.');
 
+for (const table of [
+  'users',
+  'learning_memories',
+  'source_documents',
+  'learning_evidence',
+  'learning_memory_embeddings',
+  'therapy_lessons',
+  'user_patterns',
+  'continuity_artifacts',
+]) {
+  assert(selfTest.includes(`'${table}'`), `Storage readiness must require current schema table: ${table}`);
+}
+assert(selfTest.includes('missingTables'), 'Storage readiness must identify which current schema tables are missing.');
 assert(selfTest.includes('DELETE FROM learning_memories'), 'Storage self-test must clean up synthetic D1 records.');
 assert(selfTest.includes('bucket.delete(objectKey)'), 'Storage self-test must clean up synthetic R2 objects.');
 assert(selfTest.includes('Synthetic diagnostic record. Not user learning.'), 'Storage self-test must use synthetic, non-user content.');
