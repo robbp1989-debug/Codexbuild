@@ -23,7 +23,16 @@ test('repeated evidence earns a candidate, never an automatic confirmed pattern'
   assert.ok(candidate);
   assert.equal(candidate.type, 'CONFIRMED_PATTERN');
   assert.equal(candidate.confidence, 'user_confirmed');
-  assert.match(candidate.summary, /Across 2 separate real-world tests/);
+  assert.match(candidate.summary, /recurring learning across separate real-world tests/);
+});
+
+test('pattern memory identity stays stable as additional evidence accumulates', () => {
+  const text = 'I can state one preference without building a case for it.';
+  const afterTwo = learning.buildRecurringPatternCandidate(text, 2);
+  const afterFive = learning.buildRecurringPatternCandidate(text, 5);
+  assert.ok(afterTwo && afterFive);
+  assert.equal(afterTwo.summary, afterFive.summary);
+  assert.deepEqual(afterTwo.tags, afterFive.tags);
 });
 
 test('blank learning never becomes a recurring pattern candidate', () => {
