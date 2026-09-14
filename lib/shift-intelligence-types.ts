@@ -28,6 +28,15 @@ export interface TherapyLesson {
   sensitivityLevel: 'low' | 'medium' | 'high';
 }
 
+export type TherapyLessonDraft = Omit<
+  TherapyLesson,
+  'id' | 'userId' | 'createdAt' | 'updatedAt' | 'userConfirmed' | 'active'
+> & {
+  userConfirmed?: boolean;
+  active?: boolean;
+  supersedesId?: string;
+};
+
 export interface UserPattern {
   id: string;
   userId: string;
