@@ -26,11 +26,13 @@ export interface TherapyLesson {
   userConfirmed: boolean;
   active: boolean;
   sensitivityLevel: 'low' | 'medium' | 'high';
+  supersedesId?: string;
+  supersededAt?: string;
 }
 
 export type TherapyLessonDraft = Omit<
   TherapyLesson,
-  'id' | 'userId' | 'createdAt' | 'updatedAt' | 'userConfirmed' | 'active'
+  'id' | 'userId' | 'createdAt' | 'updatedAt' | 'userConfirmed' | 'active' | 'supersededAt'
 > & {
   userConfirmed?: boolean;
   active?: boolean;
