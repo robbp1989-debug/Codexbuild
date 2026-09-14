@@ -70,6 +70,22 @@
     --workspace-right-edge: 7vw;
   }
 
+  /* The painting and the wall card are one composition. Earlier CSS enlarged
+     the held video to 130vw and pulled it 30vw left, which kept the chair in
+     view but pushed the painting offscreen. Hold the same office frame at the
+     viewport bounds so the card actually lands on top of the painting. */
+  .workspace-office--conversation .workspace-office__background-video {
+    inset: 0 !important;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    object-fit: cover;
+    object-position: center center;
+    transform: none !important;
+    filter: saturate(1.03) brightness(1.06) contrast(.99);
+  }
+
   .workspace-office--conversation .workspace-header {
     top: 6.7vh;
     background: rgba(248, 249, 247, .69);

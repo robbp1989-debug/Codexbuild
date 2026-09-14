@@ -17,6 +17,9 @@ reference; its sample conversation is not inserted into real user sessions.
 - `src/perspective-reference.css` is the final shared CSS import for both
   entry points. It adjusts the glass, typography, desktop proportions, wall-card
   angle, laptop navigation, and stacked tablet/phone layout.
+- The desktop held video is bounded to the viewport. Do not restore the older
+  `130vw` width and `-30vw` left inset: that crop pushed the painting offscreen
+  and made the left card appear over the cabinet/chair instead of the painting.
 - `perspectiveTransition.ts` progressively enhances existing tab navigation
   using native View Transitions and synchronous React updates. The arrival
   reflection card and breakdown perspective share the destination wall card's
