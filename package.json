@@ -10,6 +10,8 @@
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "check:memory": "node scripts/check-learning-memory-architecture.mjs",
+    "test:shift-core": "node --experimental-strip-types --test tests/second-brain.test.mjs tests/preview-api.test.mjs tests/preview-continuity.test.mjs tests/runtime-import.test.mjs tests/personalization.test.mjs tests/holly-voice.test.mjs tests/report-import.test.mjs tests/shift-intelligence.test.mjs tests/pattern-confirmation.test.mjs tests/therapy-lesson-lifecycle.test.mjs tests/behavior-contract-adversarial.test.mjs tests/phase10-routing-and-invariants.test.mjs",
+    "validate:shift-core": "npm run check:memory && npm run test:shift-core",
     "lint": "oxlint",
     "format": "oxfmt"
   },
