@@ -5,6 +5,7 @@ import { KNOWLEDGE_CARDS, KNOWLEDGE_VERSION, selectCards } from '../src/second-b
 import { personalContextPrompt } from './personalContext.js';
 import { PRIMARY_MODEL } from './config.js';
 import { orchestrateShiftConversation } from './shiftConversationOrchestrator.js';
+import { derivePredictionEvidenceDirection, outcomeDirectionLabel } from './outcomeLearning.js';
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
@@ -26,7 +27,7 @@ export async function handlePreviewApi(request: Request): Promise<Response> {
   if (request.method === 'POST' && (path === '/api/shift/therapy-lessons/remember' || path === '/api/shift/continuity/remember')) {
     return json({ persisted: false, accountRequired: true });
   }
-  const supported = ['/api/shift/breakdown', '/api/shift/conversation', '/api/shift/game-content'];
+  const supported = ['/api/shift/breakdown', '/api/shift/conversation', '/api/shift/game-content', '/api/shift/evidence'];
   if (!supported.includes(path)) return json({ error: 'This endpoint is not available in this deployment. No account data was saved.', persisted: false }, 404);
   if (request.method !== 'POST') return json({ error: 'POST required.' }, 405);
   if (!(request.headers.get('content-type') || '').includes('application/json')) return json({ error: 'JSON required.' }, 415);
@@ -48,6 +49,24 @@ export async function handlePreviewApi(request: Request): Promise<Response> {
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
     const input = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>;
     if (!input || typeof input !== 'object' || Array.isArray(input)) return json({ error: 'Object required.' }, 400);
+
+    if (path.endsWith('/evidence')) {
+      const predictionId = value(input, 'predictionId', 120);
+      const prediction = value(input, 'prediction', 900);
+      const actualOutcome = value(input, 'actualOutcome', 1200);
+      const didFearedHappen = value(input, 'didFearedHappen', 40);
+      const outcomeRating = value(input, 'outcomeRating', 60);
+      if (!predictionId || !prediction || !actualOutcome) return json({ error: 'Prediction, outcome, and prediction id are required.' }, 400);
+      const direction = derivePredictionEvidenceDirection(didFearedHappen, outcomeRating);
+      return json({
+        persisted: false,
+        remembered: false,
+        accountRequired: input.rememberForFuture === true,
+        evidenceDirection: direction,
+        directionLabel: outcomeDirectionLabel(direction),
+      });
+    }
+
     const situation = value(input, 'situation');
     const message = value(input, 'message', 4000);
     const observation = value(input, 'observation');
