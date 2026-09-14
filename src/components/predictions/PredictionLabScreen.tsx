@@ -90,8 +90,9 @@ export const PredictionLabScreen: React.FC = () => {
     setSavingOutcome(true);
     setSaveNotice('');
 
-    // First preserve the user's real-world result locally. This remains useful even
-    // if account persistence is unavailable or the user chose session/device use.
+    // The Prediction Lab record itself is preserved locally so the user can compare
+    // prediction versus outcome later. Reusable learning memory is added separately
+    // and only when the explicit personalization checkbox is on.
     resolvePrediction(
       prediction.id,
       actual,
@@ -100,19 +101,35 @@ export const PredictionLabScreen: React.FC = () => {
       outcomeRating,
     );
 
-    if (strategyHelped && prediction.intendedAction?.trim()) {
+    if (rememberForFuture) {
       addMemoryItem(
-        'HELPFUL_STRATEGY',
-        `A response that helped in a real-world test: ${prediction.intendedAction.trim()}`,
+        'OUTCOME',
+        `Actual outcome: "${actual}"${learning ? ` | User takeaway: "${learning}"` : ''}`,
         'active',
-        prediction.reflectionId || prediction.id,
+        prediction.id,
       );
+      if (learning) {
+        addMemoryItem(
+          'UPDATED_PERSPECTIVE',
+          `Learning from a real-world test: ${learning}`,
+          'active',
+          prediction.id,
+        );
+      }
+      if (strategyHelped && prediction.intendedAction?.trim()) {
+        addMemoryItem(
+          'HELPFUL_STRATEGY',
+          `A response that helped in a real-world test: ${prediction.intendedAction.trim()}`,
+          'active',
+          prediction.id,
+        );
+      }
     }
 
     playSoftSound('complete');
 
     if (!rememberForFuture) {
-      setSaveNotice('Outcome recorded on this device. It was not added to account learning memory.');
+      setSaveNotice('Outcome recorded in Prediction Lab. It was not added to reusable learning memory.');
       setSavingOutcome(false);
       resetOutcomeForm();
       return;
@@ -139,21 +156,27 @@ export const PredictionLabScreen: React.FC = () => {
         persisted?: boolean;
         remembered?: boolean;
         accountRequired?: boolean;
+        directionLabel?: string;
+        repeatedLearningMessage?: string | null;
+        learningEvidenceCount?: number;
+        strategyEvidenceCount?: number;
         error?: string;
       };
 
       if (!response.ok) throw new Error(data.error || 'Account learning could not be saved.');
+      const evidenceNote = data.directionLabel ? ` ${data.directionLabel}` : '';
+      const repetitionNote = data.repeatedLearningMessage ? ` ${data.repeatedLearningMessage}` : '';
       if (data.accountRequired) {
-        setSaveNotice('Outcome recorded locally. Sign in with ChatGPT to carry this learning across devices.');
+        setSaveNotice(`Outcome recorded and added to device learning memory.${evidenceNote} Sign in with ChatGPT to carry this learning across devices.`);
       } else if (data.remembered) {
-        setSaveNotice('Outcome recorded and added to your account learning memory.');
+        setSaveNotice(`Outcome recorded and added to your learning memory.${evidenceNote}${repetitionNote}`);
       } else {
-        setSaveNotice('Outcome recorded locally. Account learning was not changed.');
+        setSaveNotice(`Outcome recorded locally.${evidenceNote} Account learning was not changed.`);
       }
     } catch (error) {
       setSaveNotice(
         error instanceof Error
-          ? `Outcome recorded locally. ${error.message}`
+          ? `Outcome recorded in Prediction Lab and device learning. ${error.message}`
           : 'Outcome recorded locally, but account learning could not be updated.',
       );
     } finally {
@@ -189,7 +212,7 @@ export const PredictionLabScreen: React.FC = () => {
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-100">Prediction Lab</h1>
           <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-            Commit the prediction before the outcome, then compare it with what actually happened. Repeated real-world evidence can become stronger personal learning than advice alone.
+            Commit the prediction before the outcome, then compare it with what actually happened. Repeated real-world evidence can strengthen personal learning without silently turning one result into a permanent rule.
           </p>
         </div>
 
@@ -428,7 +451,7 @@ export const PredictionLabScreen: React.FC = () => {
                     />
                     <span>
                       <span className="text-sky-100 font-semibold flex items-center gap-1.5"><Save className="w-3.5 h-3.5" /> Use this outcome to personalize future SHIFT</span>
-                      <span className="text-[11px] text-slate-500 block mt-0.5">Off by default. If enabled and you are signed in, a compact learning record is saved to account memory. The detailed event is not inserted into normal future prompts.</span>
+                      <span className="text-[11px] text-slate-500 block mt-0.5">Off by default. If enabled, compact learning is added to device learning memory and, when signed in, account memory. Repeated matching takeaways strengthen evidence count but do not automatically become a confirmed pattern.</span>
                     </span>
                   </label>
 
