@@ -65,7 +65,7 @@ assert(evidenceRoute.includes('rememberForFuture'), 'Prediction outcomes must re
 assert(evidenceRoute.includes('strategyHelped ? buildHelpfulStrategyMemory(intendedAction)'), 'Helpful strategies require an explicit user-reported helpful outcome.');
 assert(outcomeLearning.includes("type: 'HELPFUL_STRATEGY'"), 'Helpful strategy promotion path is missing.');
 assert(outcomeLearning.includes("type: 'UPDATED_PERSPECTIVE'"), 'User-authored outcome learning must remain an updated perspective, not an auto-confirmed pattern.');
-assert(outcomeLearning.includes('does not by itself establish a confirmed pattern'), 'One outcome must not silently establish a confirmed pattern.');
+assert(!outcomeLearning.includes("type: 'CONFIRMED_PATTERN'"), 'One outcome must not silently establish a confirmed pattern.');
 assert(outcomeLearningStore.includes("evidence_type = 'memory_confirmation'"), 'Repeated learning must count independent prediction sources idempotently.');
 assert(outcomeLearningStore.includes('consolidateAcrossPredictions'), 'Repeated learning must have an explicit cross-prediction consolidation gate.');
 assert(outcomeLearningStore.includes("source_kind = 'prediction_outcome'"), 'Prediction outcome learning must preserve its provenance.');
