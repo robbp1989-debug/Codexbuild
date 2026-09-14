@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BookOpenCheck, Brain, History, ShieldCheck } from 'lucide-react';
+import { BookOpenCheck, Brain, FileCheck2, History, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 function readableMemory(memory: string): { kind: string; body: string; meta: string } {
@@ -29,10 +29,12 @@ function sourceLabel(source: string): string {
 
 export const MemoryInfluencePanel: React.FC = () => {
   const { activeShift, setActiveTab, playSoftSound } = useApp();
-  const memoryUsed = activeShift?.memoryUsed || [];
-  const professionalLearningUsed = activeShift?.professionalLearningUsed || [];
+  if (!activeShift) return null;
 
-  if (!activeShift || (memoryUsed.length === 0 && professionalLearningUsed.length === 0)) return null;
+  const memoryUsed = activeShift.memoryUsed || [];
+  const professionalLearningUsed = activeShift.professionalLearningUsed || [];
+  const currentReport = (activeShift.rawInput || activeShift.userEditedObservation || activeShift.observation || '').trim();
+  const priorLearningUsed = memoryUsed.length > 0 || professionalLearningUsed.length > 0;
 
   return (
     <section className="max-w-4xl mx-auto mt-6 mb-2 px-4">
@@ -44,9 +46,9 @@ export const MemoryInfluencePanel: React.FC = () => {
             </div>
             <div>
               <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-sky-300">Response provenance</p>
-              <h2 className="text-sm sm:text-base font-bold text-slate-100 mt-1">What prior learning was considered</h2>
+              <h2 className="text-sm sm:text-base font-bold text-slate-100 mt-1">What influenced this Shift</h2>
               <p className="text-xs text-slate-400 mt-1.5 max-w-2xl leading-relaxed">
-                This shows compact provenance, not hidden reasoning or chain-of-thought. Earlier learning is comparison context only; your current report still comes first.
+                This shows compact provenance, not hidden reasoning or chain-of-thought. Your current report is primary; stored learning is only comparison context when it passes the relevance gate.
               </p>
             </div>
           </div>
@@ -61,6 +63,18 @@ export const MemoryInfluencePanel: React.FC = () => {
           >
             <History className="w-3.5 h-3.5" /> Review memory
           </button>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-2">
+            <FileCheck2 className="w-3.5 h-3.5 text-teal-300" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-teal-300">Current report · primary</span>
+          </div>
+          <article className="rounded-xl border border-teal-500/20 bg-teal-950/10 p-3">
+            <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+              {currentReport.length > 360 ? `${currentReport.slice(0, 357)}…` : currentReport || 'Current reflection input.'}
+            </p>
+          </article>
         </div>
 
         {professionalLearningUsed.length > 0 && (
@@ -100,6 +114,12 @@ export const MemoryInfluencePanel: React.FC = () => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {!priorLearningUsed && (
+          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/35 p-3 text-[11px] text-slate-400">
+            No stored historical or professional learning passed the relevance gate for this Shift.
           </div>
         )}
 
