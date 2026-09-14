@@ -12,6 +12,7 @@ await build({
     'server/responseOrchestration.ts',
     'server/qualityGuard.ts',
     'server/therapyLessonContext.ts',
+    'server/researchEngine.ts',
   ],
   bundle: true,
   platform: 'node',
@@ -23,6 +24,7 @@ await build({
 const orchestration = await import(pathToFileURL(join(dir, 'responseOrchestration.js')).href);
 const quality = await import(pathToFileURL(join(dir, 'qualityGuard.js')).href);
 const lessons = await import(pathToFileURL(join(dir, 'therapyLessonContext.js')).href);
+const research = await import(pathToFileURL(join(dir, 'researchEngine.js')).href);
 
 const emptyResearch = {
   required: false,
@@ -141,6 +143,14 @@ test('therapy lesson retrieval requires relevance, active status, and user confi
   assert.deepEqual(selected.map((item) => item.id), ['lesson-1']);
 });
 
+test('professional lesson context preserves source and user-confirmed status', () => {
+  const context = lessons.therapyLessonsAsMemoryContext([lesson()]);
+  assert.equal(context.length, 1);
+  assert.match(context[0], /^\[THERAPY_LESSON source=therapist; user_confirmed=true\]/);
+  assert.match(context[0], /Notice my own feeling before I explain the other person/);
+  assert.match(context[0], /Updated rule:/);
+});
+
 test('professional lesson suggestions require explicit professional attribution and learning language', () => {
   const modelSuggestion = {
     title: 'Feel before explaining',
@@ -166,6 +176,20 @@ test('professional lesson suggestions require explicit professional attribution 
   assert.ok(accepted);
   assert.equal(accepted.sourceType, 'therapist');
   assert.equal(accepted.confidence, 1);
+});
+
+test('research plan strips private narrative and keeps only broad public topic plus controlled jurisdiction', () => {
+  const privateDogQuestion = 'Can my dog Luna still remember Patrick and Kraft Heinz from a private family event seven months ago if she hears a voice recording?';
+  const dogPlan = research.buildResearchPlan(privateDogQuestion);
+  const serializedDog = JSON.stringify(dogPlan).toLowerCase();
+  assert.equal(dogPlan.topic, 'animal recognition, learning, and memory');
+  assert.match(serializedDog, /dogs|animal/);
+  assert.doesNotMatch(serializedDog, /luna|patrick|kraft|heinz|family event/);
+
+  const legalPlan = research.buildResearchPlan('Under Ohio employment law, what payroll record rule applies to a private dispute with Kraft Heinz?');
+  const serializedLegal = JSON.stringify(legalPlan).toLowerCase();
+  assert.match(serializedLegal, /ohio/);
+  assert.doesNotMatch(serializedLegal, /kraft|heinz|private dispute/);
 });
 
 test.after(async () => {
