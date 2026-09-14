@@ -47,7 +47,11 @@ export async function POST(request: Request) {
     }
     const retrieved = selectRelevantMemoryContext(situation, combinedMemory, 6, queryEmbedding);
     const context = mergeMemoryContext(retrieved, memoryContext);
-    const breakdown = await analyzeShiftReflection(situation, context, personalContextPrompt(personalContext, approvedSummary));
+    const breakdown = await analyzeShiftReflection(
+      situation,
+      context,
+      personalContextPrompt(personalContext, approvedSummary, situation),
+    );
 
     return Response.json({
       safetyInterruption: false,
