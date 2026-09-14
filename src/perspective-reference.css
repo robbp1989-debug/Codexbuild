@@ -62,25 +62,6 @@
 .keep-talking-perspective__note { font-size: .8125rem; }
 .keep-talking-perspective__footer { font-size: .9375rem; font-weight: 400; }
 .keep-talking-secondary-action { font-size: .875rem; }
-.keep-talking-turn { position: relative; }
-.keep-talking-turn:has(.keep-talking-shift-answer) .keep-talking-turn__label { padding-right: 95px; }
-.keep-talking-shift-answer {
-  position: absolute;
-  top: 7px;
-  right: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 32px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  color: #38617d;
-  font-size: .8125rem;
-}
-.keep-talking-shift-answer:hover,
-.keep-talking-shift-answer[aria-pressed='true'] { background: #e0f2ff; color: #155d8d; }
-.perspective-reset { margin-top: 12px; min-height: 32px; color: #285c7e; text-decoration: underline; font-size: .875rem; }
-
 @media (min-width: 1180px) {
   .workspace-office--conversation {
     --painting-panel-left: 3.95vw;
