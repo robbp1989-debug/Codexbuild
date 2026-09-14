@@ -6,43 +6,25 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout head branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
+      - name: Checkout
+        uses: actions/checkout@v5
       - name: Use Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
-      - name: Install baseline
+      - name: Install
         run: npm ci
-      - name: Phase 12 dependency remediation
-        run: |
-          npm install --save-exact react@19.3.0 react-dom@19.3.0 react-server-dom-webpack@19.3.0 vite@8.3.0 vinext@1.0.0-beta.9 @vitejs/plugin-rsc@0.5.34 @cloudflare/vite-plugin@1.54.9 wrangler@4.131.2 @cloudflare/workers-types@5.20260914.1
-          npm audit fix
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Validate SHIFT intelligence core
         run: npm run validate:shift-core
       - name: Preview-compatible build
         run: npx vite build --config vite.preview.config.ts
-      - name: Persist validated dependency refresh
-        if: success() && github.event_name == 'pull_request'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          if git diff --cached --quiet; then
-            echo "Dependency files already match the validated refresh."
-          else
-            git commit -m "Phase 12: apply validated dependency security refresh"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
