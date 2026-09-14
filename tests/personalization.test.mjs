@@ -99,7 +99,7 @@ test('free-form words and command boundaries remain intact', () => {
   assert.equal(s.answers[0].raw_user_text, 'My unusual wording');
   assert.equal(s.answers[0].confidence, null);
 });
-test('only approved bounded provenance reaches prompt; report text is not a system instruction', () => {
+test('only relevant approved bounded provenance reaches prompt; report text is not a system instruction', () => {
   const approved = {
     ...answer('report', 'A report says examples may help', 'document_report'),
     status: 'confirmed',
@@ -109,12 +109,16 @@ test('only approved bounded provenance reaches prompt; report text is not a syst
     answer('V2', 'UNAPPROVED_SECRET'),
     { ...approved, status: 'historical', text: 'HISTORICAL_SECRET' },
     { ...approved, source: 'invented', text: 'BAD_SOURCE' },
-  ]);
+  ], '', 'Please give me an example that may help.');
   assert.match(prompt, /document_report/);
-  assert.match(prompt, /Current user intent/);
+  assert.match(prompt, /Current user statements and corrections/);
   assert.doesNotMatch(prompt, /UNAPPROVED_SECRET|HISTORICAL_SECRET|BAD_SOURCE/);
   assert.equal(
-    personalContextPrompt([{ ...approved, text: 'x'.repeat(601) }]),
+    personalContextPrompt([{ ...approved, text: 'x'.repeat(601) }], '', 'Please give me an example.'),
+    '',
+  );
+  assert.equal(
+    personalContextPrompt([approved], '', 'Tell me about an unrelated weather forecast.'),
     '',
   );
   assert.ok(contextSize([approved]) > approved.text.length);
