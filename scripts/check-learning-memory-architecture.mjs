@@ -7,16 +7,21 @@ const assert = (condition, message) => {
 
 const migration = read('migrations/0001_learning_memory.sql');
 const semanticMigration = read('migrations/0002_semantic_memory.sql');
+const continuityMigration = read('migrations/0003_shift_intelligence_continuity.sql');
 const retrieval = read('server/memoryContext.ts');
 const persistence = read('server/persistence.ts');
 const semanticMemory = read('server/semanticMemory.ts');
 const outcomeLearning = read('server/outcomeLearning.ts');
 const outcomeLearningStore = read('server/outcomeLearningStore.ts');
+const therapyLessonStore = read('server/therapyLessonStore.ts');
+const therapyLessonContext = read('server/therapyLessonContext.ts');
 const breakdownRoute = read('app/api/shift/breakdown/route.ts');
 const conversationRoute = read('app/api/shift/conversation/route.ts');
 const sourceUpload = read('app/api/shift/source/upload/route.ts');
 const rememberRoute = read('app/api/shift/memory/remember/route.ts');
 const evidenceRoute = read('app/api/shift/evidence/route.ts');
+const therapyLessonRoute = read('app/api/shift/therapy-lessons/route.ts');
+const therapyLessonRememberRoute = read('app/api/shift/therapy-lessons/remember/route.ts');
 const aiClient = read('server/aiClient.ts');
 const selfTest = read('server/storageSelfTest.ts');
 const chatgptAuth = read('app/chatgpt-auth.ts');
@@ -24,6 +29,9 @@ const chatgptAuth = read('app/chatgpt-auth.ts');
 for (const table of ['users', 'learning_memories', 'source_documents', 'learning_evidence']) {
   assert(migration.includes(`CREATE TABLE IF NOT EXISTS ${table}`), `Missing required D1 table: ${table}`);
 }
+assert(continuityMigration.includes('CREATE TABLE IF NOT EXISTS therapy_lessons'), 'Professional learning table is missing.');
+assert(continuityMigration.includes('supersedes_lesson_id'), 'Professional lesson version lineage is missing.');
+assert(continuityMigration.includes('superseded_at'), 'Professional lesson supersession state is missing.');
 
 assert(retrieval.includes('REJECTED_HYPOTHESIS'), 'Rejected hypotheses must remain available as negative evidence.');
 assert(retrieval.includes("item.status !== 'archived'"), 'Archived learning must be excluded from retrieval.');
@@ -73,6 +81,18 @@ assert(rememberRoute.includes('USER_CONFIRMATION_REQUIRED'), 'Confirmed pattern 
 assert(outcomeLearningStore.includes("evidence_type = 'memory_confirmation'"), 'Repeated learning must count independent prediction sources idempotently.');
 assert(outcomeLearningStore.includes('consolidateAcrossPredictions'), 'Repeated learning must have an explicit cross-prediction consolidation gate.');
 assert(outcomeLearningStore.includes("source_kind = 'prediction_outcome'"), 'Prediction outcome learning must preserve its provenance.');
+
+assert(therapyLessonStore.includes('loadTherapyLessonsForReview'), 'Users must be able to review saved professional learning.');
+assert(therapyLessonStore.includes('loadTherapyLessonById'), 'Professional lesson lifecycle changes must verify the user-owned source record.');
+assert(therapyLessonStore.includes('archiveTherapyLesson'), 'Professional lessons need an explicit archive path.');
+assert(therapyLessonStore.includes('active = 1 AND superseded_at IS NULL'), 'Archived or superseded professional learning must be excluded from active retrieval.');
+assert(therapyLessonStore.includes('superseded_at = CURRENT_TIMESTAMP'), 'Revisions must preserve superseded history instead of overwriting the old lesson.');
+assert(therapyLessonContext.includes('sanitizeTherapyLessonRevision'), 'Professional lesson revisions require bounded server-side sanitization.');
+assert(therapyLessonContext.includes('sourceType: existing.sourceType'), 'Professional lesson source attribution must remain immutable across revisions.');
+assert(therapyLessonRoute.includes("action === 'archive'"), 'Professional lesson management must expose an explicit archive action.');
+assert(therapyLessonRoute.includes("action !== 'archive' && action !== 'revise'"), 'Professional lesson management must allowlist lifecycle actions.');
+assert(therapyLessonRoute.includes('sanitizeTherapyLessonRevision'), 'Professional lesson revisions must use the lifecycle sanitizer.');
+assert(therapyLessonRememberRoute.includes('sourceType = previous.sourceType'), 'Remember endpoint must not rewrite provenance when superseding a lesson.');
 
 assert(persistence.includes('CONSOLIDATABLE_MEMORY_TYPES'), 'Repeated durable learning must have a conservative consolidation path.');
 assert(persistence.includes('canonicalLearningText'), 'Learning consolidation must compare normalized compact learning text.');
