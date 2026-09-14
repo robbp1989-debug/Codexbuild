@@ -21,9 +21,16 @@ interface TherapyLessonRow {
   user_confirmed: number;
   active: number;
   sensitivity_level: TherapyLesson['sensitivityLevel'];
+  supersedes_lesson_id: string | null;
+  superseded_at: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const LESSON_COLUMNS = `id, user_id, title, source_type, lesson_summary, trigger_conditions_json,
+  old_pattern, new_skill, replacement_rule, example, prediction,
+  desired_experiment, evidence_observed_json, confidence, user_confirmed,
+  active, sensitivity_level, supersedes_lesson_id, superseded_at, created_at, updated_at`;
 
 function getDb(): D1Database | null {
   try {
@@ -65,6 +72,8 @@ function rowToLesson(row: TherapyLessonRow): TherapyLesson {
     userConfirmed: row.user_confirmed === 1,
     active: row.active === 1,
     sensitivityLevel: row.sensitivity_level,
+    supersedesId: row.supersedes_lesson_id || undefined,
+    supersededAt: row.superseded_at || undefined,
   };
 }
 
@@ -95,10 +104,7 @@ export async function loadTherapyLessons(userId: string, limit = 40): Promise<Th
   await ensureUser(userId);
   const result = await db
     .prepare(
-      `SELECT id, user_id, title, source_type, lesson_summary, trigger_conditions_json,
-              old_pattern, new_skill, replacement_rule, example, prediction,
-              desired_experiment, evidence_observed_json, confidence, user_confirmed,
-              active, sensitivity_level, created_at, updated_at
+      `SELECT ${LESSON_COLUMNS}
        FROM therapy_lessons
        WHERE user_id = ? AND active = 1 AND superseded_at IS NULL
        ORDER BY updated_at DESC
@@ -107,6 +113,49 @@ export async function loadTherapyLessons(userId: string, limit = 40): Promise<Th
     .bind(userId, Math.max(1, Math.min(limit, 100)))
     .all<TherapyLessonRow>();
   return (result.results || []).map(rowToLesson);
+}
+
+export async function loadTherapyLessonsForReview(
+  userId: string,
+  limit = 80,
+  includeHistory = false,
+): Promise<TherapyLesson[]> {
+  const db = getDb();
+  if (!db || !userId) return [];
+  await ensureUser(userId);
+  const capped = Math.max(1, Math.min(limit, 150));
+  const query = includeHistory
+    ? `SELECT ${LESSON_COLUMNS}
+       FROM therapy_lessons
+       WHERE user_id = ?
+       ORDER BY updated_at DESC
+       LIMIT ?`
+    : `SELECT ${LESSON_COLUMNS}
+       FROM therapy_lessons
+       WHERE user_id = ? AND active = 1 AND superseded_at IS NULL
+       ORDER BY updated_at DESC
+       LIMIT ?`;
+  const result = await db.prepare(query).bind(userId, capped).all<TherapyLessonRow>();
+  return (result.results || []).map(rowToLesson);
+}
+
+export async function loadTherapyLessonById(
+  userId: string,
+  lessonId: string,
+): Promise<TherapyLesson | null> {
+  const db = getDb();
+  if (!db || !userId || !lessonId) return null;
+  await ensureUser(userId);
+  const row = await db
+    .prepare(
+      `SELECT ${LESSON_COLUMNS}
+       FROM therapy_lessons
+       WHERE id = ? AND user_id = ?
+       LIMIT 1`,
+    )
+    .bind(lessonId, userId)
+    .first<TherapyLessonRow>();
+  return row ? rowToLesson(row) : null;
 }
 
 export async function loadTherapyLessonMemories(userId: string, limit = 40): Promise<CompactMemoryItem[]> {
@@ -121,8 +170,15 @@ export async function saveTherapyLesson(
   if (!db || !userId) return null;
   await ensureUser(userId);
 
+  if (draft.supersedesId) {
+    const previous = await loadTherapyLessonById(userId, draft.supersedesId);
+    // Revisions are linear and user-owned. An archived or already superseded
+    // lesson cannot be silently branched into a new current lesson.
+    if (!previous || !previous.active || previous.supersededAt) return null;
+  }
+
   const id = `lesson_${crypto.randomUUID()}`;
-  await db
+  const insert = db
     .prepare(
       `INSERT INTO therapy_lessons (
         id, user_id, title, source_type, lesson_summary, trigger_conditions_json,
@@ -148,19 +204,38 @@ export async function saveTherapyLesson(
       Math.max(0, Math.min(1, Number(draft.confidence || 0))),
       draft.sensitivityLevel || 'medium',
       draft.supersedesId || null,
-    )
-    .run();
+    );
 
-  if (draft.supersedesId) {
-    await db
-      .prepare(
-        `UPDATE therapy_lessons
-         SET active = 0, superseded_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND user_id = ? AND id <> ?`,
-      )
-      .bind(draft.supersedesId, userId, id)
-      .run();
+  if (!draft.supersedesId) {
+    await insert.run();
+    return id;
   }
 
+  const supersede = db
+    .prepare(
+      `UPDATE therapy_lessons
+       SET active = 0, superseded_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ? AND active = 1 AND superseded_at IS NULL`,
+    )
+    .bind(draft.supersedesId, userId);
+
+  await db.batch([insert, supersede]);
   return id;
+}
+
+export async function archiveTherapyLesson(userId: string, lessonId: string): Promise<boolean> {
+  const db = getDb();
+  if (!db || !userId || !lessonId) return false;
+  await ensureUser(userId);
+  const existing = await loadTherapyLessonById(userId, lessonId);
+  if (!existing || !existing.active) return false;
+  const result = await db
+    .prepare(
+      `UPDATE therapy_lessons
+       SET active = 0, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ? AND active = 1`,
+    )
+    .bind(lessonId, userId)
+    .run();
+  return Boolean(result.success);
 }
