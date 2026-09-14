@@ -23,6 +23,24 @@ import {
   type StoredContinuityArtifact,
 } from '../../../lib/continuity-artifact';
 
+interface ResponseInfluence {
+  currentUserInput: true;
+  historicalLearning: {
+    count: number;
+    types: string[];
+  };
+  professionalLearning: Array<{
+    id: string;
+    title: string;
+    sourceType: string;
+  }>;
+  personalContextUsed: boolean;
+  externalResearch: {
+    status: 'not_needed' | 'grounded' | 'unavailable';
+    sourceCount: number;
+  };
+}
+
 interface ConversationTurn {
   role: 'user' | 'assistant';
   content: string;
@@ -30,6 +48,7 @@ interface ConversationTurn {
     version: string;
     sources: Array<{ title: string; url: string; sourceType?: string }>;
   };
+  influence?: ResponseInfluence;
   responseMode?: 'model' | 'unavailable';
 }
 
@@ -80,8 +99,14 @@ function sourceLabel(source: string): string {
     case 'counselor': return 'counselor';
     case 'recovery_support': return 'recovery support';
     case 'medical_professional': return 'medical professional';
+    case 'user_insight': return 'personal insight';
+    case 'shift_working_hypothesis': return 'SHIFT working hypothesis';
     default: return 'professional support';
   }
+}
+
+function readableInfluenceType(type: string): string {
+  return type.replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\S/g, (character) => character.toUpperCase());
 }
 
 export const KeepTalkingScreen: React.FC = () => {
@@ -227,6 +252,7 @@ export const KeepTalkingScreen: React.FC = () => {
         crisisMessage?: string;
         reply?: string;
         evidence?: ConversationTurn['evidence'];
+        influence?: ResponseInfluence;
         relevantMemory?: string[];
         memorySuggestion?: MemorySuggestion | null;
         therapyLessonSuggestion?: TherapyLessonSuggestion | null;
@@ -245,6 +271,7 @@ export const KeepTalkingScreen: React.FC = () => {
         role: 'assistant',
         content: reply,
         evidence: data.responseMode === 'model' ? data.evidence : undefined,
+        influence: data.responseMode === 'model' ? data.influence : undefined,
         responseMode: data.responseMode,
       }]);
       setMemoryUsed(data.responseMode === 'model' && Array.isArray(data.relevantMemory) ? data.relevantMemory : []);
@@ -382,6 +409,19 @@ export const KeepTalkingScreen: React.FC = () => {
                 <output className="mt-3 block rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                   No AI-generated interpretation was returned for this message.
                 </output>
+              )}
+              {turn.influence && (
+                <details className="mt-3 text-xs rounded-lg border border-slate-200/70 bg-white/50 px-3 py-2">
+                  <summary className="cursor-pointer font-medium text-slate-700">What influenced this response</summary>
+                  <p className="mt-2 text-slate-600">Provenance only — this does not expose hidden reasoning or chain-of-thought.</p>
+                  <div className="mt-2 space-y-1 text-slate-600">
+                    <p><strong>Current message:</strong> primary input.</p>
+                    <p><strong>Historical learning:</strong> {turn.influence.historicalLearning.count === 0 ? 'none selected' : `${turn.influence.historicalLearning.count} relevant item${turn.influence.historicalLearning.count === 1 ? '' : 's'}`}{turn.influence.historicalLearning.types.length ? ` · ${turn.influence.historicalLearning.types.map(readableInfluenceType).join(', ')}` : ''}.</p>
+                    <p><strong>Professional learning:</strong> {turn.influence.professionalLearning.length === 0 ? 'none selected' : turn.influence.professionalLearning.map((lesson) => `${lesson.title} (${sourceLabel(lesson.sourceType)})`).join('; ')}.</p>
+                    <p><strong>User-approved personal context:</strong> {turn.influence.personalContextUsed ? 'relevant context was selected' : 'none selected'}.</p>
+                    <p><strong>External research:</strong> {turn.influence.externalResearch.status === 'grounded' ? `${turn.influence.externalResearch.sourceCount} grounded source${turn.influence.externalResearch.sourceCount === 1 ? '' : 's'}` : turn.influence.externalResearch.status === 'unavailable' ? 'needed but unavailable' : 'not needed'}.</p>
+                  </div>
+                </details>
               )}
               {turn.evidence && <details className="mt-3 text-sm">
                 <summary className="cursor-pointer font-medium">Research context for this response</summary>
