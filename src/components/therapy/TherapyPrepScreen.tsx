@@ -13,6 +13,7 @@ import {
   CONTINUITY_STORAGE_KEY,
   type StoredContinuityArtifact,
 } from '../../../lib/continuity-artifact';
+import { ProfessionalLearningPanel } from './ProfessionalLearningPanel';
 
 function newerArtifact(
   current: StoredContinuityArtifact | null,
@@ -238,6 +239,8 @@ export const TherapyPrepScreen: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <ProfessionalLearningPanel />
 
       {continuity ? (
         <div className="p-4 rounded-2xl border border-teal-500/30 bg-teal-950/20 text-sm text-slate-300">
