@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: Validate SHIFT intelligence core
         run: npm run validate:shift-core
       - name: Preview-compatible build
