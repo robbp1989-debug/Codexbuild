@@ -101,15 +101,17 @@ export function buildRecurringPatternCandidate(
   learning: unknown,
   evidenceCount: number,
 ): LearningMemoryCandidate | null {
-  const summary = clean(learning, 390);
+  const summary = clean(learning, 410);
   if (!summary || !Number.isFinite(evidenceCount) || evidenceCount < 2) return null;
 
   // This is deliberately only a candidate. Repetition earns a question, not a
   // verdict. It becomes CONFIRMED_PATTERN only after a separate explicit user click.
+  // The durable wording is intentionally independent of the current count so later
+  // evidence strengthens one confirmed memory instead of creating count-version duplicates.
   return {
     type: 'CONFIRMED_PATTERN',
     label: 'A recurring pattern I confirm',
-    summary: `Across ${Math.floor(evidenceCount)} separate real-world tests, I noticed this recurring learning: ${summary}`.slice(0, 500),
+    summary: `I have noticed this recurring learning across separate real-world tests: ${summary}`.slice(0, 500),
     tags: ['user-confirmed-pattern', 'repeated-real-world-learning'],
     confidence: 'user_confirmed',
   };
