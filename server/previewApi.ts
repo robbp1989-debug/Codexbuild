@@ -1,9 +1,10 @@
-import { analyzeShiftReflection, continueShiftConversation, generatePersonalizedGameContent } from './aiClient.js';
+import { analyzeShiftReflection, generatePersonalizedGameContent } from './aiClient.js';
 import { evaluateSafety } from './safetyCheck.js';
 import { sanitizeMemoryItems, selectRelevantMemoryContext } from './memoryContext.js';
 import { KNOWLEDGE_CARDS, KNOWLEDGE_VERSION, selectCards } from '../src/second-brain/knowledge.js';
 import { personalContextPrompt } from './personalContext.js';
 import { PRIMARY_MODEL } from './config.js';
+import { orchestrateShiftConversation } from './shiftConversationOrchestrator.js';
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
@@ -14,7 +15,7 @@ function value(input: Record<string, unknown>, key: string, max = 12000): string
 export async function handlePreviewApi(request: Request): Promise<Response> {
   const path = new URL(request.url).pathname.replace(/\/$/, '');
   if (request.method === 'GET' && path === '/api/health') {
-    return json({ ok: true, modelConfigured: Boolean(process.env.OPENAI_API_KEY), configuredModel: PRIMARY_MODEL, knowledgeVersion: KNOWLEDGE_VERSION, sourceCheckedCards: KNOWLEDGE_CARDS.length, accountMemoryAvailable: false, researchSync: 'versioned_snapshot' });
+    return json({ ok: true, modelConfigured: Boolean(process.env.OPENAI_API_KEY), configuredModel: PRIMARY_MODEL, knowledgeVersion: KNOWLEDGE_VERSION, sourceCheckedCards: KNOWLEDGE_CARDS.length, accountMemoryAvailable: false, researchSync: 'versioned_snapshot_plus_dynamic_web' });
   }
   if (request.method === 'GET' && path === '/api/shift/knowledge') {
     return json({ version: KNOWLEDGE_VERSION, cards: KNOWLEDGE_CARDS.map(({ terms, ...card }) => card), clinicalReview: 'pending' });
@@ -50,21 +51,43 @@ export async function handlePreviewApi(request: Request): Promise<Response> {
     const safety = evaluateSafety(query);
     if (safety.isCrisis) return json({ safetyInterruption: true, crisisType: safety.crisisType, crisisMessage: safety.crisisMessage });
     const cards = selectCards(query, path.endsWith('/game-content') ? value(input, 'gameId', 80) : undefined);
-    const evidence = { version: KNOWLEDGE_VERSION, cardIds: cards.map(card => card.id), sources: cards.map(card => card.source), selection: 'lexical', clinicalReview: 'pending' };
+    const staticEvidence = { version: KNOWLEDGE_VERSION, cardIds: cards.map(card => card.id), sources: cards.map(card => card.source), selection: 'lexical', clinicalReview: 'pending' };
     const memory = selectRelevantMemoryContext(query, sanitizeMemoryItems(input.memoryItems), 6);
     if (path.endsWith('/breakdown')) {
-      const breakdown = await analyzeShiftReflection(situation, memory, personalContextPrompt(input.personalContext, input.approvedSummary));
-      return json({ safetyInterruption: false, breakdown, evidence, memoryUsed: memory, memorySource: 'device_or_none' });
+      const breakdown = await analyzeShiftReflection(
+        situation,
+        memory,
+        personalContextPrompt(input.personalContext, input.approvedSummary, situation),
+      );
+      return json({ safetyInterruption: false, breakdown, evidence: staticEvidence, memoryUsed: memory, memorySource: 'device_or_none' });
     }
     if (path.endsWith('/conversation')) {
       if (!input.currentShift || typeof input.currentShift !== 'object' || Array.isArray(input.currentShift)) return json({ error: 'An active reflection is required.' }, 400);
-      const history = Array.isArray(input.history) ? input.history.filter((turn): turn is {role: 'user' | 'assistant'; content: string} => Boolean(turn) && (turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string').slice(-8).map(turn => ({...turn, content: turn.content.slice(0,1200)})) : [];
-      const result = await continueShiftConversation({ currentShift: input.currentShift as Record<string, unknown>, userMessage: message, history, memoryContext: memory, personalContext: personalContextPrompt(input.personalContext, input.approvedSummary) });
+      const history = Array.isArray(input.history)
+        ? input.history
+            .filter((turn): turn is {role: 'user' | 'assistant'; content: string} => Boolean(turn) && (turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string')
+            .slice(-8)
+            .map(turn => ({...turn, content: turn.content.slice(0,1200)}))
+        : [];
+      const recentConversation = history.map((turn) => `${turn.role}: ${turn.content.replace(/\s+/g, ' ').trim().slice(0, 800)}`).join('\n');
+      const result = await orchestrateShiftConversation({
+        currentShift: input.currentShift as Record<string, unknown>,
+        userMessage: message,
+        history,
+        memoryContext: memory,
+        personalContext: personalContextPrompt(input.personalContext, input.approvedSummary, message, recentConversation),
+      });
+      const evidence = result.research.status === 'grounded'
+        ? {
+            version: 'dynamic-web-v1',
+            sources: result.research.sources.map((source) => ({ title: source.title, url: source.url, sourceType: source.sourceType })),
+          }
+        : staticEvidence;
       return json({ ...result, safetyInterruption: false, evidence, relevantMemory: memory, memorySource: 'device_or_none' });
     }
     if (input.confirmed !== true) return json({ error: 'Confirm the reflection before generating practice.', content: null }, 400);
     const content = await generatePersonalizedGameContent(value(input, 'gameId', 80), value(input, 'theme', 160), observation, value(input, 'interpretation'), value(input, 'updatedPerspective'));
-    return json({ content, evidence });
+    return json({ content, evidence: staticEvidence });
   } catch {
     return json({ error: 'Unable to process this request. Please try again.' }, 400);
   }
