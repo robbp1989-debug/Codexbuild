@@ -183,10 +183,19 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
       }
     }
 
+    const therapyLessonSuggestion = sanitizeTherapyLessonSuggestion(
+      first.therapyLessonSuggestion,
+      args.userMessage,
+    );
+
     return {
       reply,
-      memorySuggestion: first.memorySuggestion || null,
-      therapyLessonSuggestion: sanitizeTherapyLessonSuggestion(first.therapyLessonSuggestion, args.userMessage),
+      // Defense in depth: one user statement must never be offered for storage in
+      // both the professional-learning ledger and generic learning memory. When an
+      // explicitly attributed professional lesson is present, that specialized,
+      // user-consent path wins.
+      memorySuggestion: therapyLessonSuggestion ? null : first.memorySuggestion || null,
+      therapyLessonSuggestion,
       responseMode: 'model',
       shiftMode: mode,
       research: publicResearch(research),
