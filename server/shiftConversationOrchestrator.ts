@@ -8,6 +8,7 @@ import type {
 import { evidencePrompt } from '../src/second-brain/knowledge.js';
 import { PRIMARY_MODEL } from './config.js';
 import type { LearningMemoryCandidate } from './aiClient.js';
+import { sanitizeGenericMemorySuggestion } from './memorySuggestion.js';
 import { PERSONAL_CONTEXT_RULES } from './personalContext.js';
 import { evaluateResponseQuality, qualityRevisionInstruction } from './qualityGuard.js';
 import { researchPrompt, runGroundedResearch } from './researchEngine.js';
@@ -162,7 +163,7 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
   try {
     const first = JSON.parse(await modelCall({ system, input, json: true })) as {
       reply?: string;
-      memorySuggestion?: LearningMemoryCandidate | null;
+      memorySuggestion?: unknown;
       therapyLessonSuggestion?: unknown;
     };
     if (!first.reply?.trim()) throw new Error('Conversation response missing reply');
@@ -187,14 +188,11 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
       first.therapyLessonSuggestion,
       args.userMessage,
     );
+    const genericMemorySuggestion = sanitizeGenericMemorySuggestion(first.memorySuggestion);
 
     return {
       reply,
-      // Defense in depth: one user statement must never be offered for storage in
-      // both the professional-learning ledger and generic learning memory. When an
-      // explicitly attributed professional lesson is present, that specialized,
-      // user-consent path wins.
-      memorySuggestion: therapyLessonSuggestion ? null : first.memorySuggestion || null,
+      memorySuggestion: therapyLessonSuggestion ? null : genericMemorySuggestion,
       therapyLessonSuggestion,
       responseMode: 'model',
       shiftMode: mode,
