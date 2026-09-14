@@ -1,10 +1,10 @@
 import { personalContextPrompt } from '@/server/personalContext';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { continueShiftConversation } from '@/server/aiClient';
 import { sanitizeMemoryItems, selectRelevantMemoryContext } from '@/server/memoryContext';
 import { loadLearningMemories } from '@/server/persistence';
 import { evaluateSafety } from '@/server/safetyCheck';
 import { embedMemoryQuery } from '@/server/semanticMemory';
+import { orchestrateShiftConversation } from '@/server/shiftConversationOrchestrator';
 
 function compact(value: string) {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -90,22 +90,40 @@ export async function POST(request: Request) {
           })
           .slice(-8)
       : [];
+    const recentConversation = safeHistory
+      .map((turn) => `${turn.role}: ${turn.content.replace(/\s+/g, ' ').trim().slice(0, 800)}`)
+      .join('\n');
 
-    const result = await continueShiftConversation({
+    const result = await orchestrateShiftConversation({
       currentShift: shiftRecord,
       userMessage: message.trim(),
       history: safeHistory,
       memoryContext: relevantMemory,
-      personalContext: personalContextPrompt(personalContext, approvedSummary),
+      personalContext: personalContextPrompt(
+        personalContext,
+        approvedSummary,
+        message.trim(),
+        recentConversation,
+      ),
     });
 
-    // Keep Talking must progress as a conversation even when the hosted model is
-    // unavailable and the deterministic AI fallback produces the same sentence.
-    // Never repeat the immediately previous SHIFT turn verbatim.
+    // Keep Talking should not repeat the previous generated response verbatim.
+    // Do not substitute reflective content for an explicit provider-unavailable message.
     const previousAssistant = [...safeHistory].reverse().find((turn) => turn.role === 'assistant');
-    const reply = previousAssistant && compact(previousAssistant.content) === compact(result.reply)
+    const reply = result.responseMode === 'model' && previousAssistant && compact(previousAssistant.content) === compact(result.reply)
       ? nonRepeatingFallback(message.trim(), safeHistory)
       : result.reply;
+
+    const evidence = result.research.status === 'grounded'
+      ? {
+          version: 'dynamic-web-v1',
+          sources: result.research.sources.map((source) => ({
+            title: source.title,
+            url: source.url,
+            sourceType: source.sourceType,
+          })),
+        }
+      : undefined;
 
     return Response.json({
       safetyInterruption: false,
@@ -113,6 +131,7 @@ export async function POST(request: Request) {
       memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
       memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
       ...result,
+      evidence,
       reply,
     });
   } catch {
