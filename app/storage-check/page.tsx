@@ -7,6 +7,7 @@ type StorageStatus = {
   authenticatedUser: boolean;
   d1Binding: boolean;
   d1SchemaReady: boolean;
+  missingTables: string[];
   d1RoundTrip: boolean;
   r2Binding: boolean;
   r2RoundTrip: boolean;
@@ -65,6 +66,10 @@ export default function StorageCheckPage() {
     }
   };
 
+  const missingSchemaNote = status?.missingTables?.length
+    ? `Missing tables: ${status.missingTables.join(', ')}`
+    : 'Confirms generic memory, semantic retrieval, professional learning, patterns, and continuity tables exist.';
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-10">
       <div className="max-w-2xl mx-auto">
@@ -88,7 +93,7 @@ export default function StorageCheckPage() {
             <div>
               <Row label="Signed-in account" ok={status.authenticatedUser} note="Required for cross-device personal memory." />
               <Row label="D1 database binding" ok={status.d1Binding} note="Stores compact reusable learning records." />
-              <Row label="D1 learning schema" ok={status.d1SchemaReady} note="Confirms the required memory tables exist." />
+              <Row label="Complete D1 intelligence schema" ok={status.d1SchemaReady} note={missingSchemaNote} />
               <Row label="D1 write/read round trip" ok={status.d1RoundTrip} note="Verified only after running the reversible self-test." />
               <Row label="R2 private-source binding" ok={status.r2Binding} note="Stores imported source files separately from reusable learning." />
               <Row label="R2 write/read round trip" ok={status.r2RoundTrip} note="Verified only after running the reversible self-test." />
@@ -123,7 +128,7 @@ export default function StorageCheckPage() {
           )}
           {status?.ready && (
             <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-sm text-emerald-200">
-              Account learning memory and private-source storage passed the live round-trip check.
+              Account learning memory, professional learning, continuity schema, semantic-memory schema, and private-source storage passed the live readiness checks.
             </div>
           )}
         </section>
