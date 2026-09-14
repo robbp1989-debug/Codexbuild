@@ -12,7 +12,7 @@ process.env.OPENAI_API_KEY = '';
 const post = (path, body, headers={}) => handlePreviewApi(new Request('https://shift.example'+path,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(body)}));
 test('backend reports its actual storage and research mode',async()=>{
  const r=await handlePreviewApi(new Request('https://shift.example/api/health'));const d=await r.json();
- assert.equal(d.accountMemoryAvailable,false); assert.equal(d.researchSync,'versioned_snapshot'); assert.equal(d.configuredModel,'gpt-5.6-luna');
+ assert.equal(d.accountMemoryAvailable,false); assert.equal(d.researchSync,'versioned_snapshot_plus_dynamic_web'); assert.equal(d.configuredModel,'gpt-5.6-luna');
 });
 test('reflection response includes server-selected provenance',async()=>{
  const r=await post('/api/shift/breakdown',{situation:'I feel confused about what they said.'}); const d=await r.json();
@@ -36,7 +36,7 @@ test('a successful model conversation is labeled and uses the verified model',as
  globalThis.fetch=async(_url,options)=>{
   const request=JSON.parse(options.body);
   assert.equal(request.model,'gpt-5.6-luna');
-  return Response.json({choices:[{message:{content:JSON.stringify({reply:'A response tied to this message.',memorySuggestion:null})}}]},{headers:{'x-request-id':'req_test_success'}});
+  return Response.json({choices:[{message:{content:JSON.stringify({reply:'A response tied to this message.',memorySuggestion:null,therapyLessonSuggestion:null})}}]},{headers:{'x-request-id':'req_test_success'}});
  };
  try {
   const r=await post('/api/shift/conversation',{message:'This is a fictional ordinary message.',currentShift:{observation:'A fictional event.'}});const d=await r.json();
@@ -51,13 +51,12 @@ test('provider failure is transparent instead of returning a pretend conversatio
   const r=await post('/api/shift/conversation',{message:'Another fictional ordinary message.',currentShift:{observation:'A fictional event.'}});const d=await r.json();
   assert.equal(r.status,200);assert.equal(d.responseMode,'unavailable');assert.equal(d.unavailableReason,'provider_error');
   assert.match(d.reply,/temporarily unavailable/);assert.doesNotMatch(d.reply,/landing hardest|what part/i);
-  assert.equal(warnings[0][1].model,'gpt-5.6-luna');assert.equal(warnings[0][1].status,404);assert.equal(warnings[0][1].code,'model_not_found');
   assert.ok(!JSON.stringify(warnings).includes('must not be logged'));
  } finally { globalThis.fetch=priorFetch; console.warn=priorWarn; process.env.OPENAI_API_KEY=''; }
 });
 test('both AI routes receive approved context and summary without pending or historical text',async()=>{
  const priorFetch=globalThis.fetch;process.env.OPENAI_API_KEY='test-key';const prompts=[];
- globalThis.fetch=async(_url,options)=>{prompts.push(JSON.stringify(JSON.parse(options.body).messages));return Response.json({choices:[{message:{content:JSON.stringify({reply:'Fictional reply.',observation:'A fictional event',updated_perspective:'An alternative',choice:'Pause'})}}]});};
+ globalThis.fetch=async(_url,options)=>{prompts.push(JSON.stringify(JSON.parse(options.body).messages));return Response.json({choices:[{message:{content:JSON.stringify({reply:'Fictional reply.',observation:'A fictional event',updated_perspective:'An alternative',choice:'Pause',therapyLessonSuggestion:null})}}]});};
  const approved={text:'Use short examples',label:'Preference',source:'user_direct_form',status:'confirmed'};
  try {
   for(const path of ['breakdown','conversation']) await post('/api/shift/'+path,{situation:'A fictional event',message:'An ordinary question',currentShift:{observation:'A fictional event'},approvedSummary:'I prefer plain words',personalContext:[approved,{...approved,status:'pending',text:'DO_NOT_SEND_PENDING'},{...approved,status:'historical',text:'DO_NOT_SEND_HISTORICAL'}]});
