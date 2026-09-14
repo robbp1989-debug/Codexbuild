@@ -27,6 +27,13 @@ test('practice requires confirmation',async()=>{
 test('unsupported storage never reports a successful save',async()=>{
  const r=await post('/api/shift/memory/remember',{});assert.equal(r.status,404);assert.equal((await r.json()).persisted,false);
 });
+test('preview prediction evidence classifies the outcome but does not pretend to persist account learning',async()=>{
+ const r=await post('/api/shift/evidence',{
+  predictionId:'pred-1',prediction:'They will reject me',actualOutcome:'They replied later',didFearedHappen:'no',outcomeRating:'better_than_expected',rememberForFuture:true,
+ });
+ const d=await r.json();
+ assert.equal(r.status,200);assert.equal(d.persisted,false);assert.equal(d.remembered,false);assert.equal(d.accountRequired,true);assert.equal(d.evidenceDirection,'challenges_prediction');
+});
 test('bounds and cross-origin protection precede processing',async()=>{
  assert.equal((await post('/api/shift/breakdown',{situation:'x'.repeat(65000)})).status,413);
  assert.equal((await post('/api/shift/breakdown',{situation:'hello'},{Origin:'https://other.example'})).status,403);
