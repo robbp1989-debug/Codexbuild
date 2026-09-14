@@ -34,7 +34,7 @@ export const PredictionLabScreen: React.FC = () => {
   const {
     predictions,
     addPrediction,
-    resolvePrediction,
+    updatePrediction,
     addMemoryItem,
     playSoftSound,
   } = useApp();
@@ -93,13 +93,14 @@ export const PredictionLabScreen: React.FC = () => {
     // The Prediction Lab record itself is preserved locally so the user can compare
     // prediction versus outcome later. Reusable learning memory is added separately
     // and only when the explicit personalization checkbox is on.
-    resolvePrediction(
-      prediction.id,
-      actual,
-      didFearedHappen,
-      learning,
+    updatePrediction(prediction.id, {
+      status: 'tested',
+      whatActuallyHappened: actual,
+      didFearedOutcomeHappen,
+      learningInsight: learning,
       outcomeRating,
-    );
+      outcomeRecordedAt: new Date().toISOString(),
+    });
 
     if (rememberForFuture) {
       addMemoryItem(
