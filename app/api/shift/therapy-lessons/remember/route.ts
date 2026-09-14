@@ -1,6 +1,6 @@
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import type { TherapyLessonDraft, TherapyLessonSourceType } from '@/lib/shift-intelligence-types';
-import { saveTherapyLesson } from '@/server/therapyLessonStore';
+import { loadTherapyLessonById, saveTherapyLesson } from '@/server/therapyLessonStore';
 
 const SOURCES = new Set<TherapyLessonSourceType>([
   'therapist',
@@ -28,16 +28,28 @@ function stringList(value: unknown, maxItems = 8, maxLength = 180): string[] {
 export async function POST(request: Request) {
   try {
     const body = await request.json() as Record<string, unknown>;
-    const sourceType = text(body.sourceType, 40) as TherapyLessonSourceType;
+    const requestedSourceType = text(body.sourceType, 40) as TherapyLessonSourceType;
     const title = text(body.title, 120);
     const lessonSummary = text(body.lessonSummary, 700);
-    if (!SOURCES.has(sourceType) || !title || !lessonSummary) {
+    const supersedesId = text(body.supersedesId, 120) || undefined;
+    if (!SOURCES.has(requestedSourceType) || !title || !lessonSummary) {
       return Response.json({ error: 'A valid lesson source, title, and summary are required.' }, { status: 400 });
     }
 
     const user = await getChatGPTUser();
     if (!user) {
       return Response.json({ persisted: false, accountRequired: true }, { status: 200 });
+    }
+
+    let sourceType = requestedSourceType;
+    if (supersedesId) {
+      const previous = await loadTherapyLessonById(user.userId, supersedesId);
+      if (!previous || !previous.active || previous.supersededAt) {
+        return Response.json({ error: 'The lesson being replaced is not an active current version.' }, { status: 404 });
+      }
+      // A revision may change wording but not provenance. This prevents a client
+      // request from rewriting who the user originally attributed the lesson to.
+      sourceType = previous.sourceType;
     }
 
     // Reaching this endpoint is the explicit consent action: the user chose
@@ -60,11 +72,11 @@ export async function POST(request: Request) {
       sensitivityLevel: body.sensitivityLevel === 'low' || body.sensitivityLevel === 'high' ? body.sensitivityLevel : 'medium',
       userConfirmed: true,
       active: true,
-      supersedesId: text(body.supersedesId, 120) || undefined,
+      supersedesId,
     };
 
     const id = await saveTherapyLesson(user.userId, draft);
-    return Response.json({ persisted: Boolean(id), id, userConfirmed: true });
+    return Response.json({ persisted: Boolean(id), id, userConfirmed: true, sourceType });
   } catch {
     return Response.json({ error: 'Unable to remember this lesson right now.' }, { status: 500 });
   }
