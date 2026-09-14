@@ -14,6 +14,14 @@ import {
 type FearedOutcomeResult = 'yes' | 'partly' | 'no' | 'different_entirely';
 type OutcomeRating = NonNullable<PredictionRecord['outcomeRating']>;
 
+type PatternCandidate = {
+  type: 'CONFIRMED_PATTERN';
+  label: string;
+  summary: string;
+  tags: string[];
+  confidence: 'user_confirmed';
+};
+
 const FEARED_OPTIONS: Array<{ value: FearedOutcomeResult; label: string }> = [
   { value: 'no', label: 'No' },
   { value: 'partly', label: 'Partly' },
@@ -50,6 +58,8 @@ export const PredictionLabScreen: React.FC = () => {
   const [savingOutcome, setSavingOutcome] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [patternCandidate, setPatternCandidate] = useState<{ memory: PatternCandidate; sourceId: string } | null>(null);
+  const [savingPattern, setSavingPattern] = useState(false);
 
   const [newContext, setNewContext] = useState('');
   const [newPredicted, setNewPredicted] = useState('');
@@ -80,6 +90,7 @@ export const PredictionLabScreen: React.FC = () => {
     setStrategyHelped(false);
     setRememberForFuture(false);
     setSaveNotice('');
+    setPatternCandidate(null);
   };
 
   const handleSaveOutcome = async (prediction: PredictionRecord) => {
@@ -89,6 +100,7 @@ export const PredictionLabScreen: React.FC = () => {
     const learning = learningText.trim();
     setSavingOutcome(true);
     setSaveNotice('');
+    setPatternCandidate(null);
 
     // The Prediction Lab record itself is preserved locally so the user can compare
     // prediction versus outcome later. Reusable learning memory is added separately
@@ -161,6 +173,7 @@ export const PredictionLabScreen: React.FC = () => {
         repeatedLearningMessage?: string | null;
         learningEvidenceCount?: number;
         strategyEvidenceCount?: number;
+        patternCandidate?: PatternCandidate | null;
         error?: string;
       };
 
@@ -171,6 +184,9 @@ export const PredictionLabScreen: React.FC = () => {
         setSaveNotice(`Outcome recorded and added to device learning memory.${evidenceNote} Sign in with ChatGPT to carry this learning across devices.`);
       } else if (data.remembered) {
         setSaveNotice(`Outcome recorded and added to your learning memory.${evidenceNote}${repetitionNote}`);
+        if (data.patternCandidate) {
+          setPatternCandidate({ memory: data.patternCandidate, sourceId: prediction.id });
+        }
       } else {
         setSaveNotice(`Outcome recorded locally.${evidenceNote} Account learning was not changed.`);
       }
@@ -183,6 +199,42 @@ export const PredictionLabScreen: React.FC = () => {
     } finally {
       setSavingOutcome(false);
       resetOutcomeForm();
+    }
+  };
+
+  const confirmRecurringPattern = async () => {
+    if (!patternCandidate || savingPattern) return;
+    setSavingPattern(true);
+    const { memory, sourceId } = patternCandidate;
+
+    // The local reusable pattern is written only after this separate confirmation.
+    addMemoryItem('CONFIRMED_PATTERN', memory.summary, 'active', sourceId);
+    try {
+      const response = await fetch('/api/shift/memory/remember', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId, memory }),
+      });
+      const data = await response.json() as { persisted?: boolean; accountRequired?: boolean; error?: string };
+      if (!response.ok) throw new Error(data.error || 'The recurring pattern could not be saved.');
+      if (data.accountRequired) {
+        setSaveNotice('Pattern confirmed on this device. Sign in with ChatGPT to carry it across devices.');
+      } else if (data.persisted) {
+        setSaveNotice('Pattern confirmed. SHIFT can now treat it as user-confirmed learning when it is relevant.');
+      } else {
+        setSaveNotice('Pattern confirmed on this device. Account memory was not changed.');
+      }
+      setPatternCandidate(null);
+      playSoftSound('complete');
+    } catch (error) {
+      setSaveNotice(
+        error instanceof Error
+          ? `Pattern confirmed on this device. ${error.message}`
+          : 'Pattern confirmed on this device, but account memory could not be updated.',
+      );
+      setPatternCandidate(null);
+    } finally {
+      setSavingPattern(false);
     }
   };
 
@@ -233,6 +285,21 @@ export const PredictionLabScreen: React.FC = () => {
         <div className="rounded-xl border border-sky-500/25 bg-sky-950/20 px-4 py-3 text-xs text-sky-100 flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 text-sky-300 shrink-0 mt-0.5" />
           <span>{saveNotice}</span>
+        </div>
+      )}
+
+      {patternCandidate && (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-950/20 p-4 text-xs text-slate-200">
+          <div className="font-semibold text-amber-200">Does this feel like a recurring pattern to you?</div>
+          <p className="mt-1.5 text-slate-400">SHIFT noticed that the same learning appeared after multiple separate real-world tests. Repetition is evidence, not a verdict. Only you can confirm that it belongs in your profile as a pattern.</p>
+          <p className="mt-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">{patternCandidate.memory.summary}</p>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <button type="button" disabled={savingPattern} onClick={() => setPatternCandidate(null)} className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 font-medium">Not yet</button>
+            <button type="button" disabled={savingPattern} onClick={() => void confirmRecurringPattern()} className="px-4 py-1.5 rounded-lg bg-amber-400 text-slate-950 font-bold inline-flex items-center gap-2">
+              {savingPattern ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              Yes, this fits me
+            </button>
+          </div>
         </div>
       )}
 
