@@ -43,11 +43,14 @@ test('server and UI preserve a separate explicit pattern-confirmation action', a
   const rememberRoute = await readFile('app/api/shift/memory/remember/route.ts', 'utf8');
   const predictionLab = await readFile('src/components/predictions/PredictionLabScreen.tsx', 'utf8');
   const evidenceRoute = await readFile('app/api/shift/evidence/route.ts', 'utf8');
+  const patternState = await readFile('server/patternMemoryState.ts', 'utf8');
 
   assert.match(rememberRoute, /USER_CONFIRMATION_REQUIRED/);
   assert.match(rememberRoute, /CONFIRMED_PATTERN/);
   assert.match(rememberRoute, /confidence !== 'user_confirmed'/);
   assert.match(evidenceRoute, /Repetition earns a question, not an automatic promotion/);
+  assert.match(evidenceRoute, /hasConfirmedPatternMemory/);
+  assert.match(patternState, /memory_type = 'CONFIRMED_PATTERN'/);
   assert.match(predictionLab, /Does this feel like a recurring pattern to you\?/);
   assert.match(predictionLab, /Yes, this fits me/);
   assert.match(predictionLab, /Not yet/);
