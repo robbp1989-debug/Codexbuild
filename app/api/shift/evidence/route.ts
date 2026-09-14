@@ -12,6 +12,7 @@ import {
   savePredictionOutcomeMemory,
   upsertPredictionEvidence,
 } from '@/server/outcomeLearningStore';
+import { hasConfirmedPatternMemory } from '@/server/patternMemoryState';
 
 const FEARED_RESULTS = new Set(['yes', 'partly', 'no', 'different_entirely']);
 const OUTCOME_RATINGS = new Set([
@@ -131,7 +132,10 @@ export async function POST(request: Request) {
 
     // Repetition earns a question, not an automatic promotion. The browser must
     // still show this candidate and require a separate explicit confirmation action.
-    const patternCandidate = buildRecurringPatternCandidate(learning, learningEvidenceCount);
+    const rawPatternCandidate = buildRecurringPatternCandidate(learning, learningEvidenceCount);
+    const patternCandidate = rawPatternCandidate && !(await hasConfirmedPatternMemory(user.userId, rawPatternCandidate.summary))
+      ? rawPatternCandidate
+      : null;
 
     return Response.json({
       persisted: Boolean(savedOutcome.id),
