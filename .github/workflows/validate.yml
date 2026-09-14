@@ -20,11 +20,24 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Install
+      - name: Install baseline
         run: npm ci
+      - name: Phase 12 dependency remediation probe
+        run: |
+          npm install --save-exact react@19.3.0 react-dom@19.3.0 react-server-dom-webpack@19.3.0 vite@8.3.0 vinext@1.0.0-beta.9
+          npm audit fix
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Validate SHIFT intelligence core
         run: npm run validate:shift-core
       - name: Preview-compatible build
         run: npx vite build --config vite.preview.config.ts
+      - name: Upload remediated dependency files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase12-dependency-refresh
+          path: |
+            package.json
+            package-lock.json
+          if-no-files-found: error
