@@ -1,0 +1,125 @@
+/* Desktop-only visual authority for the current SHIFT website review.
+   Mobile/tablet behavior is intentionally out of scope for this checkpoint.
+   This file is imported last so older responsive clamps cannot reshape the
+   approved desktop composition. */
+
+@media (min-width: 1180px) {
+  .workspace-office--conversation {
+    /* 1672x941 reference geometry.
+       Painting: ~80-410px. Desired answer surface: ~65-440px. */
+    --painting-frame-left: 4.78vw;
+    --painting-frame-width: 19.74vw;
+    --painting-panel-left: 4.78vw;
+    --painting-panel-width: 22.43vw;
+    --workspace-right-start: 31.45vw;
+    --workspace-right-edge: 7vw;
+  }
+
+  /* Desktop uses the full office frame. Do not enlarge or negatively offset
+     the background video; that breaks the painting/card relationship. */
+  .workspace-office--conversation .workspace-office__background-video {
+    inset: 0 !important;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    max-width: none !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    transform: none !important;
+  }
+
+  /* Keep the website layout desktop-first. Do not apply the previous laptop
+     tightening rules, mobile stacking rules, or capped desktop geometry. */
+  .workspace-office--conversation .workspace-header {
+    position: fixed !important;
+    left: var(--workspace-right-start) !important;
+    right: var(--workspace-right-edge) !important;
+    top: 6.5vh !important;
+    width: auto !important;
+    margin: 0 !important;
+  }
+
+  .workspace-office--conversation .workspace-nav {
+    min-height: 76px !important;
+    padding: 12px 26px !important;
+    gap: 22px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .workspace-office--conversation .workspace-nav-links {
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .workspace-office--conversation .workspace-nav-links > button,
+  .workspace-office--conversation .workspace-nav-links > a {
+    min-height: 42px !important;
+    padding: 8px 14px !important;
+    font-size: .92rem !important;
+    white-space: nowrap !important;
+  }
+
+  .workspace-office--conversation .workspace-arrival-action {
+    min-width: 100px !important;
+  }
+
+  .workspace-office--conversation .workspace-office__main {
+    width: auto !important;
+    margin-left: var(--workspace-right-start) !important;
+    margin-right: var(--workspace-right-edge) !important;
+    padding: calc(6.5vh + 76px) 0 7.5vh !important;
+  }
+
+  .shift-light.workspace-office--conversation .workspace-office__surface {
+    width: auto !important;
+    min-height: calc(86vh - 76px) !important;
+    padding: 14px 4.35vw 0 !important;
+    margin: 0 !important;
+  }
+
+  .keep-talking-immersive {
+    display: block !important;
+    grid-template-columns: none !important;
+    gap: 0 !important;
+    min-height: 0 !important;
+  }
+
+  /* The width below is the finished outside width, including padding/border.
+     The earlier implementation used content-box sizing, so 22.43vw plus
+     padding made the card ~70px too wide. */
+  .keep-talking-perspective {
+    box-sizing: border-box !important;
+    position: fixed !important;
+    z-index: 30 !important;
+    left: var(--painting-panel-left) !important;
+    top: 3.8vh !important;
+    width: var(--painting-panel-width) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 42vh !important;
+    max-height: 84vh !important;
+    margin: 0 !important;
+    padding: 32px 30px 26px !important;
+    transform: perspective(1500px) rotateY(9deg) rotateZ(2deg) !important;
+    transform-origin: center center !important;
+  }
+
+  .keep-talking-perspective h2 {
+    max-width: none !important;
+    font-size: 1.95rem !important;
+  }
+
+  .keep-talking-dialogue {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: calc(86vh - 90px) !important;
+  }
+
+  .keep-talking-thread {
+    min-height: 220px !important;
+    max-height: 50vh !important;
+  }
+}

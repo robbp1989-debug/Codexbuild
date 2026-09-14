@@ -35,7 +35,6 @@ export const Navbar: React.FC = () => {
   const navigate = (tab: string) => {
     playSoftSound('tap');
     setActiveTab(tab);
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
   };
 
   const returnToArrival = () => {

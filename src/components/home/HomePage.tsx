@@ -69,7 +69,6 @@ export const HomePage: React.FC = () => {
   const navigateToTool = (tab: string) => {
     playSoftSound('tap');
     setActiveTab(tab);
-    requestAnimationFrame(() => window.scrollTo({ top: 0 }));
   };
 
   const arriveAtWorkspace = (focusTarget?: 'life-context' | 'reflection-workspace') => {
@@ -272,7 +271,7 @@ export const HomePage: React.FC = () => {
               </details>
             </section>
 
-            <section className="arrival-card arrival-card--reflection" id="reflection-workspace" aria-labelledby="reflection-title">
+            <section className="arrival-card arrival-card--reflection perspective-source" id="reflection-workspace" aria-labelledby="reflection-title">
               <div className="cinematic-framework-label">S • H • I • F • T Framework</div>
               <h2 id="reflection-title">What’s going on?</h2>
               <p className="cinematic-intro">Start with a moment from your day. Review the facts, name your feelings, then practice a helpful response.</p>

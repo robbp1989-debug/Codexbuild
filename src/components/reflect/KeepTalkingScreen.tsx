@@ -1,7 +1,7 @@
 'use client';
 
 import { activeContext } from '../../personalization/model';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bookmark,
@@ -57,6 +57,12 @@ export const KeepTalkingScreen: React.FC = () => {
   const [memorySuggestion, setMemorySuggestion] = useState<MemorySuggestion | null>(null);
   const [memorySaved, setMemorySaved] = useState(false);
   const [memoryUsed, setMemoryUsed] = useState<string[]>([]);
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const thread = threadRef.current;
+    if (thread) thread.scrollTop = thread.scrollHeight;
+  }, [turns.length, loading]);
 
   if (!activeShift) {
     return (
@@ -221,7 +227,7 @@ export const KeepTalkingScreen: React.FC = () => {
           </p>
         </div>
 
-        <div className="keep-talking-thread" aria-label="Conversation history">
+        <div ref={threadRef} className="keep-talking-thread" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation history">
           {turns.map((turn, index) => (
             <div key={`${turn.role}-${index}`} className={`keep-talking-turn keep-talking-turn--${turn.role}`}>
               <div className="keep-talking-turn__label">{turn.role === 'user' ? 'You' : 'SHIFT'}</div>
@@ -285,6 +291,7 @@ export const KeepTalkingScreen: React.FC = () => {
               }}
               disabled={loading}
               rows={2}
+              aria-label="Your message to SHIFT"
               placeholder="What’s on your mind right now?"
               className="keep-talking-composer__input"
             />

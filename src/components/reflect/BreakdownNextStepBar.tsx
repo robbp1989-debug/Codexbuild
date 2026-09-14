@@ -11,7 +11,6 @@ export const BreakdownNextStepBar: React.FC = () => {
   const go = (tab: string) => {
     playSoftSound('tap');
     setActiveTab(tab);
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
   };
 
   return (

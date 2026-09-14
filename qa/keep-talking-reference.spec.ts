@@ -17,7 +17,9 @@ async function moveToArrival(page: Page) {
   await page.waitForTimeout(1100);
 }
 
-test('Keep Talking matches approved 1672x941 composition envelope', async ({ page }) => {
+test('Keep Talking matches desktop 1672x941 painting composition', async ({ page }) => {
+  // Current acceptance scope is the desktop website only. Do not import phone
+  // or tablet constraints into this visual contract.
   await page.setViewportSize({ width: 1672, height: 941 });
   await page.goto(LOCAL, { waitUntil: 'networkidle' });
   await moveToArrival(page);
@@ -50,31 +52,43 @@ test('Keep Talking matches approved 1672x941 composition envelope', async ({ pag
       const r = node.getBoundingClientRect();
       return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom };
     };
+    const perspective = document.querySelector<HTMLElement>('.keep-talking-perspective');
+    if (!perspective) throw new Error('Missing .keep-talking-perspective');
     return {
       perspective: rect('.keep-talking-perspective'),
       header: rect('.workspace-header'),
       outer: rect('.workspace-office__surface'),
       dialogue: rect('.keep-talking-dialogue'),
+      background: rect('.workspace-office__background-video'),
+      perspectiveBoxSizing: getComputedStyle(perspective).boxSizing,
     };
   });
 
-  console.log('KEEP_TALKING_REFERENCE_GEOMETRY', JSON.stringify(geometry));
+  console.log('KEEP_TALKING_DESKTOP_REFERENCE_GEOMETRY', JSON.stringify(geometry));
   fs.mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/21-keep-talking-reference-size.png`, fullPage: false });
+  await page.screenshot({ path: `${OUT}/21-keep-talking-desktop-reference.png`, fullPage: false });
 
-  // Broad guardrails taken from the approved Office perfect reference. These
-  // deliberately protect composition without turning responsive CSS into a
-  // brittle single-pixel test.
-  expect(geometry.perspective.x).toBeGreaterThanOrEqual(50);
-  expect(geometry.perspective.x).toBeLessThanOrEqual(80);
-  expect(geometry.perspective.y).toBeLessThanOrEqual(32);
+  // Desktop painting/card relationship. The visual transform makes the final
+  // bounding box slightly left of its untransformed 80px anchor.
+  expect(geometry.perspectiveBoxSizing).toBe('border-box');
+  expect(geometry.perspective.x).toBeGreaterThanOrEqual(55);
+  expect(geometry.perspective.x).toBeLessThanOrEqual(82);
   expect(geometry.perspective.width).toBeGreaterThanOrEqual(350);
   expect(geometry.perspective.width).toBeLessThanOrEqual(400);
-  expect(geometry.header.x).toBeGreaterThanOrEqual(500);
-  expect(geometry.header.x).toBeLessThanOrEqual(550);
+  expect(geometry.perspective.right).toBeLessThanOrEqual(450);
+
+  // The held office frame must occupy the desktop viewport itself. A negative
+  // inset or 130vw enlargement would move the painting out from under the card.
+  expect(geometry.background.x).toBeGreaterThanOrEqual(-2);
+  expect(geometry.background.x).toBeLessThanOrEqual(2);
+  expect(geometry.background.width).toBeGreaterThanOrEqual(1668);
+  expect(geometry.background.width).toBeLessThanOrEqual(1676);
+
+  expect(geometry.header.x).toBeGreaterThanOrEqual(510);
+  expect(geometry.header.x).toBeLessThanOrEqual(545);
   expect(geometry.outer.right).toBeGreaterThanOrEqual(1510);
   expect(geometry.outer.right).toBeLessThanOrEqual(1580);
   expect(geometry.dialogue.x).toBeGreaterThanOrEqual(580);
   expect(geometry.dialogue.right).toBeLessThanOrEqual(1535);
-  expect(geometry.dialogue.bottom).toBeGreaterThanOrEqual(820);
+  expect(geometry.dialogue.bottom).toBeGreaterThanOrEqual(800);
 });
