@@ -37,6 +37,22 @@ export type TherapyLessonDraft = Omit<
   supersedesId?: string;
 };
 
+export interface TherapyLessonSuggestion {
+  sourceType: TherapyLessonSourceType;
+  title: string;
+  lessonSummary: string;
+  triggerConditions: string[];
+  oldPattern: string;
+  newSkill: string;
+  replacementRule: string;
+  example: string;
+  prediction: string;
+  desiredExperiment: string;
+  evidenceObserved: string[];
+  confidence: number;
+  sensitivityLevel: 'low' | 'medium' | 'high';
+}
+
 export interface UserPattern {
   id: string;
   userId: string;
