@@ -179,8 +179,13 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
       });
       reply = revised.trim();
       quality = evaluateResponseQuality({ reply, mode, research });
-      if (!quality.passed) {
-        throw new Error(`Response quality guard failed: ${quality.criticalFailures.join(',')}`);
+      if (!quality.passed || quality.warnings.length > 0) {
+        throw new Error(
+          `Response quality guard failed after revision: ${[
+            ...quality.criticalFailures,
+            ...quality.warnings,
+          ].join(',')}`,
+        );
       }
     }
 
