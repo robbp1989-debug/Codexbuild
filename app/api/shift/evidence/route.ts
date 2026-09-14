@@ -2,6 +2,7 @@ import { getChatGPTUser } from '@/app/chatgpt-auth';
 import {
   buildHelpfulStrategyMemory,
   buildOutcomeMemory,
+  buildRecurringPatternCandidate,
   buildUserLearningMemory,
   derivePredictionEvidenceDirection,
   outcomeDirectionLabel,
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
         remembered: false,
         evidenceDirection,
         directionLabel,
+        patternCandidate: null,
       });
     }
 
@@ -68,6 +70,7 @@ export async function POST(request: Request) {
         accountRequired: true,
         evidenceDirection,
         directionLabel,
+        patternCandidate: null,
       });
     }
 
@@ -126,6 +129,10 @@ export async function POST(request: Request) {
       });
     }
 
+    // Repetition earns a question, not an automatic promotion. The browser must
+    // still show this candidate and require a separate explicit confirmation action.
+    const patternCandidate = buildRecurringPatternCandidate(learning, learningEvidenceCount);
+
     return Response.json({
       persisted: Boolean(savedOutcome.id),
       remembered: Boolean(savedOutcome.id),
@@ -135,6 +142,7 @@ export async function POST(request: Request) {
       learningMemoryId,
       learningEvidenceCount,
       repeatedLearningMessage: repeatedLearningMessage(learningEvidenceCount),
+      patternCandidate,
       strategyMemoryId,
       strategyEvidenceCount,
     });
