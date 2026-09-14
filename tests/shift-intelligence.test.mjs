@@ -14,6 +14,7 @@ await build({
     'server/therapyLessonContext.ts',
     'server/researchEngine.ts',
     'server/memorySuggestion.ts',
+    'server/outcomeLearning.ts',
   ],
   bundle: true,
   platform: 'node',
@@ -27,6 +28,7 @@ const quality = await import(pathToFileURL(join(dir, 'qualityGuard.js')).href);
 const lessons = await import(pathToFileURL(join(dir, 'therapyLessonContext.js')).href);
 const research = await import(pathToFileURL(join(dir, 'researchEngine.js')).href);
 const memorySuggestion = await import(pathToFileURL(join(dir, 'memorySuggestion.js')).href);
+const outcomeLearning = await import(pathToFileURL(join(dir, 'outcomeLearning.js')).href);
 
 const emptyResearch = {
   required: false,
@@ -215,6 +217,39 @@ test('research plan strips private narrative and keeps only broad public topic p
   const serializedLegal = JSON.stringify(legalPlan).toLowerCase();
   assert.match(serializedLegal, /ohio/);
   assert.doesNotMatch(serializedLegal, /kraft|heinz|private dispute/);
+});
+
+test('prediction evidence distinguishes support, challenge, mixed, and unresolved outcomes', () => {
+  assert.equal(outcomeLearning.derivePredictionEvidenceDirection('yes', 'about_as_expected'), 'supports_prediction');
+  assert.equal(outcomeLearning.derivePredictionEvidenceDirection('no', 'better_than_expected'), 'challenges_prediction');
+  assert.equal(outcomeLearning.derivePredictionEvidenceDirection('different_entirely', 'mixed_partly_true'), 'challenges_prediction');
+  assert.equal(outcomeLearning.derivePredictionEvidenceDirection('partly', 'mixed_partly_true'), 'mixed_evidence');
+  assert.equal(outcomeLearning.derivePredictionEvidenceDirection('yes', 'still_unfolding'), 'unresolved');
+  assert.equal(outcomeLearning.derivePredictionEvidenceDirection('no', 'not_sure'), 'unresolved');
+});
+
+test('one outcome can create user learning without silently becoming a confirmed pattern', () => {
+  const memory = outcomeLearning.buildUserLearningMemory({
+    learning: 'Silence is incomplete information, so I can wait before assuming rejection.',
+    didFearedHappen: 'no',
+    outcomeRating: 'better_than_expected',
+  });
+  assert.ok(memory);
+  assert.equal(memory.type, 'UPDATED_PERSPECTIVE');
+  assert.equal(memory.confidence, 'user_confirmed');
+  assert.ok(memory.tags.includes('challenges_prediction'));
+  assert.notEqual(memory.type, 'CONFIRMED_PATTERN');
+  assert.equal(outcomeLearning.buildUserLearningMemory({ learning: '', didFearedHappen: 'no', outcomeRating: 'better_than_expected' }), null);
+});
+
+test('helpful strategy requires a user-reported action and repetition wording stays calibrated', () => {
+  assert.equal(outcomeLearning.buildHelpfulStrategyMemory(''), null);
+  const strategy = outcomeLearning.buildHelpfulStrategyMemory('State one preference without overexplaining.');
+  assert.ok(strategy);
+  assert.equal(strategy.type, 'HELPFUL_STRATEGY');
+  assert.equal(outcomeLearning.repeatedLearningMessage(1), null);
+  assert.match(outcomeLearning.repeatedLearningMessage(2), /two separate real-world tests/);
+  assert.match(outcomeLearning.repeatedLearningMessage(4), /4 separate real-world tests/);
 });
 
 test.after(async () => {
