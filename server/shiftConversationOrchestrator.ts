@@ -8,6 +8,7 @@ import type {
 import { evidencePrompt } from '../src/second-brain/knowledge.js';
 import { PRIMARY_MODEL } from './config.js';
 import type { LearningMemoryCandidate } from './aiClient.js';
+import { buildPublicInfluenceSummary, type PublicInfluenceSummary } from './influenceSummary.js';
 import { sanitizeGenericMemorySuggestion } from './memorySuggestion.js';
 import { PERSONAL_CONTEXT_RULES } from './personalContext.js';
 import { evaluateResponseQuality, qualityRevisionInstruction } from './qualityGuard.js';
@@ -34,6 +35,7 @@ export interface OrchestratedConversationResult {
   shiftMode: ShiftResponseMode;
   research: Pick<ResearchPacket, 'required' | 'status' | 'propositions' | 'sources'>;
   therapyLessonsUsed: Array<{ id: string; title: string; sourceType: TherapyLesson['sourceType'] }>;
+  influence: PublicInfluenceSummary;
   offerContinuity: boolean;
   quality: { passed: boolean; warnings: string[] };
 }
@@ -109,6 +111,12 @@ export async function orchestrateShiftConversation(args: {
   const therapyLessons = (args.therapyLessons || []).slice(0, 4);
   const mode = inferResponseMode(args.userMessage);
   const research = await runGroundedResearch(args.userMessage, mode);
+  const influence = buildPublicInfluenceSummary({
+    memoryContext: args.memoryContext,
+    therapyLessons,
+    personalContext: args.personalContext,
+    research,
+  });
   const evidence = buildEvidenceContext({
     userMessage: args.userMessage,
     currentShift: args.currentShift,
@@ -126,6 +134,7 @@ export async function orchestrateShiftConversation(args: {
       shiftMode: mode,
       research: publicResearch(research),
       therapyLessonsUsed: publicTherapyLessonSummary(therapyLessons),
+      influence,
       offerContinuity: false,
       quality: { passed: true, warnings: [] },
     };
@@ -203,6 +212,7 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
       shiftMode: mode,
       research: publicResearch(research),
       therapyLessonsUsed: publicTherapyLessonSummary(therapyLessons),
+      influence,
       offerContinuity,
       quality: { passed: quality.passed, warnings: quality.warnings },
     };
@@ -219,6 +229,7 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
       shiftMode: mode,
       research: publicResearch(research),
       therapyLessonsUsed: publicTherapyLessonSummary(therapyLessons),
+      influence,
       offerContinuity: false,
       quality: { passed: true, warnings: [] },
     };
