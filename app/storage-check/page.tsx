@@ -55,9 +55,9 @@ export default function StorageCheckPage() {
     setError('');
     try {
       const response = await fetch('/api/shift/system/self-test', { method: 'POST' });
-      const data = await response.json() as StorageStatus & { error?: string };
+      const data = await response.json() as Partial<StorageStatus> & { error?: string };
       if (!response.ok && !('ready' in data)) throw new Error(data.error || 'Storage self-test failed.');
-      setStatus(data);
+      setStatus(data as StorageStatus);
       if (!data.ready) setError('One or more storage checks still need deployment setup. No personal reflection data was used in this test.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Storage self-test failed.');

@@ -76,7 +76,8 @@ export async function inspectStorageReadiness(userId?: string): Promise<StorageS
     r2Binding: Boolean(bucket),
     r2RoundTrip: false,
     cleanupSucceeded: true,
-    ready: Boolean(userId && database && d1SchemaReady && bucket),
+    // Inspection alone cannot prove either write/read/delete round trip.
+    ready: false,
     checkedAt: new Date().toISOString(),
   };
 }
