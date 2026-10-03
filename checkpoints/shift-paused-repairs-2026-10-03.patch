@@ -1,0 +1,531 @@
+diff --git a/app/api/shift/breakdown/route.ts b/app/api/shift/breakdown/route.ts
+index 0daee34..7387e5b 100644
+--- a/app/api/shift/breakdown/route.ts
++++ b/app/api/shift/breakdown/route.ts
+@@ -18,6 +18,8 @@ import {
+ import { loadTherapyLessons } from '@/server/therapyLessonStore';
+ import { retrieveDetailedHistory } from '@/server/detailedHistoryStore';
+ import { detailedHistoryPrompt } from '@/server/detailedHistoryContext';
++import { buildPublicInfluenceSummary } from '@/server/influenceSummary';
++import { selectCards, KNOWLEDGE_VERSION } from '@/src/second-brain/knowledge';
+ 
+ export async function POST(request: Request) {
+   try {
+@@ -116,6 +118,7 @@ export async function POST(request: Request) {
+       context,
+       personalContextPrompt(personalContext, approvedSummary, situation),
+       detailedHistoryPrompt(personalHistory.passages),
++      personalHistory.passages,
+     );
+ 
+     return Response.json({
+@@ -137,6 +140,11 @@ export async function POST(request: Request) {
+       accountMemoryAvailable,
+       memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
+       breakdown,
++      influence: buildPublicInfluenceSummary({ memoryContext: retrieved, therapyLessons: relevantTherapyLessons,
++        personalContext: personalContextPrompt(personalContext, approvedSummary, situation),
++        personalHistoryUsed: personalHistory.passages,
++        research: { required: false, status: 'not_needed', propositions: [], synthesis: '', sources: [] } }),
++      educationalEvidence: { version: KNOWLEDGE_VERSION, sources: selectCards(situation).map(card => ({ title: card.source.title, url: card.source.url })) },
+     });
+   } catch {
+     return Response.json(
+diff --git a/app/api/shift/conversation/route.ts b/app/api/shift/conversation/route.ts
+index dd5e98d..90682c5 100644
+--- a/app/api/shift/conversation/route.ts
++++ b/app/api/shift/conversation/route.ts
+@@ -13,39 +13,7 @@ import { selectRelevantTherapyLessons } from '@/server/therapyLessonContext';
+ import { loadTherapyLessons } from '@/server/therapyLessonStore';
+ import { retrieveDetailedHistory } from '@/server/detailedHistoryStore';
+ import { detailedHistoryPrompt } from '@/server/detailedHistoryContext';
+-
+-function compact(value: string) {
+-  return value.replace(/\s+/g, ' ').trim().toLowerCase();
+-}
+-
+-function nonRepeatingFallback(
+-  message: string,
+-  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+-) {
+-  const lower = message.toLowerCase();
+-  if (/\b(angry|annoyed|frustrated|resentful|mad)\b/.test(lower)) {
+-    return 'That anger or frustration is worth noticing before we explain anyone else. What happened that felt unacceptable to you, and what did you want instead?';
+-  }
+-  if (/\b(scared|afraid|anxious|worried|fear|nervous)\b/.test(lower)) {
+-    return 'Stay with the fear for a moment before turning it into a theory. What did your mind predict was about to happen, and what do you actually know happened so far?';
+-  }
+-  if (/\b(hurt|sad|disappointed|lonely|rejected)\b/.test(lower)) {
+-    return 'There is something painful there before we try to update the meaning. What part landed as hurt or disappointment, and what did you need in that moment?';
+-  }
+-  if (
+-    /\b(because|maybe they|i think they|probably they|must have)\b/.test(lower)
+-  ) {
+-    return 'We have a good theory. Before we explain it, what happened inside you? Name the feeling, urge, or need that showed up before the analysis took over.';
+-  }
+-
+-  const userTurns = history.filter((turn) => turn.role === 'user').length;
+-  const options = [
+-    'What part of what you just said feels most important to stay with before we solve it — what happened, what you felt, what it meant to you, or what you wanted instead?',
+-    'Before moving to a solution, separate the layers for me: what is one thing you know happened, and what meaning did your mind add to it?',
+-    'If we leave the explanation aside for one moment, what did you most want or need at the point that felt hardest?',
+-  ];
+-  return options[userTurns % options.length];
+-}
++import { historyRetrievalQuery } from '@/server/historyRetrievalQuery';
+ 
+ export async function POST(request: Request) {
+   const requestId = crypto.randomUUID();
+@@ -175,7 +143,7 @@ export async function POST(request: Request) {
+     let personalHistory: Awaited<ReturnType<typeof retrieveDetailedHistory>> = { passages: [], available: false, retrieval: 'none' };
+     let personalHistoryUnavailable = false;
+     if (user) {
+-      try { personalHistory = await retrieveDetailedHistory(user.userId, message, message); }
++      try { personalHistory = await retrieveDetailedHistory(user.userId, historyRetrievalQuery(message, safeHistory, observation), message); }
+       catch { personalHistoryUnavailable = true; console.info('[SHIFT History] Detailed account history unavailable in this conversation.'); }
+     }
+     stage = 'response_generation';
+@@ -196,15 +164,8 @@ export async function POST(request: Request) {
+       ),
+     });
+ 
+-    const previousAssistant = [...safeHistory]
+-      .reverse()
+-      .find((turn) => turn.role === 'assistant');
+-    const reply =
+-      result.responseMode === 'model' &&
+-      previousAssistant &&
+-      compact(previousAssistant.content) === compact(result.reply)
+-        ? nonRepeatingFallback(message.trim(), safeHistory)
+-        : result.reply;
++    // Never replace a validated personalized answer with an unvalidated generic prompt.
++    const reply = result.reply;
+ 
+     const evidence =
+       result.research.status === 'grounded'
+diff --git a/server/aiClient.ts b/server/aiClient.ts
+index d43fdcb..92a3bd6 100644
+--- a/server/aiClient.ts
++++ b/server/aiClient.ts
+@@ -3,6 +3,8 @@ import { DETAILED_HISTORY_RULES } from './detailedHistoryContext.js';
+ import { evidencePrompt, selectCards } from '../src/second-brain/knowledge.js';
+ import { PRIMARY_MODEL, FALLBACK_MODELS, SHIFT_SYSTEM_INSTRUCTION } from './config.js';
+ import { type ShiftBreakdownOutput, generateFallbackBreakdown } from './fallbackAnalysis.js';
++import { HISTORY_GROUNDING_INSTRUCTION, requiresHistoryGrounding, validateHistoryGrounding } from './historyGrounding.js';
++import type { RetrievedHistoryPassage } from './detailedHistoryContext.js';
+ 
+ // ---------------------------------------------------------------------------
+ // Provider-agnostic AI client.
+@@ -16,6 +18,7 @@ interface GenerateOptions {
+   contents: string;
+   systemInstruction?: string;
+   jsonResponse?: boolean;
++  maxTokens?: number;
+ }
+ 
+ export interface LearningMemoryCandidate {
+@@ -56,7 +59,7 @@ function safeDiagnostic(value: unknown, max = 80): string | undefined {
+   return cleaned || undefined;
+ }
+ 
+-function providerFailureSummary(error: unknown) {
++export function providerFailureSummary(error: unknown) {
+   const err = error as ProviderError;
+   const isTimeout = err?.name === 'TimeoutError' || err?.name === 'AbortError';
+   const category = isTimeout
+@@ -101,7 +104,7 @@ async function callOpenAI(model: string, options: GenerateOptions): Promise<stri
+   if (options.systemInstruction) messages.push({ role: 'system', content: options.systemInstruction });
+   messages.push({ role: 'user', content: options.contents });
+ 
+-  const body: Record<string, unknown> = { model, messages, max_completion_tokens: 1800 };
++  const body: Record<string, unknown> = { model, messages, max_completion_tokens: options.maxTokens || 1800 };
+   if (options.jsonResponse) body.response_format = { type: 'json_object' };
+ 
+   const response = await fetch('https://api.openai.com/v1/chat/completions', {
+@@ -128,12 +131,12 @@ async function callOpenAI(model: string, options: GenerateOptions): Promise<stri
+   }
+ 
+   const data = (await response.json()) as {
+-    choices?: Array<{ message?: { content?: string } }>;
++    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+   };
+   const text = data?.choices?.[0]?.message?.content?.trim();
+   if (!text) {
+     const err: ProviderError = new Error('OpenAI response contained no content');
+-    err.code = 'empty_response';
++    err.code = data?.choices?.[0]?.finish_reason === 'length' ? 'output_limit' : 'empty_response';
+     err.requestId = safeDiagnostic(response.headers.get('x-request-id'), 120);
+     err.model = model;
+     throw err;
+@@ -141,7 +144,7 @@ async function callOpenAI(model: string, options: GenerateOptions): Promise<stri
+   return text;
+ }
+ 
+-async function callModelWithFallback(options: GenerateOptions): Promise<string> {
++export async function callModelWithFallback(options: GenerateOptions): Promise<string> {
+   const candidateModels = [PRIMARY_MODEL, ...FALLBACK_MODELS];
+   let lastError: unknown = null;
+ 
+@@ -171,10 +174,11 @@ export async function analyzeShiftReflection(
+   userMemoryContext?: string[],
+   personalContext = '',
+   personalHistoryContext = '',
++  personalHistoryPassages: RetrievedHistoryPassage[] = [],
+ ): Promise<ShiftBreakdownOutput> {
+   if (!process.env.OPENAI_API_KEY) {
+     console.info('[SHIFT Engine] No OPENAI_API_KEY detected. Using educational fallback.');
+-    return generateFallbackBreakdown(situationText);
++    return { ...generateFallbackBreakdown(situationText), responseMode: 'unavailable', unavailableReason: 'not_configured' };
+   }
+ 
+   try {
+@@ -184,20 +188,35 @@ export async function analyzeShiftReflection(
+ 
+     const prompt = `USER REFLECTION SITUATION:\n"${situationText}"\n${memoryPrompt}\n${personalContext}\n${personalHistoryContext}\nProvide a structured Shift Breakdown following the S-H-I-F-T framework and all governing principles. Distinguish observation from interpretation, present protective rules strictly as a working hypothesis, provide a believable non-toxic updated perspective, and suggest real-world experiments and arcade games. Return strictly JSON.`;
+ 
+-    const responseText = await callModelWithFallback({
++    const mustGround = requiresHistoryGrounding(situationText, 'UNDERSTAND', personalHistoryPassages);
++    const groundingContract = personalHistoryPassages.length ? `\n${HISTORY_GROUNDING_INSTRUCTION}\nAdd historyGrounding:[{documentId,passageId,sourceExcerpt,replyExcerpt}] to the JSON. The replyExcerpt must quote updated_perspective exactly. Put the relevant reported personal details in updated_perspective so the opening conversation actually answers the question. ${mustGround ? 'At least one validated source reference is required.' : 'References are optional.'}` : '';
++    const options: GenerateOptions = {
+       contents: prompt,
+-      systemInstruction: SHIFT_SYSTEM_INSTRUCTION + "\n" + PERSONAL_CONTEXT_RULES + "\n" + DETAILED_HISTORY_RULES + "\n" + evidencePrompt(situationText),
++      systemInstruction: SHIFT_SYSTEM_INSTRUCTION + "\n" + PERSONAL_CONTEXT_RULES + "\n" + DETAILED_HISTORY_RULES + "\n" + evidencePrompt(situationText) + groundingContract,
+       jsonResponse: true,
+-    });
++      maxTokens: 2400,
++    };
+ 
+-    const parsed = JSON.parse(responseText) as ShiftBreakdownOutput;
++    let parsed = JSON.parse(await callModelWithFallback(options)) as ShiftBreakdownOutput & { historyGrounding?: unknown };
+     if (!parsed.observation || !parsed.updated_perspective || !parsed.choice) {
+       throw new Error('Invalid schema structure in model response');
+     }
+-    return parsed;
++    let grounding = validateHistoryGrounding(parsed.updated_perspective, parsed.historyGrounding, personalHistoryPassages);
++    if (mustGround && !grounding.passed) {
++      parsed = JSON.parse(await callModelWithFallback({ ...options,
++        contents: `${prompt}\nDRAFT BREAKDOWN:\n${JSON.stringify(parsed)}\nRevise this breakdown using the specific relevant reported details in updated_perspective, with valid historyGrounding references. Do not ask the user to repeat already supplied history. Preserve uncertainty about causes, diagnoses and other people's motives. Return the complete JSON breakdown.`,
++      })) as typeof parsed;
++      if (!parsed.observation || !parsed.updated_perspective || !parsed.choice) throw new Error('Invalid schema structure in model response');
++      grounding = validateHistoryGrounding(parsed.updated_perspective, parsed.historyGrounding, personalHistoryPassages);
++      if (!grounding.passed) {
++        return { ...generateFallbackBreakdown(situationText), responseMode: 'unavailable', unavailableReason: 'history_grounding' };
++      }
++    }
++    // Model-supplied metadata never overrides server-verified status or references.
++    return { ...parsed, responseMode: 'model', unavailableReason: undefined, personalHistoryReferences: grounding.references };
+   } catch (err: unknown) {
+     logProviderFailure('Breakdown', err);
+-    return generateFallbackBreakdown(situationText);
++    return { ...generateFallbackBreakdown(situationText), responseMode: 'unavailable', unavailableReason: 'provider_error' };
+   }
+ }
+ 
+diff --git a/server/fallbackAnalysis.ts b/server/fallbackAnalysis.ts
+index 4e0063d..1af3e95 100644
+--- a/server/fallbackAnalysis.ts
++++ b/server/fallbackAnalysis.ts
+@@ -1,6 +1,9 @@
+ import type { ArcadeModeType } from '../src/types/index.js';
+ 
+ export interface ShiftBreakdownOutput {
++  responseMode?: 'model' | 'unavailable';
++  unavailableReason?: 'not_configured' | 'provider_error' | 'history_grounding';
++  personalHistoryReferences?: import('./historyGrounding.js').HistoryReference[];
+   observation: string;
+   possible_emotions: string[];
+   confirmed_emotions: string[];
+diff --git a/server/shiftConversationOrchestrator.ts b/server/shiftConversationOrchestrator.ts
+index fb2cb6d..67c6fb8 100644
+--- a/server/shiftConversationOrchestrator.ts
++++ b/server/shiftConversationOrchestrator.ts
+@@ -7,7 +7,7 @@ import type {
+ } from '../lib/shift-intelligence-types.js';
+ import { evidencePrompt } from '../src/second-brain/knowledge.js';
+ import { PRIMARY_MODEL } from './config.js';
+-import type { LearningMemoryCandidate } from './aiClient.js';
++import { callModelWithFallback, providerFailureSummary, type LearningMemoryCandidate } from './aiClient.js';
+ import { buildPublicInfluenceSummary, type PublicInfluenceSummary } from './influenceSummary.js';
+ import { sanitizeGenericMemorySuggestion } from './memorySuggestion.js';
+ import { PERSONAL_CONTEXT_RULES } from './personalContext.js';
+@@ -53,45 +53,8 @@ function list(value: unknown): string[] {
+ }
+ 
+ async function modelCall(args: { system: string; input: string; json?: boolean; maxTokens?: number }): Promise<string> {
+-  const apiKey = process.env.OPENAI_API_KEY;
+-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
+-
+-  let lastError: unknown = null;
+-  for (let attempt = 0; attempt < 2; attempt += 1) {
+-    try {
+-      const body: Record<string, unknown> = {
+-        model: PRIMARY_MODEL,
+-        messages: [
+-          { role: 'system', content: args.system },
+-          { role: 'user', content: args.input },
+-        ],
+-        max_completion_tokens: args.maxTokens || 1900,
+-      };
+-      if (args.json) body.response_format = { type: 'json_object' };
+-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+-        method: 'POST',
+-        signal: AbortSignal.timeout(22000),
+-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+-        body: JSON.stringify(body),
+-      });
+-      if (!response.ok) {
+-        lastError = new Error(`OpenAI conversation request failed: ${response.status}`);
+-        if ([429, 500, 502, 503, 504].includes(response.status) && attempt === 0) {
+-          await new Promise((resolve) => setTimeout(resolve, 500));
+-          continue;
+-        }
+-        throw lastError;
+-      }
+-      const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+-      const content = payload.choices?.[0]?.message?.content?.trim();
+-      if (!content) throw new Error('OpenAI conversation response was empty');
+-      return content;
+-    } catch (error) {
+-      lastError = error;
+-      if (attempt === 0) continue;
+-    }
+-  }
+-  throw lastError || new Error('Conversation model unavailable');
++  return callModelWithFallback({ systemInstruction: args.system, contents: args.input,
++    jsonResponse: args.json, maxTokens: args.maxTokens || 1900 });
+ }
+ 
+ function publicResearch(packet: ResearchPacket): OrchestratedConversationResult['research'] {
+@@ -237,7 +200,7 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion.
+     const validationFailed = error instanceof Error && error.message.startsWith('Response quality guard failed');
+     const historyFailed = validationFailed && (error as Error).message.includes('personal_history_not_grounded');
+     console.warn('[SHIFT Conversation Orchestrator] Model response unavailable', {
+-      name: error instanceof Error ? error.name : 'unknown',
++      ...providerFailureSummary(error),
+       category: historyFailed ? 'history_grounding' : validationFailed ? 'quality_guard' : 'provider_error',
+     });
+     return {
+diff --git a/src/components/home/HomePage.tsx b/src/components/home/HomePage.tsx
+index b543358..a6f26bd 100644
+--- a/src/components/home/HomePage.tsx
++++ b/src/components/home/HomePage.tsx
+@@ -49,6 +49,7 @@ export const HomePage: React.FC = () => {
+   const [inputText, setInputText] = useState('');
+   const [loading, setLoading] = useState(false);
+   const [loadingStep, setLoadingStep] = useState('Gathering facts...');
++  const [replyNotice, setReplyNotice] = useState('');
+ 
+   useEffect(() => {
+     let entry: string | null = null;
+@@ -94,6 +95,7 @@ export const HomePage: React.FC = () => {
+ 
+     playSoftSound('tap');
+     setLoading(true);
++    setReplyNotice('');
+     setLoadingStep('Observing what objectively happened...');
+ 
+     try {
+@@ -131,6 +133,8 @@ export const HomePage: React.FC = () => {
+         memorySource?: string;
+         memoryRetrieval?: string;
+         breakdown?: ReturnType<typeof generateFallbackBreakdown>;
++        influence?: ShiftBreakdown['influence'];
++        educationalEvidence?: ShiftBreakdown['educationalEvidence'];
+       };
+ 
+       if (data.safetyInterruption) {
+@@ -140,7 +144,17 @@ export const HomePage: React.FC = () => {
+       }
+ 
+       const breakdownData = data.breakdown || generateFallbackBreakdown(text);
++      if (breakdownData.responseMode === 'unavailable') {
++        setReplyNotice(breakdownData.unavailableReason === 'history_grounding'
++          ? 'Your report was retrieved, but this reply did not use its specific details correctly. Your reflection is still here. Please retry.'
++          : 'The AI reply could not finish. Your reflection is still here. Please retry.');
++        return;
++      }
+       const newShift: ShiftBreakdown = {
++        responseMode: breakdownData.responseMode,
++        influence: data.influence,
++        educationalEvidence: data.educationalEvidence,
++        personalHistoryReferences: breakdownData.personalHistoryReferences,
+         id: 'shift-' + Date.now(),
+         rawInput: text,
+         createdAt: new Date().toISOString(),
+@@ -180,43 +194,8 @@ export const HomePage: React.FC = () => {
+       // Keep Talking is now the immediate second screen. The full breakdown
+       // remains available from the Reflection tab in the workspace navigation.
+       setActiveTab('conversation');
+-    } catch (requestError) {
+-      console.warn('Network call failed, using educational fallback:', requestError);
+-      const fallback = generateFallbackBreakdown(text);
+-      const fallbackShift: ShiftBreakdown = {
+-        id: 'shift-' + Date.now(),
+-        rawInput: text,
+-        createdAt: new Date().toISOString(),
+-        updatedAt: new Date().toISOString(),
+-        observation: fallback.observation,
+-        userEditedObservation: fallback.observation,
+-        possible_emotions: fallback.possible_emotions,
+-        confirmed_emotions: [],
+-        emotionIntensity: 6,
+-        interpretation: fallback.interpretation,
+-        userEditedInterpretation: fallback.interpretation,
+-        possible_needs: fallback.possible_needs,
+-        confirmed_needs: [],
+-        protective_rule_hypothesis: fallback.protective_rule_hypothesis,
+-        hypothesis_confidence: fallback.hypothesis_confidence,
+-        hypothesisUserStatus: 'unreviewed',
+-        updated_perspective: fallback.updated_perspective,
+-        choice: fallback.choice,
+-        real_world_experiment: fallback.real_world_experiment,
+-        follow_up_question: fallback.follow_up_question,
+-        recommended_skills: fallback.recommended_skills,
+-        recommended_games: fallback.recommended_games as ShiftBreakdown['recommended_games'],
+-        memoryUsed: [],
+-        professionalLearningUsed: [],
+-        memorySource: 'device_or_none',
+-        memoryRetrieval: 'lexical',
+-        isSavedToProfile: false,
+-        savePreference: 'session_only',
+-      };
+-      saveShiftBreakdown(fallbackShift);
+-      setActiveShift(fallbackShift);
+-      playSoftSound('complete');
+-      setActiveTab('conversation');
++    } catch {
++      setReplyNotice('The reply could not be reached. Your reflection is still here. Please retry.');
+     } finally {
+       setLoading(false);
+     }
+@@ -292,11 +271,13 @@ export const HomePage: React.FC = () => {
+                   <small>Reflect first. Then practice at your pace.</small>
+                   <button type="button" onClick={() => void handleAnalyze()} disabled={loading || !inputText.trim()}>
+                     {loading ? <Loader2 className="is-spinning" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
+-                    {loading ? loadingStep : 'Explore my situation'}
++                    {loading ? loadingStep : replyNotice ? 'Retry reflection' : 'Explore my situation'}
+                   </button>
+                 </span>
+               </label>
+ 
++              {replyNotice && <p role="status" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{replyNotice}</p>}
++
+               <div className="cinematic-scenarios">
+                 <p><Zap aria-hidden="true" /> Or try one real-life reflection:</p>
+                 <div>{QUICK_EXAMPLES.map((example) => <button type="button" key={example} disabled={loading} onClick={() => { setInputText(example); void handleAnalyze(example); }}>“{example}”</button>)}</div>
+diff --git a/src/components/reflect/KeepTalkingScreen.tsx b/src/components/reflect/KeepTalkingScreen.tsx
+index 3ea0543..910d9c0 100644
+--- a/src/components/reflect/KeepTalkingScreen.tsx
++++ b/src/components/reflect/KeepTalkingScreen.tsx
+@@ -1,7 +1,8 @@
+ 'use client';
+ 
+ import { activeContext } from '../../personalization/model';
+-import React, { useEffect, useMemo, useRef, useState } from 'react';
++import React, { useEffect, useRef, useState } from 'react';
++import { openingConversation } from './openingConversation';
+ import {
+   ArrowLeft,
+   Bookmark,
+@@ -50,6 +51,7 @@ interface ConversationTurn {
+     version: string;
+     sources: Array<{ title: string; url: string; sourceType?: string }>;
+   };
++  educationalEvidence?: { version: string; sources: Array<{ title: string; url: string }> };
+   influence?: ResponseInfluence;
+   responseMode?: 'model' | 'unavailable';
+   personalHistoryUnavailable?: boolean;
+@@ -127,13 +129,8 @@ export const KeepTalkingScreen: React.FC = () => {
+     approvedSummary,
+   } = useApp();
+ 
+-  const initialMessage = useMemo(() => {
+-    if (!activeShift) return '';
+-    return activeShift.follow_up_question || 'What part of this feels most important to stay with right now?';
+-  }, [activeShift]);
+-
+   const [turns, setTurns] = useState<ConversationTurn[]>(() =>
+-    initialMessage ? [{ role: 'assistant', content: initialMessage }] : [],
++    openingConversation(activeShift),
+   );
+   const [input, setInput] = useState('');
+   const [loading, setLoading] = useState(false);
+@@ -461,6 +458,15 @@ export const KeepTalkingScreen: React.FC = () => {
+                   return <a key={source.url} href={href} target="_blank" rel="noreferrer" className="mt-2 block text-blue-700 underline">{source.title}</a>;
+                 })}
+               </details>}
++              {turn.educationalEvidence && <details className="mt-3 text-sm">
++                <summary className="cursor-pointer font-medium">Psychology and skill context</summary>
++                <p className="mt-2">These educational sources were supplied for this reflection. They do not establish the cause of your reaction or verify your personal history.</p>
++                {!turn.educationalEvidence.sources.length && <p className="mt-2">No educational technique was selected for this reflection. Your reported personal associations can still be discussed without inventing a clinical explanation.</p>}
++                {turn.educationalEvidence.sources.map(source => {
++                  const href = safeResearchUrl(source.url);
++                  return href ? <a key={href} href={href} target="_blank" rel="noreferrer" className="mt-2 block text-blue-700 underline">{source.title}</a> : null;
++                })}
++              </details>}
+             </div>
+           ))}
+           {loading && (
+diff --git a/src/second-brain/knowledge.ts b/src/second-brain/knowledge.ts
+index 8a92623..55c9b1d 100644
+--- a/src/second-brain/knowledge.ts
++++ b/src/second-brain/knowledge.ts
+@@ -52,5 +52,5 @@ export function selectCards(input: string, gameId?: string): KnowledgeCard[] {
+ }
+ export function evidencePrompt(input: string, gameId?: string): string {
+   const cards = selectCards(input, gameId);
+-  return `${EVIDENCE_RULES}\nKNOWLEDGE VERSION: ${KNOWLEDGE_VERSION}\nELIGIBLE CARDS:\n${JSON.stringify(cards.map(({terms, ...card}) => card))}\nIf the list is empty, offer clarification or a pause without a psychological explanation.`;
++  return `${EVIDENCE_RULES}\nKNOWLEDGE VERSION: ${KNOWLEDGE_VERSION}\nELIGIBLE CARDS:\n${JSON.stringify(cards.map(({terms, ...card}) => card))}\nIf the list is empty, do not invent a psychological technique or an external scientific explanation. You may still answer using relevant attributed history and associations the user has already explicitly reported. Acknowledging those reports does not establish a new clinical cause. Ground external factual explanations only in separately supplied verified research. Offer clarification or a pause when no supported answer is available.`;
+ }
+diff --git a/src/types/index.ts b/src/types/index.ts
+index c8fce2d..6a0fad8 100644
+--- a/src/types/index.ts
++++ b/src/types/index.ts
+@@ -163,6 +163,11 @@ export interface ShiftProfessionalLearningInfluence {
+ 
+ // Strict AI Shift Breakdown Output Schema
+ export interface ShiftBreakdown {
++  responseMode?: 'model' | 'unavailable';
++  unavailableReason?: string;
++  influence?: import('../../server/influenceSummary.js').PublicInfluenceSummary;
++  educationalEvidence?: { version: string; sources: Array<{ title: string; url: string }> };
++  personalHistoryReferences?: import('../../server/historyGrounding.js').HistoryReference[];
+   id: string;
+   rawInput: string;
+   createdAt: string;
+diff --git a/server/historyRetrievalQuery.ts b/server/historyRetrievalQuery.ts
+new file mode 100644
+index 0000000..2fb94c4
+--- /dev/null
++++ b/server/historyRetrievalQuery.ts
+@@ -0,0 +1,7 @@
++/** Resolve short follow-ups from the user's own recent words. New topics stand alone. */
++export function historyRetrievalQuery(message: string, history: Array<{ role: string; content: string }>, observation: string) {
++  if (message.split(/\s+/).length > 20 || !/\b(that|this|it|more|continue|go on)\b/i.test(message)
++    || /\b(?:dog|mom|mother|father|brother|sister|work|dinner|cook|food|privacy|childhood|nightmare|attack|trauma|correction)\b/i.test(message)) return message;
++  const prior = [...history].reverse().find(turn => turn.role === 'user' && turn.content.trim() !== message.trim())?.content || observation;
++  return prior ? `${prior.slice(0, 800)}\nFOLLOW-UP: ${message}` : message;
++}
+diff --git a/src/components/reflect/openingConversation.ts b/src/components/reflect/openingConversation.ts
+new file mode 100644
+index 0000000..8d2a528
+--- /dev/null
++++ b/src/components/reflect/openingConversation.ts
+@@ -0,0 +1,17 @@
++import type { ShiftBreakdown } from '../../types/index.js';
++
++/** Use the actual reflection answer and its provenance, not a detached follow-up. */
++export function openingConversation(shift: ShiftBreakdown | null) {
++  if (!shift) return [];
++  const currentReport = shift.rawInput || shift.userEditedObservation || shift.observation;
++  const answer = shift.userEditedPerspective || shift.updated_perspective;
++  return [
++    { role: 'user' as const, content: currentReport },
++    { role: 'assistant' as const, content: [answer, shift.follow_up_question].filter(Boolean).join('\n\n'),
++      influence: shift.influence,
++      personalHistoryReferences: shift.userEditedPerspective ? undefined : shift.personalHistoryReferences,
++      personalHistoryUnavailable: shift.personalHistoryUnavailable,
++      educationalEvidence: shift.educationalEvidence,
++    },
++  ];
++}
