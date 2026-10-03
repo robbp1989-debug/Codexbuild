@@ -53,6 +53,13 @@ function terms(text: string): Set<string> {
     threatened: 'threat',
     frightened: 'afraid',
     scared: 'afraid',
+    friends: 'friend',
+    accidents: 'accident',
+    accidental: 'accident',
+    accidentally: 'accident',
+    accidently: 'accident',
+    shooting: 'shot',
+    gunshot: 'shot',
   };
   return new Set(
     text
@@ -67,7 +74,7 @@ function terms(text: string): Set<string> {
 const FAMILY =
   /\b(mom|mother|mum|dad|father|brother\w*|sister\w*|childhood|family)\b/i;
 const DISTRESS =
-  /\b(upset|cry\w*|powerless|helpless|protect\w*|trigger\w*|remember\w*|memor\w*|afraid|scared|fear\w*|ang\w*|overwhelm\w*|attack\w*|assault\w*|trauma|threat\w*|voice|drink\w*|alcohol|nightm(?:are|ear)\w*|panic|hurt)\b/i;
+  /\b(upset|cry\w*|powerless|helpless|protect\w*|trigger\w*|remember\w*|memor\w*|afraid|scared|fear\w*|ang\w*|overwhelm\w*|attack\w*|assault\w*|accident\w*|shooting|gunshot|trauma|threat\w*|voice|drink\w*|alcohol|nightm(?:are|ear)\w*|panic|hurt)\b/i;
 const SENSITIVE =
   /\b(abuse|abused|rape|sexual|hiv|trauma|firearm|kill\w*|assault|attack\w*|violen\w*|threat\w*|ptsd|bipolar)\b/i;
 

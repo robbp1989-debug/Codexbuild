@@ -115,6 +115,109 @@ test('a valid specific first answer needs no extra call', async () => {
   });
 });
 
+test('specific answers survive missing or overlong citation metadata without another model call', async () => {
+  for (const historyGrounding of [undefined, [{ ...claim, sourceExcerpt: `${passage.text} `.repeat(3) }]]) {
+    await withModel([{ reply, historyGrounding }, { reply, historyGrounding }], async calls => {
+      const result = await orchestrateShiftConversation(args);
+      assert.equal(result.responseMode, 'model');
+      assert.equal(result.reply, reply);
+      assert.equal(calls.length, 1);
+      assert.ok(result.personalHistoryReferences.length);
+      for (const reference of result.personalHistoryReferences) {
+        assert.ok(passage.text.includes(reference.sourceExcerpt));
+        assert.ok(reply.includes(reference.replyExcerpt));
+        assert.ok(reference.sourceExcerpt.length <= 450);
+        assert.ok(reference.replyExcerpt.length <= 700);
+      }
+    });
+  }
+});
+
+test('a one-name factual recall reply is supported by the actual selected account source', async () => {
+  const source = { ...passage, id: 'fictional-friend', title: 'Fictional adolescent accident',
+    text: 'USER REPORT: My friend was named Avery. I described an accident when we were sixteen.' };
+  await withModel([{ reply: 'Avery.' }, { reply: 'Avery.' }], async calls => {
+    const result = await orchestrateShiftConversation({ ...args,
+      userMessage: 'What was the name of my friend from that accident?',
+      personalHistoryUsed: [source], personalHistoryPassages: [source],
+      personalHistoryContext: JSON.stringify(source) });
+    assert.equal(result.responseMode, 'model');
+    assert.equal(result.reply, 'Avery.');
+    assert.equal(calls.length, 1);
+    assert.equal(result.personalHistoryReferences[0].documentId, source.documentId);
+    assert.match(result.personalHistoryReferences[0].sourceExcerpt, /Avery/);
+  });
+});
+
+test('a missing factual detail is acknowledged without inventing a name or blocking the conversation', async () => {
+  await withModel([{ reply: 'I do not see that name in the retrieved passages, so I will not guess.',
+    historyAnswerStatus: 'not_found' }, { reply: generic }], async calls => {
+    const result = await orchestrateShiftConversation({ ...args,
+      userMessage: 'What was the name of my friend from that accident?' });
+    assert.equal(result.responseMode, 'model');
+    assert.match(result.reply, /do not see|don.t see/);
+    assert.doesNotMatch(result.reply, /please retry|Avery|Milo/);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(result.personalHistoryReferences, []);
+    assert.equal(result.influence.personalHistory.count, 0);
+    assert.equal(result.memorySuggestion, null);
+  });
+});
+
+test('a not-found flag cannot excuse ignoring history during a personal explanation', async () => {
+  await withModel([{ reply: generic, historyAnswerStatus: 'not_found' },
+    { reply: generic, historyAnswerStatus: 'not_found' }], async () => {
+    const result = await orchestrateShiftConversation(args);
+    assert.equal(result.responseMode, 'unavailable');
+    assert.equal(result.unavailableReason, 'history_grounding');
+  });
+});
+
+test('a missing-detail flag cannot bypass diagnosis checks or turn a guessed name into source evidence', async () => {
+  for (const answer of [
+    'I do not see that name in the retrieved passages. You clearly have PTSD.',
+    'Morgan.',
+  ]) {
+    await withModel([{ reply: answer, historyAnswerStatus: 'not_found' },
+      { reply: answer, historyAnswerStatus: 'not_found' }], async () => {
+      const result = await orchestrateShiftConversation({ ...args,
+        userMessage: 'What was the name of my friend from that accident?' });
+      assert.equal(result.responseMode, 'unavailable');
+      assert.deepEqual(result.personalHistoryReferences, undefined);
+    });
+  }
+});
+
+test('consecutive factual and related turns keep working while an unrelated turn uses no history', async () => {
+  const source = { ...passage, id: 'fictional-friend', title: 'Fictional adolescent accident',
+    text: 'USER REPORT: My friend was named Avery. I described an accident when we were sixteen.' };
+  const inputs = [
+    { ...args },
+    { ...args, userMessage: 'What was the name of my friend from that accident?',
+      personalHistoryContext: JSON.stringify(source), personalHistoryUsed: [source], personalHistoryPassages: [source] },
+    { ...args, userMessage: 'What was the name of my friend from that accident?' },
+    { ...args, userMessage: 'I want a quick dinner with carrots.', personalHistoryContext: '',
+      personalHistoryUsed: [], personalHistoryPassages: [] },
+  ];
+  const missing = 'I do not see that name in the retrieved passages, so I will not guess.';
+  const dinner = 'Carrot soup with toast is a quick option.';
+  await withModel([{ reply }, { reply: 'Avery.' }, { reply: missing, historyAnswerStatus: 'not_found' },
+    { reply: dinner }], async calls => {
+    const history = [];
+    for (const input of inputs) {
+      const result = await orchestrateShiftConversation({ ...input, history });
+      assert.equal(result.responseMode, 'model');
+      history.push({ role: 'user', content: input.userMessage }, { role: 'assistant', content: result.reply });
+      if (input.userMessage.includes('dinner')) {
+        assert.equal(result.reply, dinner);
+        assert.deepEqual(result.personalHistoryReferences, []);
+        assert.equal(result.influence.personalHistory.count, 0);
+      }
+    }
+    assert.equal(calls.length, 4);
+  });
+});
+
 test('repeatedly ignoring retrieved history is labeled as a history-use failure rather than a network failure', async () => {
   await withModel([{ reply: generic }, { reply: generic }], async calls => {
     const result = await orchestrateShiftConversation(args);

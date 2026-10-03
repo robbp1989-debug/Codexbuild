@@ -13,7 +13,7 @@ import { sanitizeGenericMemorySuggestion } from './memorySuggestion.js';
 import { PERSONAL_CONTEXT_RULES } from './personalContext.js';
 import { DETAILED_HISTORY_RULES } from './detailedHistoryContext.js';
 import type { RetrievedHistoryPassage } from './detailedHistoryContext.js';
-import { HISTORY_GROUNDING_INSTRUCTION, requiresHistoryGrounding, validateHistoryGrounding, type HistoryReference } from './historyGrounding.js';
+import { HISTORY_GROUNDING_INSTRUCTION, requiresHistoryGrounding, validateHistoryGrounding, deriveHistoryGrounding, isDirectHistoryRecallQuestion, type HistoryReference } from './historyGrounding.js';
 import { evaluateResponseQuality, qualityRevisionInstruction } from './qualityGuard.js';
 import { researchPrompt, runGroundedResearch } from './researchEngine.js';
 import {
@@ -119,6 +119,19 @@ export async function orchestrateShiftConversation(args: {
   const mode = inferResponseMode(args.userMessage);
   const historyPassages = args.personalHistoryPassages || [];
   const mustGroundHistory = requiresHistoryGrounding(args.userMessage, mode, historyPassages);
+  const recallQuestion = isDirectHistoryRecallQuestion(args.userMessage);
+  const groundingOptions = { allowSingleDetail: recallQuestion };
+  function resolveGrounding(reply: string, claims: unknown) {
+    const supplied = validateHistoryGrounding(reply, claims, historyPassages, groundingOptions);
+    if (supplied.passed || !mustGroundHistory) return supplied;
+    const derived = deriveHistoryGrounding(reply, historyPassages, groundingOptions);
+    return derived.passed ? derived : supplied;
+  }
+  function detailNotFound(reply: string, status: unknown): boolean {
+    return mustGroundHistory && recallQuestion && status === 'not_found'
+      && /\b(?:do not|don't|don’t|cannot|can't|can’t)\b[^.!?]{0,60}\b(?:see|find|identify)\b/i.test(reply)
+      && /\b(?:retrieved|available)\b[^.!?]{0,60}\b(?:passages|history|text)\b/i.test(reply);
+  }
   const research = await runGroundedResearch(args.userMessage, mode);
   const influence = buildPublicInfluenceSummary({
     memoryContext: args.memoryContext,
@@ -176,7 +189,7 @@ export async function orchestrateShiftConversation(args: {
 Only offer memorySuggestion when THIS user message supplies or explicitly confirms a durable non-professional learning, preference, boundary, rejected hypothesis, real-world outcome, or strategy that actually helped. Never save it automatically. Do not label a SHIFT suggestion as user-confirmed.
 Professional or therapy lessons must NOT be placed in generic memorySuggestion. Only offer therapyLessonSuggestion when the user explicitly attributes the lesson to their therapist, counselor, recovery support, doctor, psychiatrist, or other medical professional and clearly states what they learned or were asked to practice. Never infer a professional lesson from vague context. The server independently verifies that attribution before it can be offered for saving.`;
 
-  const groundingContract = historyPassages.length ? `${HISTORY_GROUNDING_INSTRUCTION}\nAdd "historyGrounding":[{"documentId":"exact source ID","passageId":"exact passage ID","sourceExcerpt":"exact source text","replyExcerpt":"exact reply text"}] to the JSON. ${mustGroundHistory ? 'At least one validated reference to specific report details is required.' : 'References are optional for this turn.'}` : '';
+  const groundingContract = historyPassages.length ? `${HISTORY_GROUNDING_INSTRUCTION}\nAdd "historyGrounding":[{"documentId":"exact source ID","passageId":"exact passage ID","sourceExcerpt":"exact source text","replyExcerpt":"exact reply text"}] to the JSON. ${mustGroundHistory ? 'At least one validated reference to specific report details is required when those details answer the question.' : 'References are optional for this turn.'} ${recallQuestion ? 'This is a factual personal-history lookup: answer the requested fact directly if present; otherwise explicitly state it is absent from the retrieved passages and add "historyAnswerStatus":"not_found".' : ''}` : '';
   const system = `${SHIFT_BEHAVIOR_POLICY_PROMPT}\n${PERSONAL_CONTEXT_RULES}\n${DETAILED_HISTORY_RULES}\n${routing}\n${researchPrompt(research)}\n${therapyLessonPrompt(therapyLessons)}\n${evidencePrompt(args.userMessage)}\n${outputContract}\n${groundingContract}`;
   const input = `${args.personalContext || ''}\n${args.personalHistoryContext || ''}\nCURRENT SHIFT:\n${JSON.stringify(shiftSnapshot)}\n\nRELEVANT HISTORICAL LEARNING:\n${args.memoryContext?.length ? args.memoryContext.join('\n') : 'None retrieved.'}\n\nRECENT CONVERSATION:\n${safeHistory || 'No prior turns.'}\n\nUSER:\n${args.userMessage}`;
 
@@ -186,29 +199,32 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
       memorySuggestion?: unknown;
       therapyLessonSuggestion?: unknown;
       historyGrounding?: unknown;
+      historyAnswerStatus?: unknown;
     };
     if (!first.reply?.trim()) throw new Error('Conversation response missing reply');
 
     let reply = first.reply.trim();
     let quality = evaluateResponseQuality({ reply, mode, research });
-    let grounding = validateHistoryGrounding(reply, first.historyGrounding, historyPassages);
-    if (!quality.passed || quality.warnings.length > 0 || (mustGroundHistory && !grounding.passed)) {
+    let grounding = resolveGrounding(reply, first.historyGrounding);
+    let missingDetail = detailNotFound(reply, first.historyAnswerStatus);
+    if (!quality.passed || quality.warnings.length > 0 || (mustGroundHistory && !grounding.passed && !missingDetail)) {
       const revised = JSON.parse(await modelCall({
         system,
-        input: `${input}\n\nDRAFT RESPONSE:\n${reply}\n\n${qualityRevisionInstruction(quality)}\n${mustGroundHistory && !grounding.passed ? 'The draft did not use specific details from the retrieved history with valid source references. Answer using the relevant reported events and associations already supplied. Do not substitute generic uncertainty or ask the user to repeat known history. Return JSON with reply and historyGrounding.' : 'Return the revised answer as JSON with reply and historyGrounding.'}`,
+        input: `${input}\n\nDRAFT RESPONSE:\n${reply}\n\n${qualityRevisionInstruction(quality)}\n${mustGroundHistory && !grounding.passed && !missingDetail ? `History reference checks: ${grounding.rejections.join(',')}. Use relevant reported details with exact source/reply excerpts and the supplied IDs. Do not substitute generic uncertainty or ask the user to repeat known history. ${recallQuestion ? 'If the requested fact is absent from the retrieved passages, explicitly say so and return historyAnswerStatus:"not_found" instead of guessing.' : ''} Return JSON with reply and historyGrounding.` : 'Return the revised answer as JSON with reply and historyGrounding.'}`,
         json: true,
         maxTokens: 1900,
-      })) as { reply?: string; historyGrounding?: unknown };
+      })) as { reply?: string; historyGrounding?: unknown; historyAnswerStatus?: unknown };
       if (!revised.reply?.trim()) throw new Error('Revised response missing reply');
       reply = revised.reply.trim();
       quality = evaluateResponseQuality({ reply, mode, research });
-      grounding = validateHistoryGrounding(reply, revised.historyGrounding, historyPassages);
-      if (!quality.passed || quality.warnings.length > 0 || (mustGroundHistory && !grounding.passed)) {
+      grounding = resolveGrounding(reply, revised.historyGrounding);
+      missingDetail = detailNotFound(reply, revised.historyAnswerStatus);
+      if (!quality.passed || quality.warnings.length > 0 || (mustGroundHistory && !grounding.passed && !missingDetail)) {
         throw new Error(
           `Response quality guard failed after revision: ${[
             ...quality.criticalFailures,
             ...quality.warnings,
-            ...(mustGroundHistory && !grounding.passed ? ['personal_history_not_grounded'] : []),
+            ...(mustGroundHistory && !grounding.passed && !missingDetail ? ['personal_history_not_grounded', ...grounding.rejections] : []),
           ].join(',')}`,
         );
       }
@@ -220,15 +236,23 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
     );
     const genericMemorySuggestion = sanitizeGenericMemorySuggestion(first.memorySuggestion);
 
+    // A not-found answer makes no source claim and must not invent a detail or
+    // offer learning based on a failed factual lookup.
+    if (missingDetail && !grounding.passed) {
+      reply = 'I don’t see that detail in the passages retrieved for this question, so I won’t guess.';
+    } else {
+      missingDetail = false;
+    }
+
     return {
       reply,
-      memorySuggestion: therapyLessonSuggestion ? null : genericMemorySuggestion,
-      therapyLessonSuggestion,
+      memorySuggestion: missingDetail || therapyLessonSuggestion ? null : genericMemorySuggestion,
+      therapyLessonSuggestion: missingDetail ? null : therapyLessonSuggestion,
       responseMode: 'model',
       shiftMode: mode,
       research: publicResearch(research),
       therapyLessonsUsed: publicTherapyLessonSummary(therapyLessons),
-      influence,
+      influence: missingDetail ? { ...influence, personalHistory: { count: 0, sources: [] } } : influence,
       offerContinuity,
       quality: { passed: quality.passed, warnings: quality.warnings },
       personalHistoryReferences: grounding.references,
@@ -239,6 +263,7 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
     console.warn('[SHIFT Conversation Orchestrator] Model response unavailable', {
       name: error instanceof Error ? error.name : 'unknown',
       category: historyFailed ? 'history_grounding' : validationFailed ? 'quality_guard' : 'provider_error',
+      ...(validationFailed ? { checks: (error as Error).message.slice('Response quality guard failed after revision: '.length).split(',').filter(code => /^[a-z_]+$/.test(code)).slice(0, 8) } : {}),
     });
     return {
       reply: historyFailed ? 'Your report passages were retrieved, but this reply did not pass the check for using your specific history. Your message is still here; please retry it.' : validationFailed ? 'This reply did not pass SHIFT’s response checks. Your message is still here; please retry it.' : 'The live conversation is temporarily unavailable, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',

@@ -67,6 +67,21 @@ test('a short fresh dog/voice/drink message retrieves the specific relationship 
   assert.match(prompt, /not a current diagnostic finding/);
 });
 
+test('a factual lookup with accidently shot retrieves the reported friend while a photo shot does not', () => {
+  const source = { id: 'fictional-accident', title: 'Historical accident', sourceKind: 'report',
+    documentId: 'doc-fictional', sourceName: 'Fictional history',
+    text: 'USER REPORT: When I was sixteen, I accidentally shot my friend Avery. The report describes a firearm accident. This is historical reported context, not a present safety finding.' };
+  for (const query of [
+    'What is my friends name that I accidently shot when I was younger',
+    'What was my friend’s name from the accidental shooting?',
+  ]) {
+    const selected = selectDetailedHistory(query, [source]);
+    assert.equal(selected.length, 1);
+    assert.match(selected[0].text, /Avery/);
+  }
+  assert.deepEqual(selectDetailedHistory('I shot a photo of my brother in the garden.', [source]), []);
+});
+
 test('a large PDF-style history retrieves the nightmare account despite page breaks, possessives and a common misspelling', () => {
   const source = 'Fictional report introduction.\n\n' +
     'Unrelated ordinary schedule and household information.\n'.repeat(1900) +
