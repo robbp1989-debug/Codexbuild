@@ -49,7 +49,7 @@ async function ensureEmbeddingTable(db: D1Database): Promise<void> {
     .run();
 }
 
-async function createEmbeddings(inputs: string[]): Promise<number[][] | null> {
+export async function createEmbeddings(inputs: string[]): Promise<number[][] | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || inputs.length === 0) return null;
 
@@ -59,6 +59,7 @@ async function createEmbeddings(inputs: string[]): Promise<number[][] | null> {
   try {
     const response = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
+      signal: AbortSignal.timeout(12000),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,

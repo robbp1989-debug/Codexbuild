@@ -1,3 +1,6 @@
+// Match the account full-history upload/index limit; never silently truncate reports.
+export const MAX_REPORT_TEXT = 120_000;
+
 // Inspect the ZIP central directory before DOCX decompression. No ZIP64 or multi-disk archives.
 export function validateDocxArchive(buffer: ArrayBuffer) {
   const view = new DataView(buffer);

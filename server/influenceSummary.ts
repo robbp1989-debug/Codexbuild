@@ -12,6 +12,7 @@ export interface PublicInfluenceSummary {
     sourceType: TherapyLesson['sourceType'];
   }>;
   personalContextUsed: boolean;
+  personalHistory: { count: number; sources: Array<{ documentId: string; sourceName: string; title: string }> };
   externalResearch: {
     status: ResearchPacket['status'];
     sourceCount: number;
@@ -29,6 +30,7 @@ export function buildPublicInfluenceSummary(args: {
   memoryContext?: string[];
   therapyLessons?: TherapyLesson[];
   personalContext?: string;
+  personalHistoryUsed?: Array<{ documentId: string; sourceName: string; title: string }>;
   research: ResearchPacket;
 }): PublicInfluenceSummary {
   const memory = (args.memoryContext || []).filter((item) => typeof item === 'string' && item.trim()).slice(0, 8);
@@ -46,6 +48,7 @@ export function buildPublicInfluenceSummary(args: {
       sourceType: lesson.sourceType,
     })),
     personalContextUsed: Boolean(args.personalContext?.trim()),
+    personalHistory: { count: args.personalHistoryUsed?.length || 0, sources: (args.personalHistoryUsed || []).map(({ documentId, sourceName, title }) => ({ documentId, sourceName, title })) },
     externalResearch: {
       status: args.research.status,
       sourceCount: args.research.sources.length,

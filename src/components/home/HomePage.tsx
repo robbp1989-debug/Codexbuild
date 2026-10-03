@@ -125,6 +125,8 @@ export const HomePage: React.FC = () => {
         crisisType?: string;
         crisisMessage?: string;
         memoryUsed?: string[];
+        personalHistoryUsed?: ShiftBreakdown['personalHistoryUsed'];
+        personalHistoryUnavailable?: boolean;
         professionalLearningUsed?: ShiftProfessionalLearningInfluence[];
         memorySource?: string;
         memoryRetrieval?: string;
@@ -162,6 +164,8 @@ export const HomePage: React.FC = () => {
         recommended_skills: breakdownData.recommended_skills || ['fact_vs_interpretation'],
         recommended_games: breakdownData.recommended_games || ['fact_or_story', 'prediction_lab'],
         memoryUsed: Array.isArray(data.memoryUsed) ? data.memoryUsed : [],
+        personalHistoryUsed: Array.isArray(data.personalHistoryUsed) ? data.personalHistoryUsed : [],
+        personalHistoryUnavailable: Boolean(data.personalHistoryUnavailable),
         professionalLearningUsed: Array.isArray(data.professionalLearningUsed) ? data.professionalLearningUsed : [],
         memorySource: data.memorySource || 'device_or_none',
         memoryRetrieval: data.memoryRetrieval || 'lexical',

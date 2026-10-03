@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { evaluateSafety } from '../../../server/safetyCheck';
 import { useApp } from '../../context/AppContext';
+import { conversationFailureNotice, conversationRequestBody, ConversationRequestError, replaceFailedConversationReply, requestConversation } from './conversationRequest';
 import {
   buildContinuityArtifact,
   CONTINUITY_STORAGE_KEY,
@@ -35,6 +36,7 @@ interface ResponseInfluence {
     sourceType: string;
   }>;
   personalContextUsed: boolean;
+  personalHistory?: { count: number; sources: Array<{ documentId: string; sourceName: string; title: string }> };
   externalResearch: {
     status: 'not_needed' | 'grounded' | 'unavailable';
     sourceCount: number;
@@ -50,6 +52,10 @@ interface ConversationTurn {
   };
   influence?: ResponseInfluence;
   responseMode?: 'model' | 'unavailable';
+  personalHistoryUnavailable?: boolean;
+  retryId?: string;
+  failure?: { kind: string; status?: number; reference?: string };
+  personalHistoryReferences?: Array<{ sourceName: string; title: string; sourceExcerpt: string; replyExcerpt: string }>;
 }
 
 interface MemorySuggestion {
@@ -133,6 +139,8 @@ export const KeepTalkingScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [memorySuggestion, setMemorySuggestion] = useState<MemorySuggestion | null>(null);
   const [memorySaved, setMemorySaved] = useState(false);
+  const [memorySaving, setMemorySaving] = useState(false);
+  const [memorySaveNotice, setMemorySaveNotice] = useState('');
   const [memoryUsed, setMemoryUsed] = useState<string[]>([]);
   const [therapyLessonsUsed, setTherapyLessonsUsed] = useState<TherapyLessonUsed[]>([]);
   const [therapyLessonSuggestion, setTherapyLessonSuggestion] = useState<TherapyLessonSuggestion | null>(null);
@@ -140,6 +148,8 @@ export const KeepTalkingScreen: React.FC = () => {
   const [offerContinuity, setOfferContinuity] = useState(false);
   const [continuitySaved, setContinuitySaved] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
+  const requestInFlight = useRef(false);
+  const [failedRequest, setFailedRequest] = useState<{ id: string; payload: ReturnType<typeof conversationRequestBody> } | null>(null);
 
   useEffect(() => {
     const thread = threadRef.current;
@@ -210,9 +220,10 @@ export const KeepTalkingScreen: React.FC = () => {
     setActiveTab('therapy-prep');
   };
 
-  const sendMessage = async () => {
-    const message = input.trim();
-    if (!message || loading) return;
+  const sendMessage = async (retry = false) => {
+    if (memorySaving) return;
+    const message = retry ? failedRequest?.payload.message || '' : input.trim();
+    if (!message || loading || requestInFlight.current) return;
     const safety = evaluateSafety(message);
     if (safety.isCrisis) {
       setCrisisInterruption({ isOpen: true, type: safety.crisisType, message: safety.crisisMessage });
@@ -220,33 +231,27 @@ export const KeepTalkingScreen: React.FC = () => {
     }
 
     playSoftSound('tap');
-    const nextTurns: ConversationTurn[] = [...turns, { role: 'user', content: message }];
-    setTurns(nextTurns);
-    setInput('');
+    const requestId = retry && failedRequest ? failedRequest.id : crypto.randomUUID();
+    const payload = retry && failedRequest ? failedRequest.payload : conversationRequestBody({
+      personalContext: activeContext(personalContext), approvedSummary, message,
+      currentShift: activeShift as unknown as Record<string, unknown>, history: turns, memoryItems,
+    });
+    requestInFlight.current = true;
+    if (!retry) {
+      setTurns(current => [...current, { role: 'user', content: message }]);
+      setInput('');
+    }
     setLoading(true);
     setMemorySuggestion(null);
     setMemorySaved(false);
+    setMemorySaveNotice('');
     setTherapyLessonSuggestion(null);
     setTherapyLessonSaveState('idle');
     setOfferContinuity(false);
     setContinuitySaved(false);
 
     try {
-      const response = await fetch('/api/shift/conversation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          personalContext: activeContext(personalContext),
-          approvedSummary,
-          message,
-          currentShift: activeShift,
-          history: turns.slice(-8),
-          memoryItems: memoryItems.slice(0, 80),
-        }),
-      });
-      if (!response.ok) throw new Error('Conversation request failed');
-
-      const data = await response.json() as {
+      const data = await requestConversation(payload) as {
         safetyInterruption?: boolean;
         crisisType?: string;
         crisisMessage?: string;
@@ -259,6 +264,8 @@ export const KeepTalkingScreen: React.FC = () => {
         therapyLessonsUsed?: TherapyLessonUsed[];
         responseMode?: 'model' | 'unavailable';
         offerContinuity?: boolean;
+        personalHistoryUnavailable?: boolean;
+        personalHistoryReferences?: ConversationTurn['personalHistoryReferences'];
       };
 
       if (data.safetyInterruption) {
@@ -266,57 +273,69 @@ export const KeepTalkingScreen: React.FC = () => {
         return;
       }
 
-      const reply = data.reply || 'What part of that feels most important to name before we explain it?';
-      setTurns((current) => [...current, {
+      const reply = data.reply!;
+      setTurns((current) => replaceFailedConversationReply(current, requestId, {
         role: 'assistant',
         content: reply,
         evidence: data.responseMode === 'model' ? data.evidence : undefined,
         influence: data.responseMode === 'model' ? data.influence : undefined,
         responseMode: data.responseMode,
-      }]);
+        personalHistoryUnavailable: data.personalHistoryUnavailable,
+        personalHistoryReferences: data.responseMode === 'model' ? data.personalHistoryReferences : undefined,
+        retryId: data.responseMode === 'unavailable' ? requestId : undefined,
+      }));
+      setFailedRequest(data.responseMode === 'unavailable' ? { id: requestId, payload } : null);
       setMemoryUsed(data.responseMode === 'model' && Array.isArray(data.relevantMemory) ? data.relevantMemory : []);
       setMemorySuggestion(data.responseMode === 'model' ? data.memorySuggestion || null : null);
       setTherapyLessonsUsed(data.responseMode === 'model' && Array.isArray(data.therapyLessonsUsed) ? data.therapyLessonsUsed : []);
       setTherapyLessonSuggestion(data.responseMode === 'model' ? data.therapyLessonSuggestion || null : null);
       setOfferContinuity(data.responseMode === 'model' && data.offerContinuity === true);
       playSoftSound('chime');
-    } catch {
-      setTurns((current) => [
-        ...current,
-        {
+    } catch (error) {
+      const failure = error instanceof ConversationRequestError ? error : new ConversationRequestError('connection');
+      setFailedRequest({ id: requestId, payload });
+      setTurns((current) => replaceFailedConversationReply(current, requestId, {
           role: 'assistant',
-          content: 'The live conversation could not be reached, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',
+          content: conversationFailureNotice(failure),
           responseMode: 'unavailable',
-        },
-      ]);
+          retryId: requestId,
+          failure: { kind: failure.kind, status: failure.status, reference: failure.reference },
+      }));
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   };
 
   const saveSuggestedMemory = async () => {
-    if (!memorySuggestion || memorySaved) return;
-    setMemorySaved(true);
-
-    const tags = memorySuggestion.tags?.length ? ` | tags: ${memorySuggestion.tags.join(', ')}` : '';
-    addMemoryItem(
-      memorySuggestion.type as any,
-      `${memorySuggestion.label}: ${memorySuggestion.summary}${tags}`,
-      'active',
-      activeShift.id,
-    );
-
+    if (!memorySuggestion || memorySaved || memorySaving) return;
+    setMemorySaving(true);
+    setMemorySaveNotice('');
     try {
-      await fetch('/api/shift/memory/remember', {
+      const response = await fetch('/api/shift/memory/remember', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceId: activeShift.id, memory: memorySuggestion }),
       });
+      const data = await response.json() as { persisted?: boolean; accountRequired?: boolean; error?: string };
+      if (!response.ok) throw new Error(data.error || 'Account memory save failed.');
+      if (data.persisted) {
+        setMemorySaved(true);
+        setMemorySaveNotice('Saved to your account.');
+      } else if (data.accountRequired) {
+        const tags = memorySuggestion.tags?.length ? ` | tags: ${memorySuggestion.tags.join(', ')}` : '';
+        addMemoryItem(memorySuggestion.type as any, `${memorySuggestion.label}: ${memorySuggestion.summary}${tags}`, 'active', activeShift.id);
+        setMemorySaved(true);
+        setMemorySaveNotice('Saved on this device only. Sign in for account memory.');
+      } else {
+        throw new Error('This learning was not saved to your account. Try again.');
+      }
+      playSoftSound('complete');
     } catch {
-      // Device memory remains available if account persistence is temporarily offline.
+      setMemorySaveNotice('Account save could not finish. Your suggestion is still here; try again.');
+    } finally {
+      setMemorySaving(false);
     }
-
-    playSoftSound('complete');
   };
 
   const saveTherapyLesson = async () => {
@@ -410,6 +429,12 @@ export const KeepTalkingScreen: React.FC = () => {
                   No AI-generated interpretation was returned for this message.
                 </output>
               )}
+              {turn.responseMode === 'unavailable' && failedRequest?.id === turn.retryId && (
+                <button type="button" disabled={loading || memorySaving} className="keep-talking-remember-button mt-3" onClick={() => void sendMessage(true)}>
+                  {loading ? 'Retrying…' : 'Retry message'}
+                </button>
+              )}
+              {turn.failure && <details className="mt-2 text-sm"><summary className="cursor-pointer">Connection details</summary><p>Error: {turn.failure.kind.replaceAll('_', ' ')}{turn.failure.status ? ` (HTTP ${turn.failure.status})` : ''}{turn.failure.reference ? `. Reference: ${turn.failure.reference}` : ''}.</p></details>}
               {turn.influence && (
                 <details className="mt-3 text-xs rounded-lg border border-slate-200/70 bg-white/50 px-3 py-2">
                   <summary className="cursor-pointer font-medium text-slate-700">What influenced this response</summary>
@@ -419,10 +444,13 @@ export const KeepTalkingScreen: React.FC = () => {
                     <p><strong>Historical learning:</strong> {turn.influence.historicalLearning.count === 0 ? 'none selected' : `${turn.influence.historicalLearning.count} relevant item${turn.influence.historicalLearning.count === 1 ? '' : 's'}`}{turn.influence.historicalLearning.types.length ? ` · ${turn.influence.historicalLearning.types.map(readableInfluenceType).join(', ')}` : ''}.</p>
                     <p><strong>Professional learning:</strong> {turn.influence.professionalLearning.length === 0 ? 'none selected' : turn.influence.professionalLearning.map((lesson) => `${lesson.title} (${sourceLabel(lesson.sourceType)})`).join('; ')}.</p>
                     <p><strong>User-approved personal context:</strong> {turn.influence.personalContextUsed ? 'relevant context was selected' : 'none selected'}.</p>
+                    <p><strong>Full personal history provided to the AI:</strong> {turn.influence.personalHistory?.count ? turn.influence.personalHistory.sources.map(p => `${p.title} (${p.sourceName})`).join('; ') : 'no relevant passages selected'}.</p>
+                    {turn.personalHistoryReferences?.length ? <div className="mt-3 space-y-2 break-words text-sm"><p><strong>Report passages connected in this reply:</strong></p>{turn.personalHistoryReferences.map((reference, i) => <div key={i}><p className="font-medium">{reference.title} ({reference.sourceName})</p><blockquote className="mt-1 border-l-2 border-sky-300 pl-3">{reference.sourceExcerpt}</blockquote><p className="mt-1"><strong>In the reply:</strong> {reference.replyExcerpt}</p></div>)}</div> : null}
                     <p><strong>External research:</strong> {turn.influence.externalResearch.status === 'grounded' ? `${turn.influence.externalResearch.sourceCount} grounded source${turn.influence.externalResearch.sourceCount === 1 ? '' : 's'}` : turn.influence.externalResearch.status === 'unavailable' ? 'needed but unavailable' : 'not needed'}.</p>
                   </div>
                 </details>
               )}
+              {turn.personalHistoryUnavailable && <p className="mt-2 text-sm text-amber-800">Your detailed account history could not be loaded for this response.</p>}
               {turn.evidence && <details className="mt-3 text-sm">
                 <summary className="cursor-pointer font-medium">Research context for this response</summary>
                 <p className="mt-2">These sources support external factual claims only. They do not verify personal interpretations, motives, diagnoses, or what another person or animal subjectively intended.</p>
@@ -479,15 +507,16 @@ export const KeepTalkingScreen: React.FC = () => {
                 </div>
                 <p className="text-sm mt-1"><strong>{memorySuggestion.label}:</strong> {memorySuggestion.summary}</p>
                 <p className="text-[11px] text-slate-500 mt-1">Nothing is saved unless you choose to save it.</p>
+                <p className="text-sm mt-1" aria-live="polite">{memorySaveNotice}</p>
               </div>
               <button
                 type="button"
                 onClick={() => void saveSuggestedMemory()}
-                disabled={memorySaved}
+                disabled={memorySaved || memorySaving}
                 className="keep-talking-remember-button"
               >
                 {memorySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                {memorySaved ? 'Remembered' : 'Remember this'}
+                {memorySaved ? 'Saved' : memorySaving ? 'Saving…' : 'Remember this'}
               </button>
             </div>
           </div>
@@ -521,7 +550,7 @@ export const KeepTalkingScreen: React.FC = () => {
                   void sendMessage();
                 }
               }}
-              disabled={loading}
+              disabled={loading || memorySaving}
               rows={2}
               aria-label="Your message to SHIFT"
               placeholder="What’s on your mind right now?"
@@ -530,7 +559,7 @@ export const KeepTalkingScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => void sendMessage()}
-              disabled={loading || !input.trim()}
+              disabled={loading || memorySaving || !input.trim()}
               aria-label="Send"
               className="keep-talking-send-button"
             >

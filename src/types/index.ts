@@ -206,6 +206,8 @@ export interface ShiftBreakdown {
   // Personalization transparency. These fields describe compact provenance that
   // materially influenced the response; they are not hidden reasoning or chain-of-thought.
   memoryUsed?: string[];
+  personalHistoryUsed?: Array<{ documentId: string; sourceName: string; title: string; text: string; sourceKind: string }>;
+  personalHistoryUnavailable?: boolean;
   professionalLearningUsed?: ShiftProfessionalLearningInfluence[];
   memorySource?: 'account' | 'device_or_none' | string;
   memoryRetrieval?: 'lexical' | 'semantic_and_lexical' | string;

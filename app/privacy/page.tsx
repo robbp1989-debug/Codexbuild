@@ -39,14 +39,14 @@ export default function PrivacyPage() {
           <section className="rounded-2xl border border-slate-800 bg-slate-900/75 p-5">
             <h2 className="text-lg font-semibold">Imported source files</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-400">
-              When a signed-in user deliberately imports a supported source file, SHIFT stores the source separately from reusable learning and performs a one-time extraction into compact themes and learning records. Normal future reflection prompts use only a small relevant set of those compact records; they do not automatically resend the full imported source. The user can delete the source while keeping its extracted learning, or delete both.
+              Full personal-history import has one approval for the complete report. SHIFT stores all extracted plain text privately in your account, including names, relationships and reported events. The report is indexed for search using SHIFT’s AI provider; relevant quoted passages can then be sent to that provider automatically in future reflections and chats. SHIFT does not send the entire report with every message. Reported history, interpretations and historical diagnostic labels retain their qualifications. You can stop retrieval, add or remove personal updates, or delete the source under Memory. Smaller compact learning entries still have an optional individual-review path, and visit/device excerpts remain separate. Source history is not merged into professional-learning records.
             </p>
           </section>
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900/75 p-5">
             <h2 className="text-lg font-semibold">When an AI model is used</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-400">
-              When server-side AI is available, a reflection request can include the current situation plus a small set of relevant compact learning records selected by SHIFT. Imported source documents may be sent through the extraction step when the user deliberately imports them. If the model service is unavailable, SHIFT can fall back to local structured guidance instead of silently inventing account history.
+              When server-side AI is available, a reflection or chat can include your current situation, relevant compact learning and relevant passages from an approved full-history report. History indexing can send report passages to the embedding provider once; subsequent chats use selected passages. If indexing is unavailable, lexical search can still retrieve history. Failed history loading is disclosed, and unavailable model service does not invent knowledge of your account.
             </p>
           </section>
 

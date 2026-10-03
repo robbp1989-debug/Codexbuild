@@ -16,6 +16,8 @@ import {
   therapyLessonsAsMemoryContext,
 } from '@/server/therapyLessonContext';
 import { loadTherapyLessons } from '@/server/therapyLessonStore';
+import { retrieveDetailedHistory } from '@/server/detailedHistoryStore';
+import { detailedHistoryPrompt } from '@/server/detailedHistoryContext';
 
 export async function POST(request: Request) {
   try {
@@ -103,10 +105,17 @@ export async function POST(request: Request) {
       ].slice(0, 8),
       memoryContext,
     );
+    let personalHistory: Awaited<ReturnType<typeof retrieveDetailedHistory>> = { passages: [], available: false, retrieval: 'none' };
+    let personalHistoryUnavailable = false;
+    if (user) {
+      try { personalHistory = await retrieveDetailedHistory(user.userId, situation); }
+      catch { personalHistoryUnavailable = true; console.info('[SHIFT History] Detailed account history unavailable for this reflection.'); }
+    }
     const breakdown = await analyzeShiftReflection(
       situation,
       context,
       personalContextPrompt(personalContext, approvedSummary, situation),
+      detailedHistoryPrompt(personalHistory.passages),
     );
 
     return Response.json({
@@ -117,6 +126,10 @@ export async function POST(request: Request) {
       // input; these public fields show what type of prior learning influenced it
       // without exposing hidden reasoning or duplicating professional lessons.
       memoryUsed: retrieved,
+      personalHistoryUsed: personalHistory.passages.map(({ embedding: _embedding, ...passage }) => passage),
+      personalHistoryAvailable: personalHistory.available,
+      personalHistoryUnavailable,
+      personalHistoryRetrieval: personalHistory.retrieval,
       professionalLearningUsed: publicTherapyLessonSummary(
         relevantTherapyLessons,
       ),

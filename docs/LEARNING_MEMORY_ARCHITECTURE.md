@@ -10,8 +10,8 @@ Core loop:
 
 ## Privacy and epistemic rules
 
-1. Raw uploaded documents and long reflection narratives are source material, not reusable prompt memory.
-2. A source document is processed once. Future reflection prompts use privacy-minimized learning records rather than the document itself.
+1. Raw uploaded documents and long reflection narratives are source material, not ordinary reusable learning rows. Explicitly approved full-history sources have a separate, detailed retrieval layer in private R2 storage.
+2. The user may approve an entire personal-history report once. Its full text is retained without summarization, identifying details are preserved, and relevant quoted passages can be retrieved automatically for later reflections/chats. Compact learning remains an optional separate path with individual approval. Full reports are not resent with every message.
 3. AI inference never silently becomes a user fact.
 4. Historical learning is comparison evidence, not proof that the current event has the same meaning.
 5. Advice does not become `HELPFUL_STRATEGY` merely because SHIFT suggested it. It becomes stronger personal evidence after the user tries it and records an outcome.
@@ -75,6 +75,16 @@ D1 should never become a dumping ground for full uploaded journals simply becaus
 
 ## R2 source-document lifecycle
 
+### Full personal history (one approval)
+
+Full-history import is the default report option. The server retains every text character in bounded section passages, preserving names, relationships, evidence labels and reported events. An optional semantic index of these passages is stored with the private source in R2, separately from D1 learning and therapy lessons. Lexical retrieval remains available if embedding service fails. A short new message can retrieve relevant autobiographical context without restating the history. Sensitive history requires topic relevance; ordinary shared function words or a dinner reference must not retrieve trauma. Later direct personal updates retain their source/date, and current corrections override older history.
+
+Authenticated source ownership and non-deleted D1 metadata are checked before R2 access. The owner can stop source retrieval, save/remove personal updates, or delete the source and all associated R2 indices. Separately saved compact learning has separate removal controls. Disabling full history does not silently archive those other records.
+
+The existing report `doc_007b3f44-91da-420e-a178-eebf422e808d` was explicitly bulk-authorized for this path in the October 3 task. It is indexed lazily on the next trusted account request. No personal report content is embedded in repository source. Other existing uploads require their own full-history opt-in.
+
+### Compact learning (optional individual review)
+
 The first source import path accepts TXT, Markdown, JSON, and CSV up to 4 MB.
 
 1. Authenticated user uploads a source.
@@ -82,9 +92,9 @@ The first source import path accepts TXT, Markdown, JSON, and CSV up to 4 MB.
 3. Full bytes are stored in the private `FILES` R2 binding using a random, non-identifying object key.
 4. D1 stores metadata/extraction state; the original filename is not used as the R2 object key.
 5. The source text is sent through a one-time, prompt-injection-resistant extraction step.
-6. The extractor removes identifying details where they are not necessary and emits compact learning candidates/tags.
-7. Compact memories are persisted to D1 with `source_kind = document`.
-8. Normal SHIFT reflection/Keep Talking requests retrieve D1 learning memory only; they do not retrieve or re-send the source document.
+6. The extractor removes identifying details where they are not necessary and emits compact learning candidates/tags. Draft candidates are stored alongside the private source in R2, outside active learning retrieval, and can be reopened after reload.
+7. Each candidate requires an explicit review and **Remember this** action before it is persisted to D1 with `source_kind = document`. The server checks source ownership and preserves uncertainty. Helpful strategies and outcomes additionally require confirmation of an actual lived result. Uploading alone creates no active learning.
+8. This compact-learning path does not itself enable full-source recall. The separate approved full-history path above may supply relevant quoted passages, with separate public provenance.
 
 Cloudflare R2 encrypts stored objects at rest with platform-managed encryption. This is **encryption at rest**, not end-to-end encryption. SHIFT should not claim end-to-end encryption. A later customer-managed/SSE-C layer can be evaluated if the product's threat model requires it.
 

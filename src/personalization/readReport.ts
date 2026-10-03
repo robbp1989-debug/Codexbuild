@@ -1,6 +1,6 @@
-import { validateDocxArchive } from './reportLimits';
+import { MAX_REPORT_TEXT, validateDocxArchive } from './reportLimits';
 const MAX_FILE = 4 * 1024 * 1024;
-const MAX_TEXT = 80000;
+const LENGTH_ERROR = 'This report exceeds 120,000 text characters. Split it into separate full-history uploads; no text has been shortened or saved.';
 export async function readReport(file: File): Promise<string> {
   if (!file.size || file.size > MAX_FILE)
     throw new Error('Choose a nonempty report up to 4 MB.');
@@ -32,10 +32,7 @@ export async function readReport(file: File): Promise<string> {
               'str' in item ? item.str + (item.hasEOL ? '\n' : ' ') : '',
             )
             .join('') + '\n\n';
-        if (text.length > MAX_TEXT)
-          throw new Error(
-            'This report is too long. Paste a relevant excerpt instead.',
-          );
+        if (text.length > MAX_REPORT_TEXT) throw new Error(LENGTH_ERROR);
       }
     } finally {
       await task.destroy();
@@ -49,10 +46,7 @@ export async function readReport(file: File): Promise<string> {
     throw new Error(
       'Choose TXT, Markdown, CSV, JSON, PDF, or DOCX, or paste an excerpt.',
     );
-  if (text.length > MAX_TEXT)
-    throw new Error(
-      'This report is too long. Paste a relevant excerpt instead.',
-    );
+  if (text.length > MAX_REPORT_TEXT) throw new Error(LENGTH_ERROR);
   text = text.split(String.fromCharCode(0)).join('').trim();
   if (!text || text.includes('\ufffd'))
     throw new Error(

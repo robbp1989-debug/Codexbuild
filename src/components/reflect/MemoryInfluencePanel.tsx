@@ -54,6 +54,7 @@ export const MemoryInfluencePanel: React.FC = () => {
   if (!activeShift) return null;
 
   const memoryUsed = activeShift.memoryUsed || [];
+  const personalHistoryUsed = activeShift.personalHistoryUsed || [];
   const professionalLearningUsed = activeShift.professionalLearningUsed || [];
   const currentReport = (
     activeShift.rawInput ||
@@ -62,7 +63,7 @@ export const MemoryInfluencePanel: React.FC = () => {
     ''
   ).trim();
   const priorLearningUsed =
-    memoryUsed.length > 0 || professionalLearningUsed.length > 0;
+    memoryUsed.length > 0 || professionalLearningUsed.length > 0 || personalHistoryUsed.length > 0;
 
   return (
     <section className="max-w-4xl mx-auto mt-6 mb-2 px-4">
@@ -175,6 +176,8 @@ export const MemoryInfluencePanel: React.FC = () => {
           </div>
         )}
 
+        {personalHistoryUsed.length > 0 && <div className="mt-4"><h3 className="text-sm font-semibold text-sky-300">Personal history considered</h3>{personalHistoryUsed.map((passage, index) => <details key={`${passage.documentId}-${index}`} className="mt-2 rounded-xl border border-sky-500/20 p-3"><summary className="text-sm cursor-pointer">{passage.title} · {passage.sourceKind === 'direct_user_update' ? 'Your direct update' : 'Your uploaded report'}</summary><p className="mt-2 text-sm whitespace-pre-wrap">{passage.text}</p></details>)}</div>}
+        {activeShift.personalHistoryUnavailable && <p className="mt-3 text-sm text-amber-300">Your detailed account history could not be loaded for this response.</p>}
         {!priorLearningUsed && (
           <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/35 p-3 text-[11px] text-slate-400">
             {'No stored historical or professional learning passed the relevance gate for this Shift.'}
@@ -196,7 +199,7 @@ export const MemoryInfluencePanel: React.FC = () => {
             {activeShift.memoryRetrieval === 'semantic_and_lexical'
               ? ' Retrieval used semantic and lexical relevance.'
               : ' Retrieval used lexical relevance.'}{' '}
-            Raw imported documents are not inserted into this reflection.
+            Approved full-history reports can supply relevant quoted passages separately from compact learning.
           </span>
         </div>
       </div>

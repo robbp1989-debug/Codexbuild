@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { Brain, FileLock2, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ProfessionalLearningPanel } from './ProfessionalLearningPanel';
+import { SourceMemoryReview } from '../../personalization/SourceMemoryReview';
+import { PersonalHistoryControls } from '../../personalization/PersonalHistoryControls';
 
 interface AccountMemory {
   id: string;
@@ -35,6 +37,8 @@ export const AccountMemoryPanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [reviewSourceId, setReviewSourceId] = useState('');
+  const [historySourceId, setHistorySourceId] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -114,6 +118,8 @@ export const AccountMemoryPanel: React.FC = () => {
       if (!response.ok || !data.deleted) throw new Error(data.error || 'Could not delete this private source.');
 
       setSources((current) => current.filter((item) => item.id !== source.id));
+      if (reviewSourceId === source.id) setReviewSourceId('');
+      if (historySourceId === source.id) setHistorySourceId('');
       if (deleteLearning) {
         // Imported compact copies are tagged with the document id. Remove those from
         // the current device too so a deleted source cannot keep influencing prompts
@@ -224,6 +230,8 @@ export const AccountMemoryPanel: React.FC = () => {
                       <span>{source.extractionStatus}</span>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-3">
+                      <button type="button" disabled={busyId === source.id} onClick={() => { setHistorySourceId(source.id); setReviewSourceId(''); }} className="px-2.5 py-1.5 rounded-lg border border-sky-500/30 text-sm text-sky-300">Full personal history and updates</button>
+                      <button type="button" disabled={busyId === source.id} onClick={() => setReviewSourceId(source.id)} className="px-2.5 py-1.5 rounded-lg border border-sky-500/30 text-sm text-sky-300">Review proposed memories</button>
                       <button
                         type="button"
                         disabled={busyId === source.id}
@@ -248,6 +256,8 @@ export const AccountMemoryPanel: React.FC = () => {
           </div>
         )}
       </section>
+      {reviewSourceId && <div className="personalize-screen"><button className="secondary" onClick={() => setReviewSourceId('')}>Close source review</button><SourceMemoryReview documentId={reviewSourceId} onSaved={() => void load()} /></div>}
+      {historySourceId && <div className="personalize-screen"><button className="secondary" onClick={() => setHistorySourceId('')}>Close personal history</button><PersonalHistoryControls key={historySourceId} documentId={historySourceId} /></div>}
     </div>
   );
 };

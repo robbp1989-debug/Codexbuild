@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers';
-import { archiveLearningMemory, getSourceBucket } from './persistence';
+import { archiveLearningMemory, getSourceBucket, sourceReviewKey } from './persistence';
 import { deleteMemoryEmbedding } from './semanticMemory';
 
 export interface AccountMemoryRecord {
@@ -135,6 +135,8 @@ export async function deleteAccountSource(args: {
   if (!row?.r2_object_key) return false;
 
   await bucket.delete(row.r2_object_key);
+  await bucket.delete(sourceReviewKey(row.r2_object_key));
+  await bucket.delete(`${row.r2_object_key}/personal-history.json`);
   const statements: D1PreparedStatement[] = [
     database
       .prepare(

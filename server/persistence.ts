@@ -466,6 +466,25 @@ export async function registerSourceDocument(args: {
   return true;
 }
 
+export function sourceReviewKey(objectKey: string): string {
+  return `${objectKey}/learning-review.json`;
+}
+
+export async function getOwnedSourceDocument(userId: string, documentId: string): Promise<SourceDocumentRecord | null> {
+  const db = getDb();
+  if (!db || !userId || !documentId) return null;
+  const row = await db.prepare(
+    `SELECT id, r2_object_key, original_name, content_type, byte_size, extraction_status
+     FROM source_documents WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1`,
+  ).bind(documentId, userId).first<Record<string, unknown>>();
+  return row ? {
+    id: String(row.id), objectKey: String(row.r2_object_key),
+    originalName: String(row.original_name), contentType: String(row.content_type),
+    byteSize: Number(row.byte_size),
+    extractionStatus: String(row.extraction_status) as SourceDocumentRecord['extractionStatus'],
+  } : null;
+}
+
 export async function setSourceDocumentExtractionStatus(
   userId: string,
   documentId: string,

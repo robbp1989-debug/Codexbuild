@@ -100,7 +100,8 @@ export function PersonalizationScreen() {
         <p>
           Only confirmed entries are sent with future reflections and Keep
           Talking messages to SHIFT’s server and its AI provider. Unapproved
-          intake answers and report text are not sent. Removing context does not
+          intake answers and report text are not sent through this excerpt path.
+          Private account import above has its own explicit approval. Removing context does not
           rewrite earlier conversations.
         </p>
         <label className="personalize-check">
@@ -122,7 +123,7 @@ export function PersonalizationScreen() {
           ))
         )}
         <button className="secondary" onClick={clearPersonalization}>
-          Delete all intake and report context
+          Delete visit and device context
         </button>
         <output aria-live="polite">{contextNotice}</output>
       </section>

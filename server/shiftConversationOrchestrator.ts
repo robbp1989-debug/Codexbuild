@@ -11,6 +11,9 @@ import type { LearningMemoryCandidate } from './aiClient.js';
 import { buildPublicInfluenceSummary, type PublicInfluenceSummary } from './influenceSummary.js';
 import { sanitizeGenericMemorySuggestion } from './memorySuggestion.js';
 import { PERSONAL_CONTEXT_RULES } from './personalContext.js';
+import { DETAILED_HISTORY_RULES } from './detailedHistoryContext.js';
+import type { RetrievedHistoryPassage } from './detailedHistoryContext.js';
+import { HISTORY_GROUNDING_INSTRUCTION, requiresHistoryGrounding, validateHistoryGrounding, type HistoryReference } from './historyGrounding.js';
 import { evaluateResponseQuality, qualityRevisionInstruction } from './qualityGuard.js';
 import { researchPrompt, runGroundedResearch } from './researchEngine.js';
 import {
@@ -31,13 +34,14 @@ export interface OrchestratedConversationResult {
   memorySuggestion?: LearningMemoryCandidate | null;
   therapyLessonSuggestion?: TherapyLessonSuggestion | null;
   responseMode: 'model' | 'unavailable';
-  unavailableReason?: 'not_configured' | 'provider_error';
+  unavailableReason?: 'not_configured' | 'provider_error' | 'history_grounding' | 'quality_guard';
   shiftMode: ShiftResponseMode;
   research: Pick<ResearchPacket, 'required' | 'status' | 'propositions' | 'sources'>;
   therapyLessonsUsed: Array<{ id: string; title: string; sourceType: TherapyLesson['sourceType'] }>;
   influence: PublicInfluenceSummary;
   offerContinuity: boolean;
   quality: { passed: boolean; warnings: string[] };
+  personalHistoryReferences?: HistoryReference[];
 }
 
 function text(value: unknown, max = 1600): string {
@@ -106,15 +110,21 @@ export async function orchestrateShiftConversation(args: {
   memoryContext?: string[];
   therapyLessons?: TherapyLesson[];
   personalContext?: string;
+  personalHistoryContext?: string;
+  personalHistoryUsed?: Array<{ documentId: string; sourceName: string; title: string }>;
+  personalHistoryPassages?: RetrievedHistoryPassage[];
 }): Promise<OrchestratedConversationResult> {
   const history = (args.history || []).slice(-8);
   const therapyLessons = (args.therapyLessons || []).slice(0, 4);
   const mode = inferResponseMode(args.userMessage);
+  const historyPassages = args.personalHistoryPassages || [];
+  const mustGroundHistory = requiresHistoryGrounding(args.userMessage, mode, historyPassages);
   const research = await runGroundedResearch(args.userMessage, mode);
   const influence = buildPublicInfluenceSummary({
     memoryContext: args.memoryContext,
     therapyLessons,
     personalContext: args.personalContext,
+    personalHistoryUsed: args.personalHistoryUsed,
     research,
   });
   const evidence = buildEvidenceContext({
@@ -166,33 +176,39 @@ export async function orchestrateShiftConversation(args: {
 Only offer memorySuggestion when THIS user message supplies or explicitly confirms a durable non-professional learning, preference, boundary, rejected hypothesis, real-world outcome, or strategy that actually helped. Never save it automatically. Do not label a SHIFT suggestion as user-confirmed.
 Professional or therapy lessons must NOT be placed in generic memorySuggestion. Only offer therapyLessonSuggestion when the user explicitly attributes the lesson to their therapist, counselor, recovery support, doctor, psychiatrist, or other medical professional and clearly states what they learned or were asked to practice. Never infer a professional lesson from vague context. The server independently verifies that attribution before it can be offered for saving.`;
 
-  const system = `${SHIFT_BEHAVIOR_POLICY_PROMPT}\n${PERSONAL_CONTEXT_RULES}\n${routing}\n${researchPrompt(research)}\n${therapyLessonPrompt(therapyLessons)}\n${evidencePrompt(args.userMessage)}\n${outputContract}`;
-  const input = `${args.personalContext || ''}\nCURRENT SHIFT:\n${JSON.stringify(shiftSnapshot)}\n\nRELEVANT HISTORICAL LEARNING:\n${args.memoryContext?.length ? args.memoryContext.join('\n') : 'None retrieved.'}\n\nRECENT CONVERSATION:\n${safeHistory || 'No prior turns.'}\n\nUSER:\n${args.userMessage}`;
+  const groundingContract = historyPassages.length ? `${HISTORY_GROUNDING_INSTRUCTION}\nAdd "historyGrounding":[{"documentId":"exact source ID","passageId":"exact passage ID","sourceExcerpt":"exact source text","replyExcerpt":"exact reply text"}] to the JSON. ${mustGroundHistory ? 'At least one validated reference to specific report details is required.' : 'References are optional for this turn.'}` : '';
+  const system = `${SHIFT_BEHAVIOR_POLICY_PROMPT}\n${PERSONAL_CONTEXT_RULES}\n${DETAILED_HISTORY_RULES}\n${routing}\n${researchPrompt(research)}\n${therapyLessonPrompt(therapyLessons)}\n${evidencePrompt(args.userMessage)}\n${outputContract}\n${groundingContract}`;
+  const input = `${args.personalContext || ''}\n${args.personalHistoryContext || ''}\nCURRENT SHIFT:\n${JSON.stringify(shiftSnapshot)}\n\nRELEVANT HISTORICAL LEARNING:\n${args.memoryContext?.length ? args.memoryContext.join('\n') : 'None retrieved.'}\n\nRECENT CONVERSATION:\n${safeHistory || 'No prior turns.'}\n\nUSER:\n${args.userMessage}`;
 
   try {
     const first = JSON.parse(await modelCall({ system, input, json: true })) as {
       reply?: string;
       memorySuggestion?: unknown;
       therapyLessonSuggestion?: unknown;
+      historyGrounding?: unknown;
     };
     if (!first.reply?.trim()) throw new Error('Conversation response missing reply');
 
     let reply = first.reply.trim();
     let quality = evaluateResponseQuality({ reply, mode, research });
-    if (!quality.passed || quality.warnings.length > 0) {
-      const revised = await modelCall({
-        system: `${SHIFT_BEHAVIOR_POLICY_PROMPT}\n${PERSONAL_CONTEXT_RULES}\n${researchPrompt(research)}\n${therapyLessonPrompt(therapyLessons)}`,
-        input: `DRAFT RESPONSE:\n${reply}\n\n${qualityRevisionInstruction(quality)}\n\nUSER QUESTION:\n${args.userMessage}`,
-        json: false,
-        maxTokens: 1500,
-      });
-      reply = revised.trim();
+    let grounding = validateHistoryGrounding(reply, first.historyGrounding, historyPassages);
+    if (!quality.passed || quality.warnings.length > 0 || (mustGroundHistory && !grounding.passed)) {
+      const revised = JSON.parse(await modelCall({
+        system,
+        input: `${input}\n\nDRAFT RESPONSE:\n${reply}\n\n${qualityRevisionInstruction(quality)}\n${mustGroundHistory && !grounding.passed ? 'The draft did not use specific details from the retrieved history with valid source references. Answer using the relevant reported events and associations already supplied. Do not substitute generic uncertainty or ask the user to repeat known history. Return JSON with reply and historyGrounding.' : 'Return the revised answer as JSON with reply and historyGrounding.'}`,
+        json: true,
+        maxTokens: 1900,
+      })) as { reply?: string; historyGrounding?: unknown };
+      if (!revised.reply?.trim()) throw new Error('Revised response missing reply');
+      reply = revised.reply.trim();
       quality = evaluateResponseQuality({ reply, mode, research });
-      if (!quality.passed || quality.warnings.length > 0) {
+      grounding = validateHistoryGrounding(reply, revised.historyGrounding, historyPassages);
+      if (!quality.passed || quality.warnings.length > 0 || (mustGroundHistory && !grounding.passed)) {
         throw new Error(
           `Response quality guard failed after revision: ${[
             ...quality.criticalFailures,
             ...quality.warnings,
+            ...(mustGroundHistory && !grounding.passed ? ['personal_history_not_grounded'] : []),
           ].join(',')}`,
         );
       }
@@ -215,17 +231,21 @@ Professional or therapy lessons must NOT be placed in generic memorySuggestion. 
       influence,
       offerContinuity,
       quality: { passed: quality.passed, warnings: quality.warnings },
+      personalHistoryReferences: grounding.references,
     };
   } catch (error) {
+    const validationFailed = error instanceof Error && error.message.startsWith('Response quality guard failed');
+    const historyFailed = validationFailed && (error as Error).message.includes('personal_history_not_grounded');
     console.warn('[SHIFT Conversation Orchestrator] Model response unavailable', {
       name: error instanceof Error ? error.name : 'unknown',
+      category: historyFailed ? 'history_grounding' : validationFailed ? 'quality_guard' : 'provider_error',
     });
     return {
-      reply: 'The live conversation is temporarily unavailable, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',
+      reply: historyFailed ? 'Your report passages were retrieved, but this reply did not pass the check for using your specific history. Your message is still here; please retry it.' : validationFailed ? 'This reply did not pass SHIFT’s response checks. Your message is still here; please retry it.' : 'The live conversation is temporarily unavailable, so SHIFT cannot give you a reliable response to this message yet. Your message remains visible above; please try again in a moment.',
       memorySuggestion: null,
       therapyLessonSuggestion: null,
       responseMode: 'unavailable',
-      unavailableReason: 'provider_error',
+      unavailableReason: historyFailed ? 'history_grounding' : validationFailed ? 'quality_guard' : 'provider_error',
       shiftMode: mode,
       research: publicResearch(research),
       therapyLessonsUsed: publicTherapyLessonSummary(therapyLessons),

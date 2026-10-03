@@ -18,6 +18,26 @@ const boundary = {
   evidenceCount: 2,
 };
 
+test('ordinary function words do not retrieve unrelated personal learning', () => {
+  const friendshipLearning = {
+    type: 'UPDATED_PERSPECTIVE',
+    content: 'Friendship reminder: I can care about a friendship without treating a delayed reply as rejection.',
+    status: 'active',
+    confidence: 'user_confirmed',
+    updatedAt: new Date().toISOString(),
+  };
+  for (const query of [
+    'I feel indecisive about choosing tomato soup or roasted vegetables for dinner.',
+    'I can choose tomato soup or roasted vegetables for dinner.',
+  ]) {
+    assert.deepEqual(selectRelevantMemoryContext(query, [friendshipLearning]), []);
+  }
+  assert.equal(
+    selectRelevantMemoryContext('A delayed reply from a friend feels like rejection.', [friendshipLearning]).length,
+    1,
+  );
+});
+
 test('account and device copies have one retrieval vote and account provenance wins', () => {
   const merged = mergeAccountAndDeviceMemory(
     [boundary],

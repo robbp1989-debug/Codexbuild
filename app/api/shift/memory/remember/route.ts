@@ -1,6 +1,6 @@
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import type { LearningMemoryCandidate } from '@/server/aiClient';
-import { saveLearningMemory } from '@/server/persistence';
+import { getOwnedSourceDocument, saveLearningMemory } from '@/server/persistence';
 
 const ALLOWED_TYPES = new Set([
   'CONFIRMED_PATTERN',
@@ -26,7 +26,7 @@ function cleanString(value: unknown, max: number): string {
 
 export async function POST(request: Request) {
   try {
-    const { sourceId, memory } = await request.json() as Record<string, unknown>;
+    const { sourceId, sourceKind, userConfirmed, livedEvidence, memory } = await request.json() as Record<string, unknown>;
     if (!memory || typeof memory !== 'object') {
       return Response.json({ error: 'A learning memory is required.' }, { status: 400 });
     }
@@ -55,6 +55,21 @@ export async function POST(request: Request) {
       return Response.json({ persisted: false, accountRequired: true }, { status: 200 });
     }
 
+    if (sourceKind === 'document') {
+      if (userConfirmed !== true) {
+        return Response.json({ error: 'Review and explicitly approve this memory first.' }, { status: 400 });
+      }
+      if (typeof sourceId !== 'string' || !await getOwnedSourceDocument(user.userId, sourceId)) {
+        return Response.json({ error: 'This private source is unavailable for your account.' }, { status: 404 });
+      }
+      if ((type === 'HELPFUL_STRATEGY' || type === 'OUTCOME') && livedEvidence !== true) {
+        return Response.json({ error: 'Confirm an actual lived result before remembering this learning type.' }, { status: 400 });
+      }
+      if (type === 'WORKING_HYPOTHESIS' && confidence !== 'working') {
+        return Response.json({ error: 'A working hypothesis must remain uncertain.' }, { status: 400 });
+      }
+    }
+
     const candidate: LearningMemoryCandidate = {
       type: type as LearningMemoryCandidate['type'],
       label,
@@ -67,6 +82,7 @@ export async function POST(request: Request) {
       user.userId,
       typeof sourceId === 'string' ? sourceId : null,
       candidate,
+      sourceKind === 'document' ? 'document' : 'conversation',
     );
 
     return Response.json({ persisted: Boolean(id), id });

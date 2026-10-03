@@ -21,6 +21,7 @@ export type SelectedMemoryContext = {
 
 const STOP_WORDS = new Set([
   'a',
+  'about',
   'an',
   'and',
   'are',
@@ -30,6 +31,7 @@ const STOP_WORDS = new Set([
   'been',
   'but',
   'by',
+  'can',
   'for',
   'from',
   'had',

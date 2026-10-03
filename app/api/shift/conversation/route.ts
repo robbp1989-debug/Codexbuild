@@ -11,6 +11,8 @@ import { embedMemoryQuery } from '@/server/semanticMemory';
 import { orchestrateShiftConversation } from '@/server/shiftConversationOrchestrator';
 import { selectRelevantTherapyLessons } from '@/server/therapyLessonContext';
 import { loadTherapyLessons } from '@/server/therapyLessonStore';
+import { retrieveDetailedHistory } from '@/server/detailedHistoryStore';
+import { detailedHistoryPrompt } from '@/server/detailedHistoryContext';
 
 function compact(value: string) {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -46,6 +48,11 @@ function nonRepeatingFallback(
 }
 
 export async function POST(request: Request) {
+  const requestId = crypto.randomUUID();
+  const json = (data: unknown, init: ResponseInit = {}) => Response.json(data, {
+    ...init, headers: { 'Cache-Control': 'private, no-store', 'x-shift-request-id': requestId },
+  });
+  let stage = 'validation';
   try {
     const {
       message,
@@ -56,13 +63,13 @@ export async function POST(request: Request) {
       approvedSummary,
     } = (await request.json()) as Record<string, unknown>;
     if (typeof message !== 'string' || !message.trim()) {
-      return Response.json(
+      return json(
         { error: 'Please enter what you want to keep talking about.' },
         { status: 400 },
       );
     }
     if (!currentShift || typeof currentShift !== 'object') {
-      return Response.json(
+      return json(
         { error: 'An active Shift reflection is required.' },
         { status: 400 },
       );
@@ -70,7 +77,7 @@ export async function POST(request: Request) {
 
     const safety = evaluateSafety(message);
     if (safety.isCrisis) {
-      return Response.json({
+      return json({
         safetyInterruption: true,
         crisisType: safety.crisisType,
         crisisMessage: safety.crisisMessage,
@@ -85,6 +92,7 @@ export async function POST(request: Request) {
           ? shiftRecord.observation
           : '';
 
+    stage = 'account_context';
     const user = await getChatGPTUser();
     let durableMemory: Awaited<ReturnType<typeof loadLearningMemories>> = [];
     let therapyLessons: Awaited<ReturnType<typeof loadTherapyLessons>> = [];
@@ -149,7 +157,8 @@ export async function POST(request: Request) {
               const record = turn as Record<string, unknown>;
               return (
                 (record.role === 'user' || record.role === 'assistant') &&
-                typeof record.content === 'string'
+                typeof record.content === 'string' &&
+                !(record.role === 'assistant' && record.responseMode === 'unavailable')
               );
             },
           )
@@ -162,11 +171,22 @@ export async function POST(request: Request) {
       )
       .join('\n');
 
+    stage = 'history_retrieval';
+    let personalHistory: Awaited<ReturnType<typeof retrieveDetailedHistory>> = { passages: [], available: false, retrieval: 'none' };
+    let personalHistoryUnavailable = false;
+    if (user) {
+      try { personalHistory = await retrieveDetailedHistory(user.userId, message, message); }
+      catch { personalHistoryUnavailable = true; console.info('[SHIFT History] Detailed account history unavailable in this conversation.'); }
+    }
+    stage = 'response_generation';
     const result = await orchestrateShiftConversation({
       currentShift: shiftRecord,
       userMessage: message.trim(),
       history: safeHistory,
       memoryContext: relevantMemory,
+      personalHistoryContext: detailedHistoryPrompt(personalHistory.passages),
+      personalHistoryUsed: personalHistory.passages,
+      personalHistoryPassages: personalHistory.passages,
       therapyLessons: relevantTherapyLessons,
       personalContext: personalContextPrompt(
         personalContext,
@@ -198,9 +218,14 @@ export async function POST(request: Request) {
           }
         : undefined;
 
-    return Response.json({
+    stage = 'response_serialization';
+    return json({
       safetyInterruption: false,
       relevantMemory,
+      personalHistoryUsed: personalHistory.passages.map(({ embedding: _embedding, ...passage }) => passage),
+      personalHistoryAvailable: personalHistory.available,
+      personalHistoryUnavailable,
+      personalHistoryRetrieval: personalHistory.retrieval,
       memorySource: publicMemorySource(selection.origins),
       accountMemoryAvailable,
       memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
@@ -211,8 +236,12 @@ export async function POST(request: Request) {
       evidence,
       reply,
     });
-  } catch {
-    return Response.json(
+  } catch (error) {
+    // Keep diagnostics useful without logging prompts, history, credentials or account IDs.
+    console.error('[SHIFT Conversation] Request failed', {
+      requestId, stage, errorName: error instanceof Error ? error.name.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 80) : 'unknown',
+    });
+    return json(
       { error: 'Unable to continue this reflection. Please try again.' },
       { status: 500 },
     );

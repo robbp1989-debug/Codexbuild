@@ -1,4 +1,5 @@
 import { PERSONAL_CONTEXT_RULES } from './personalContext.js';
+import { DETAILED_HISTORY_RULES } from './detailedHistoryContext.js';
 import { evidencePrompt, selectCards } from '../src/second-brain/knowledge.js';
 import { PRIMARY_MODEL, FALLBACK_MODELS, SHIFT_SYSTEM_INSTRUCTION } from './config.js';
 import { type ShiftBreakdownOutput, generateFallbackBreakdown } from './fallbackAnalysis.js';
@@ -169,6 +170,7 @@ export async function analyzeShiftReflection(
   situationText: string,
   userMemoryContext?: string[],
   personalContext = '',
+  personalHistoryContext = '',
 ): Promise<ShiftBreakdownOutput> {
   if (!process.env.OPENAI_API_KEY) {
     console.info('[SHIFT Engine] No OPENAI_API_KEY detected. Using educational fallback.');
@@ -180,11 +182,11 @@ export async function analyzeShiftReflection(
       ? `\nRELEVANT HISTORICAL LEARNING (use only when it genuinely fits):\n${userMemoryContext.join('\n')}\n\nMemory is historical evidence, not a verdict about the current event. If you use it, compare the present situation with the earlier learning and preserve uncertainty. Do not say the user "always" reacts a certain way.`
       : '';
 
-    const prompt = `USER REFLECTION SITUATION:\n"${situationText}"\n${memoryPrompt}\n${personalContext}\nProvide a structured Shift Breakdown following the S-H-I-F-T framework and all governing principles. Distinguish observation from interpretation, present protective rules strictly as a working hypothesis, provide a believable non-toxic updated perspective, and suggest real-world experiments and arcade games. Return strictly JSON.`;
+    const prompt = `USER REFLECTION SITUATION:\n"${situationText}"\n${memoryPrompt}\n${personalContext}\n${personalHistoryContext}\nProvide a structured Shift Breakdown following the S-H-I-F-T framework and all governing principles. Distinguish observation from interpretation, present protective rules strictly as a working hypothesis, provide a believable non-toxic updated perspective, and suggest real-world experiments and arcade games. Return strictly JSON.`;
 
     const responseText = await callModelWithFallback({
       contents: prompt,
-      systemInstruction: SHIFT_SYSTEM_INSTRUCTION + "\n" + PERSONAL_CONTEXT_RULES + "\n" + evidencePrompt(situationText),
+      systemInstruction: SHIFT_SYSTEM_INSTRUCTION + "\n" + PERSONAL_CONTEXT_RULES + "\n" + DETAILED_HISTORY_RULES + "\n" + evidencePrompt(situationText),
       jsonResponse: true,
     });
 

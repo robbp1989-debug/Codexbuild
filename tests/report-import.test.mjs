@@ -34,8 +34,21 @@ test('empty, oversized, unsupported, malformed DOCX and overlong text fail clear
     new File(['x'.repeat(4 * 1024 * 1024 + 1)], 'large.txt'),
     new File(['x'], 'report.exe'),
     new File(['not a zip'], 'report.docx'),
-    new File(['x'.repeat(80001)], 'long.txt'),
+    new File(['x'.repeat(120001)], 'long.txt'),
   ])
     await assert.rejects(() => readReport(file));
+});
+test('full reports beyond the former browser limit retain all text up to the account limit', async () => {
+  for (const length of [106772, 120000]) {
+    const suffix = '\nFinal detail: a childhood promise matters.';
+    const text = 'x'.repeat(length - suffix.length) + suffix;
+    const result = await readReport(new File([text], 'full-history.txt'));
+    assert.equal(result, text);
+    assert.match(result, /Final detail: a childhood promise matters\.$/);
+  }
+  await assert.rejects(
+    () => readReport(new File(['x'.repeat(120001)], 'too-long.txt')),
+    /120,000.*no text has been shortened or saved/,
+  );
 });
 test.after(() => rm(dir, { recursive: true, force: true }));
