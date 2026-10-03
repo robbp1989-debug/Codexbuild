@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
-import { getSourceBucket } from './persistence';
+import { archiveLearningMemory, getSourceBucket } from './persistence';
+import { deleteMemoryEmbedding } from './semanticMemory';
 
 export interface AccountMemoryRecord {
   id: string;
@@ -36,13 +37,20 @@ function db(): D1Database | null {
 function tags(raw: string): string[] {
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string').slice(0, 8) : [];
+    return Array.isArray(parsed)
+      ? parsed
+          .filter((value): value is string => typeof value === 'string')
+          .slice(0, 8)
+      : [];
   } catch {
     return [];
   }
 }
 
-export async function listAccountMemories(userId: string, limit = 100): Promise<AccountMemoryRecord[]> {
+export async function listAccountMemories(
+  userId: string,
+  limit = 100,
+): Promise<AccountMemoryRecord[]> {
   const database = db();
   if (!database) return [];
   const result = await database
@@ -72,21 +80,16 @@ export async function listAccountMemories(userId: string, limit = 100): Promise<
   }));
 }
 
-export async function archiveAccountMemory(userId: string, memoryId: string): Promise<boolean> {
-  const database = db();
-  if (!database) return false;
-  const result = await database
-    .prepare(
-      `UPDATE learning_memories
-       SET archived_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND user_id = ?`,
-    )
-    .bind(memoryId, userId)
-    .run();
-  return Boolean(result.success);
+export async function archiveAccountMemory(
+  userId: string,
+  memoryId: string,
+): Promise<boolean> {
+  return archiveLearningMemory(userId, memoryId);
 }
 
-export async function listAccountSources(userId: string): Promise<AccountSourceRecord[]> {
+export async function listAccountSources(
+  userId: string,
+): Promise<AccountSourceRecord[]> {
   const database = db();
   if (!database) return [];
   const result = await database
@@ -142,8 +145,23 @@ export async function deleteAccountSource(args: {
       .bind(args.documentId, args.userId),
   ];
   if (args.deleteLearning) {
+    const memoryRows = await database
+      .prepare(
+        'SELECT id FROM learning_memories WHERE user_id = ? AND source_id = ?',
+      )
+      .bind(args.userId, args.documentId)
+      .all<{ id: string }>();
+    // Remove optional acceleration data explicitly; correctness never depends on
+    // the deployment having foreign-key cascades enabled.
+    for (const memory of memoryRows.results || []) {
+      await deleteMemoryEmbedding(args.userId, memory.id);
+    }
     statements.push(
-      database.prepare('DELETE FROM learning_memories WHERE user_id = ? AND source_id = ?').bind(args.userId, args.documentId),
+      database
+        .prepare(
+          'DELETE FROM learning_memories WHERE user_id = ? AND source_id = ?',
+        )
+        .bind(args.userId, args.documentId),
     );
   }
   await database.batch(statements);

@@ -10,10 +10,57 @@ export type CompactMemoryItem = {
   createdAt?: string;
   updatedAt?: string;
   sourceSessionId?: string;
+  /** Request-local provenance. Never persisted as user memory content. */
+  origin?: 'account' | 'device';
+};
+
+export type SelectedMemoryContext = {
+  context: string[];
+  origins: Array<'account' | 'device'>;
 };
 
 const STOP_WORDS = new Set([
-  'a','an','and','are','as','at','be','been','but','by','for','from','had','has','have','i','if','in','is','it','me','my','of','on','or','that','the','their','them','they','this','to','was','were','what','when','where','who','with','you','your',
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'been',
+  'but',
+  'by',
+  'for',
+  'from',
+  'had',
+  'has',
+  'have',
+  'i',
+  'if',
+  'in',
+  'is',
+  'it',
+  'me',
+  'my',
+  'of',
+  'on',
+  'or',
+  'that',
+  'the',
+  'their',
+  'them',
+  'they',
+  'this',
+  'to',
+  'was',
+  'were',
+  'what',
+  'when',
+  'where',
+  'who',
+  'with',
+  'you',
+  'your',
 ]);
 
 const MEMORY_TYPE_WEIGHT: Record<string, number> = {
@@ -65,7 +112,10 @@ function recencyBonus(dateText?: string): number {
   return 0.15;
 }
 
-function lexicalOverlap(queryTokens: Set<string>, memoryTokens: Set<string>): number {
+function lexicalOverlap(
+  queryTokens: Set<string>,
+  memoryTokens: Set<string>,
+): number {
   if (!queryTokens.size || !memoryTokens.size) return 0;
   let hits = 0;
   queryTokens.forEach((token) => {
@@ -77,6 +127,53 @@ function lexicalOverlap(queryTokens: Set<string>, memoryTokens: Set<string>): nu
 function compactContent(content: string): string {
   const clean = normalizeText(content);
   return clean.length <= 420 ? clean : `${clean.slice(0, 417)}...`;
+}
+
+export function canonicalMemorySignature(memory: CompactMemoryItem): string {
+  const canonical = (value: unknown) =>
+    normalizeText(value)
+      .toLowerCase()
+      .replace(/[“”"'`]/g, '')
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  return `${canonical(memory.type)}|${canonical(memory.content)}`;
+}
+
+/**
+ * Merge the migration/fallback layers without allowing a browser copy to add a
+ * second vote. Durable ids win first; canonical type/content is the stable
+ * fallback for older device rows that predate account ids.
+ */
+export function mergeAccountAndDeviceMemory(
+  accountInput: unknown,
+  deviceInput: unknown,
+): CompactMemoryItem[] {
+  const account: CompactMemoryItem[] = sanitizeMemoryItems(accountInput).map(
+    (item) => ({ ...item, origin: 'account' }),
+  );
+  const device: CompactMemoryItem[] = sanitizeMemoryItems(deviceInput).map(
+    (item) => ({ ...item, origin: 'device' }),
+  );
+  const seenIds = new Set(account.map((item) => item.id).filter(Boolean));
+  const seenSignatures = new Set(account.map(canonicalMemorySignature));
+  const output = [...account];
+
+  for (const item of device) {
+    const signature = canonicalMemorySignature(item);
+    if ((item.id && seenIds.has(item.id)) || seenSignatures.has(signature))
+      continue;
+    output.push(item);
+    if (item.id) seenIds.add(item.id);
+    seenSignatures.add(signature);
+  }
+  return output;
+}
+
+function isExplicitCorrection(query: string): boolean {
+  return /\b(correction|that's wrong|that is wrong|not anymore|no longer|i was wrong|scratch that|please update that|i do not prefer|i don't prefer)\b/i.test(
+    query,
+  );
 }
 
 function evidenceBonus(count?: number): number {
@@ -98,7 +195,8 @@ function confidenceBonus(confidence?: string): number {
 }
 
 function safeEmbedding(value: unknown): number[] | undefined {
-  if (!Array.isArray(value) || value.length !== MEMORY_EMBEDDING_DIMENSIONS) return undefined;
+  if (!Array.isArray(value) || value.length !== MEMORY_EMBEDDING_DIMENSIONS)
+    return undefined;
   const vector = value.map(Number);
   return vector.every(Number.isFinite) ? vector : undefined;
 }
@@ -120,19 +218,29 @@ function cosineSimilarity(a?: number[], b?: number[]): number {
 export function sanitizeMemoryItems(input: unknown): CompactMemoryItem[] {
   if (!Array.isArray(input)) return [];
   return input
-    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+    .filter((item): item is Record<string, unknown> =>
+      Boolean(item && typeof item === 'object'),
+    )
     .map((item) => ({
       id: normalizeText(item.id),
       type: normalizeText(item.type).toUpperCase(),
       content: normalizeText(item.content),
       status: normalizeText(item.status).toLowerCase(),
       confidence: normalizeText(item.confidence).toLowerCase(),
-      evidenceCount: Number.isFinite(Number(item.evidenceCount)) ? Math.max(1, Number(item.evidenceCount)) : 1,
+      evidenceCount: Number.isFinite(Number(item.evidenceCount))
+        ? Math.max(1, Number(item.evidenceCount))
+        : 1,
       sourceKind: normalizeText(item.sourceKind).toLowerCase(),
       embedding: safeEmbedding(item.embedding),
       createdAt: normalizeText(item.createdAt),
       updatedAt: normalizeText(item.updatedAt),
       sourceSessionId: normalizeText(item.sourceSessionId),
+      origin:
+        item.origin === 'account'
+          ? ('account' as const)
+          : item.origin === 'device'
+            ? ('device' as const)
+            : undefined,
     }))
     .filter((item) => Boolean(item.content && item.type));
 }
@@ -143,9 +251,27 @@ export function selectRelevantMemoryContext(
   limit = 6,
   queryEmbedding?: number[] | null,
 ): string[] {
+  return selectRelevantMemoryContextWithProvenance(
+    query,
+    input,
+    limit,
+    queryEmbedding,
+  ).context;
+}
+
+export function selectRelevantMemoryContextWithProvenance(
+  query: string,
+  input: unknown,
+  limit = 6,
+  queryEmbedding?: number[] | null,
+): SelectedMemoryContext {
+  // The correction itself is authoritative. Omitting historical generic memory
+  // from this turn prevents the stale claim from framing the model's response.
+  if (isExplicitCorrection(query)) return { context: [], origins: [] };
   const queryTokens = tokens(query);
   const safeQueryEmbedding = safeEmbedding(queryEmbedding);
-  if (!queryTokens.size && !safeQueryEmbedding) return [];
+  if (!queryTokens.size && !safeQueryEmbedding)
+    return { context: [], origins: [] };
 
   const memories = sanitizeMemoryItems(input)
     .filter((item) => item.status !== 'archived')
@@ -156,29 +282,67 @@ export function selectRelevantMemoryContext(
       const type = item.type || '';
       const content = item.content || '';
       const overlap = lexicalOverlap(queryTokens, tokens(content));
-      const semantic = Math.max(0, cosineSimilarity(safeQueryEmbedding, item.embedding));
+      const semantic = Math.max(
+        0,
+        cosineSimilarity(safeQueryEmbedding, item.embedding),
+      );
       const typeWeight = MEMORY_TYPE_WEIGHT[type] || 1;
       const recent = recencyBonus(item.updatedAt || item.createdAt);
       const evidence = evidenceBonus(item.evidenceCount);
       const confidence = confidenceBonus(item.confidence);
       // Lexical or semantic similarity creates relevance. Type, recency,
       // confirmation, and evidence only rank memories after that gate is crossed.
-      const score = overlap * 10 + semantic * 6 + typeWeight * 0.45 + recent + evidence + confidence;
+      const score =
+        overlap * 10 +
+        semantic * 6 +
+        typeWeight * 0.45 +
+        recent +
+        evidence +
+        confidence;
       return { item, overlap, semantic, score };
     })
-    .filter(({ overlap, semantic }) => overlap > 0 || semantic >= SEMANTIC_RELEVANCE_THRESHOLD)
+    .filter(
+      ({ overlap, semantic }) =>
+        overlap > 0 || semantic >= SEMANTIC_RELEVANCE_THRESHOLD,
+    )
     .sort((a, b) => b.score - a.score)
     .slice(0, Math.max(0, Math.min(limit, 8)));
 
-  return ranked.map(({ item }) => {
+  const context = ranked.map(({ item }) => {
     const type = item.type || 'MEMORY';
-    const evidence = item.evidenceCount && item.evidenceCount > 1 ? `; evidence=${item.evidenceCount}` : '';
+    const evidence =
+      item.evidenceCount && item.evidenceCount > 1
+        ? `; evidence=${item.evidenceCount}`
+        : '';
     const confidence = item.confidence ? `; confidence=${item.confidence}` : '';
     return `[${type}${evidence}${confidence}] ${compactContent(item.content || '')}`;
   });
+  const origins = [
+    ...new Set(
+      ranked
+        .map(({ item }) => item.origin)
+        .filter(
+          (origin): origin is 'account' | 'device' =>
+            origin === 'account' || origin === 'device',
+        ),
+    ),
+  ];
+  return { context, origins };
 }
 
-export function mergeMemoryContext(primary: string[], legacy: unknown): string[] {
+export function publicMemorySource(
+  origins: SelectedMemoryContext['origins'],
+): 'account' | 'device' | 'mixed' | 'none' {
+  if (origins.includes('account') && origins.includes('device')) return 'mixed';
+  if (origins.includes('account')) return 'account';
+  if (origins.includes('device')) return 'device';
+  return 'none';
+}
+
+export function mergeMemoryContext(
+  primary: string[],
+  legacy: unknown,
+): string[] {
   const output = [...primary];
   if (Array.isArray(legacy)) {
     for (const value of legacy) {
@@ -186,7 +350,8 @@ export function mergeMemoryContext(primary: string[], legacy: unknown): string[]
       const clean = normalizeText(value);
       // Backward compatibility only. Keep old manually-approved summaries short so
       // a large source narrative cannot accidentally become repeated prompt context.
-      if (clean && clean.length <= 700) output.push(`[USER-APPROVED SUMMARY] ${clean}`);
+      if (clean && clean.length <= 700)
+        output.push(`[USER-APPROVED SUMMARY] ${clean}`);
     }
   }
   return [...new Set(output)].slice(0, 8);

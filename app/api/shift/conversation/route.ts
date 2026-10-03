@@ -1,7 +1,11 @@
 import { personalContextPrompt } from '@/server/personalContext';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { sanitizeMemoryItems, selectRelevantMemoryContext } from '@/server/memoryContext';
-import { loadLearningMemories } from '@/server/persistence';
+import {
+  mergeAccountAndDeviceMemory,
+  publicMemorySource,
+  selectRelevantMemoryContextWithProvenance,
+} from '@/server/memoryContext';
+import { hasDurableStorage, loadLearningMemories } from '@/server/persistence';
 import { evaluateSafety } from '@/server/safetyCheck';
 import { embedMemoryQuery } from '@/server/semanticMemory';
 import { orchestrateShiftConversation } from '@/server/shiftConversationOrchestrator';
@@ -12,7 +16,10 @@ function compact(value: string) {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function nonRepeatingFallback(message: string, history: Array<{ role: 'user' | 'assistant'; content: string }>) {
+function nonRepeatingFallback(
+  message: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+) {
   const lower = message.toLowerCase();
   if (/\b(angry|annoyed|frustrated|resentful|mad)\b/.test(lower)) {
     return 'That anger or frustration is worth noticing before we explain anyone else. What happened that felt unacceptable to you, and what did you want instead?';
@@ -23,7 +30,9 @@ function nonRepeatingFallback(message: string, history: Array<{ role: 'user' | '
   if (/\b(hurt|sad|disappointed|lonely|rejected)\b/.test(lower)) {
     return 'There is something painful there before we try to update the meaning. What part landed as hurt or disappointment, and what did you need in that moment?';
   }
-  if (/\b(because|maybe they|i think they|probably they|must have)\b/.test(lower)) {
+  if (
+    /\b(because|maybe they|i think they|probably they|must have)\b/.test(lower)
+  ) {
     return 'We have a good theory. Before we explain it, what happened inside you? Name the feeling, urge, or need that showed up before the analysis took over.';
   }
 
@@ -38,12 +47,25 @@ function nonRepeatingFallback(message: string, history: Array<{ role: 'user' | '
 
 export async function POST(request: Request) {
   try {
-    const { message, currentShift, history, memoryItems, personalContext, approvedSummary } = await request.json() as Record<string, unknown>;
+    const {
+      message,
+      currentShift,
+      history,
+      memoryItems,
+      personalContext,
+      approvedSummary,
+    } = (await request.json()) as Record<string, unknown>;
     if (typeof message !== 'string' || !message.trim()) {
-      return Response.json({ error: 'Please enter what you want to keep talking about.' }, { status: 400 });
+      return Response.json(
+        { error: 'Please enter what you want to keep talking about.' },
+        { status: 400 },
+      );
     }
     if (!currentShift || typeof currentShift !== 'object') {
-      return Response.json({ error: 'An active Shift reflection is required.' }, { status: 400 });
+      return Response.json(
+        { error: 'An active Shift reflection is required.' },
+        { status: 400 },
+      );
     }
 
     const safety = evaluateSafety(message);
@@ -56,51 +78,86 @@ export async function POST(request: Request) {
     }
 
     const shiftRecord = currentShift as Record<string, unknown>;
-    const observation = typeof shiftRecord.userEditedObservation === 'string'
-      ? shiftRecord.userEditedObservation
-      : typeof shiftRecord.observation === 'string'
-        ? shiftRecord.observation
-        : '';
+    const observation =
+      typeof shiftRecord.userEditedObservation === 'string'
+        ? shiftRecord.userEditedObservation
+        : typeof shiftRecord.observation === 'string'
+          ? shiftRecord.observation
+          : '';
 
     const user = await getChatGPTUser();
     let durableMemory: Awaited<ReturnType<typeof loadLearningMemories>> = [];
     let therapyLessons: Awaited<ReturnType<typeof loadTherapyLessons>> = [];
-    if (user) {
+    let accountMemoryAvailable = false;
+    if (user && hasDurableStorage()) {
       try {
         durableMemory = await loadLearningMemories(user.userId, 120);
+        accountMemoryAvailable = true;
       } catch (error) {
-        console.info('[SHIFT Memory] Account memory unavailable in Keep Talking; using device learning.', error);
+        console.info(
+          '[SHIFT Memory] Account memory unavailable in Keep Talking; using device learning.',
+          error,
+        );
       }
       try {
         therapyLessons = await loadTherapyLessons(user.userId, 60);
       } catch (error) {
-        console.info('[SHIFT Therapy Lessons] Professional learning unavailable for this request.', error);
+        console.info(
+          '[SHIFT Therapy Lessons] Professional learning unavailable for this request.',
+          error,
+        );
       }
     }
 
-    const combinedMemory = [...durableMemory, ...sanitizeMemoryItems(memoryItems)];
+    const combinedMemory = mergeAccountAndDeviceMemory(
+      durableMemory,
+      memoryItems,
+    );
     const retrievalQuery = `${observation}\n${message}`;
     let queryEmbedding: number[] | null = null;
-    if (durableMemory.some((memory) => Array.isArray(memory.embedding) && memory.embedding.length > 0)) {
+    if (
+      durableMemory.some(
+        (memory) =>
+          Array.isArray(memory.embedding) && memory.embedding.length > 0,
+      )
+    ) {
       try {
         queryEmbedding = await embedMemoryQuery(retrievalQuery);
       } catch {
         queryEmbedding = null;
       }
     }
-    const relevantMemory = selectRelevantMemoryContext(retrievalQuery, combinedMemory, 6, queryEmbedding);
-    const relevantTherapyLessons = selectRelevantTherapyLessons(retrievalQuery, therapyLessons, 3);
+    const selection = selectRelevantMemoryContextWithProvenance(
+      retrievalQuery,
+      combinedMemory,
+      6,
+      queryEmbedding,
+    );
+    const relevantMemory = selection.context;
+    const relevantTherapyLessons = selectRelevantTherapyLessons(
+      retrievalQuery,
+      therapyLessons,
+      3,
+    );
     const safeHistory = Array.isArray(history)
       ? history
-          .filter((turn): turn is { role: 'user' | 'assistant'; content: string } => {
-            if (!turn || typeof turn !== 'object') return false;
-            const record = turn as Record<string, unknown>;
-            return (record.role === 'user' || record.role === 'assistant') && typeof record.content === 'string';
-          })
+          .filter(
+            (turn): turn is { role: 'user' | 'assistant'; content: string } => {
+              if (!turn || typeof turn !== 'object') return false;
+              const record = turn as Record<string, unknown>;
+              return (
+                (record.role === 'user' || record.role === 'assistant') &&
+                typeof record.content === 'string'
+              );
+            },
+          )
           .slice(-8)
       : [];
     const recentConversation = safeHistory
-      .map((turn) => `${turn.role}: ${turn.content.replace(/\s+/g, ' ').trim().slice(0, 800)}`)
+      .map(
+        (turn) =>
+          `${turn.role}: ${turn.content.replace(/\s+/g, ' ').trim().slice(0, 800)}`,
+      )
       .join('\n');
 
     const result = await orchestrateShiftConversation({
@@ -117,33 +174,45 @@ export async function POST(request: Request) {
       ),
     });
 
-    const previousAssistant = [...safeHistory].reverse().find((turn) => turn.role === 'assistant');
-    const reply = result.responseMode === 'model' && previousAssistant && compact(previousAssistant.content) === compact(result.reply)
-      ? nonRepeatingFallback(message.trim(), safeHistory)
-      : result.reply;
+    const previousAssistant = [...safeHistory]
+      .reverse()
+      .find((turn) => turn.role === 'assistant');
+    const reply =
+      result.responseMode === 'model' &&
+      previousAssistant &&
+      compact(previousAssistant.content) === compact(result.reply)
+        ? nonRepeatingFallback(message.trim(), safeHistory)
+        : result.reply;
 
-    const evidence = result.research.status === 'grounded'
-      ? {
-          version: 'dynamic-web-v1',
-          sources: result.research.sources.map((source) => ({
-            title: source.title,
-            url: source.url,
-            sourceType: source.sourceType,
-          })),
-        }
-      : undefined;
+    const evidence =
+      result.research.status === 'grounded'
+        ? {
+            version: 'dynamic-web-v1',
+            sources: result.research.sources.map((source) => ({
+              title: source.title,
+              url: source.url,
+              sourceType: source.sourceType,
+            })),
+          }
+        : undefined;
 
     return Response.json({
       safetyInterruption: false,
       relevantMemory,
-      memorySource: durableMemory.length > 0 ? 'account' : 'device_or_none',
+      memorySource: publicMemorySource(selection.origins),
+      accountMemoryAvailable,
       memoryRetrieval: queryEmbedding ? 'semantic_and_lexical' : 'lexical',
-      therapyLessonRetrieval: relevantTherapyLessons.length ? 'relevant_user_confirmed' : 'none',
+      therapyLessonRetrieval: relevantTherapyLessons.length
+        ? 'relevant_user_confirmed'
+        : 'none',
       ...result,
       evidence,
       reply,
     });
   } catch {
-    return Response.json({ error: 'Unable to continue this reflection. Please try again.' }, { status: 500 });
+    return Response.json(
+      { error: 'Unable to continue this reflection. Please try again.' },
+      { status: 500 },
+    );
   }
 }
