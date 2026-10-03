@@ -77,13 +77,19 @@ export async function ensureUser(userId: string): Promise<boolean> {
 function safeTags(raw: string): string[] {
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string').slice(0, 8) : [];
+    return Array.isArray(parsed)
+      ? parsed
+          .filter((value): value is string => typeof value === 'string')
+          .slice(0, 8)
+      : [];
   } catch {
     return [];
   }
 }
 
-function memoryEmbeddingText(memory: Pick<LearningMemoryCandidate, 'type' | 'label' | 'summary' | 'tags'>): string {
+function memoryEmbeddingText(
+  memory: Pick<LearningMemoryCandidate, 'type' | 'label' | 'summary' | 'tags'>,
+): string {
   return [memory.type, memory.label, memory.summary, ...(memory.tags || [])]
     .filter(Boolean)
     .join(' ')
@@ -91,7 +97,12 @@ function memoryEmbeddingText(memory: Pick<LearningMemoryCandidate, 'type' | 'lab
     .trim();
 }
 
-function rowEmbeddingText(row: Pick<LearningMemoryRow, 'memory_type' | 'label' | 'summary' | 'tags_json'>): string {
+function rowEmbeddingText(
+  row: Pick<
+    LearningMemoryRow,
+    'memory_type' | 'label' | 'summary' | 'tags_json'
+  >,
+): string {
   return [row.memory_type, row.label, row.summary, ...safeTags(row.tags_json)]
     .filter(Boolean)
     .join(' ')
@@ -99,7 +110,10 @@ function rowEmbeddingText(row: Pick<LearningMemoryRow, 'memory_type' | 'label' |
     .trim();
 }
 
-function rowToCompactMemory(row: LearningMemoryRow, embedding?: number[]): CompactMemoryItem {
+function rowToCompactMemory(
+  row: LearningMemoryRow,
+  embedding?: number[],
+): CompactMemoryItem {
   const tags = safeTags(row.tags_json);
   const tagText = tags.length ? ` | tags: ${tags.join(', ')}` : '';
   return {
@@ -119,7 +133,10 @@ function rowToCompactMemory(row: LearningMemoryRow, embedding?: number[]): Compa
   };
 }
 
-export async function loadLearningMemories(userId: string, limit = 80): Promise<CompactMemoryItem[]> {
+export async function loadLearningMemories(
+  userId: string,
+  limit = 80,
+): Promise<CompactMemoryItem[]> {
   const db = getDb();
   if (!db || !userId) return [];
   await ensureUser(userId);
@@ -138,7 +155,10 @@ export async function loadLearningMemories(userId: string, limit = 80): Promise<
   const rows = result.results || [];
   let embeddings = new Map<string, number[]>();
   try {
-    embeddings = await loadMemoryEmbeddings(userId, rows.map((row) => row.id));
+    embeddings = await loadMemoryEmbeddings(
+      userId,
+      rows.map((row) => row.id),
+    );
   } catch {
     // Semantic retrieval is optional. The same memories remain available to the
     // lexical selector if vector storage is unavailable.
@@ -175,9 +195,18 @@ function canonicalLearningText(value: string): string {
     .trim();
 }
 
-function strongerConfidence(existing: string, incoming: LearningMemoryCandidate['confidence']): string {
-  const rank: Record<string, number> = { working: 1, observed: 2, user_confirmed: 3 };
-  return (rank[incoming] || 0) > (rank[existing] || 0) ? incoming : existing || incoming;
+function strongerConfidence(
+  existing: string,
+  incoming: LearningMemoryCandidate['confidence'],
+): string {
+  const rank: Record<string, number> = {
+    working: 1,
+    observed: 2,
+    user_confirmed: 3,
+  };
+  return (rank[incoming] || 0) > (rank[existing] || 0)
+    ? incoming
+    : existing || incoming;
 }
 
 function mergedTags(existingRaw: string, incoming: string[]): string[] {
@@ -219,11 +248,15 @@ async function consolidateExactLearning(
   // A duplicate submit from the same source is idempotent. A genuinely separate
   // source confirming the same compact learning adds one evidence point. A missing
   // source id is treated as idempotent rather than inventing independent evidence.
-  const sameSource = !sourceId || !match.source_id || sourceId === match.source_id;
+  const sameSource =
+    !sourceId || !match.source_id || sourceId === match.source_id;
   const nextEvidenceCount = sameSource
     ? Math.max(1, Number(match.evidence_count || 1))
     : Math.max(1, Number(match.evidence_count || 1)) + 1;
-  const nextConfidence = strongerConfidence(match.confidence, memory.confidence);
+  const nextConfidence = strongerConfidence(
+    match.confidence,
+    memory.confidence,
+  );
   const nextTags = mergedTags(match.tags_json, memory.tags || []);
 
   await db
@@ -232,7 +265,13 @@ async function consolidateExactLearning(
        SET evidence_count = ?, confidence = ?, tags_json = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND user_id = ?`,
     )
-    .bind(nextEvidenceCount, nextConfidence, JSON.stringify(nextTags), match.id, userId)
+    .bind(
+      nextEvidenceCount,
+      nextConfidence,
+      JSON.stringify(nextTags),
+      match.id,
+      userId,
+    )
     .run();
 
   return { id: match.id, tags: nextTags };
@@ -248,8 +287,27 @@ export async function replaceLearningMemoriesForSource(
   if (!db || !userId || !sourceId) return false;
   await ensureUser(userId);
 
+  const previous = await db
+    .prepare(
+      'SELECT id FROM learning_memories WHERE user_id = ? AND source_id = ?',
+    )
+    .bind(userId, sourceId)
+    .all<{ id: string }>();
+  for (const row of previous.results || []) {
+    try {
+      await deleteMemoryEmbedding(userId, row.id);
+    } catch {
+      // The authoritative rows are replaced below even if optional cleanup is
+      // unavailable. Orphan vectors can never enter retrieval without a D1 row.
+    }
+  }
+
   const statements: D1PreparedStatement[] = [
-    db.prepare('DELETE FROM learning_memories WHERE user_id = ? AND source_id = ?').bind(userId, sourceId),
+    db
+      .prepare(
+        'DELETE FROM learning_memories WHERE user_id = ? AND source_id = ?',
+      )
+      .bind(userId, sourceId),
   ];
   const embeddingEntries: Array<{ memoryId: string; text: string }> = [];
 
@@ -292,19 +350,30 @@ export async function saveLearningMemory(
   userId: string,
   sourceId: string | null,
   memory: LearningMemoryCandidate,
-  sourceKind: 'reflection' | 'conversation' | 'document' | 'prediction_outcome' = 'conversation',
+  sourceKind:
+    | 'reflection'
+    | 'conversation'
+    | 'document'
+    | 'prediction_outcome' = 'conversation',
 ): Promise<string | null> {
   const db = getDb();
   if (!db || !userId) return null;
   await ensureUser(userId);
 
-  const consolidated = await consolidateExactLearning(db, userId, sourceId, memory);
+  const consolidated = await consolidateExactLearning(
+    db,
+    userId,
+    sourceId,
+    memory,
+  );
   if (consolidated) {
     try {
-      await upsertMemoryEmbeddings(userId, [{
-        memoryId: consolidated.id,
-        text: memoryEmbeddingText({ ...memory, tags: consolidated.tags }),
-      }]);
+      await upsertMemoryEmbeddings(userId, [
+        {
+          memoryId: consolidated.id,
+          text: memoryEmbeddingText({ ...memory, tags: consolidated.tags }),
+        },
+      ]);
     } catch {
       // Exact durable learning remains valid without a refreshed vector.
     }
@@ -334,14 +403,19 @@ export async function saveLearningMemory(
     .run();
 
   try {
-    await upsertMemoryEmbeddings(userId, [{ memoryId: id, text: memoryEmbeddingText(memory) }]);
+    await upsertMemoryEmbeddings(userId, [
+      { memoryId: id, text: memoryEmbeddingText(memory) },
+    ]);
   } catch {
     // Durable memory is still saved and remains lexically retrievable.
   }
   return id;
 }
 
-export async function archiveLearningMemory(userId: string, memoryIdValue: string): Promise<boolean> {
+export async function archiveLearningMemory(
+  userId: string,
+  memoryIdValue: string,
+): Promise<boolean> {
   const db = getDb();
   if (!db || !userId || !memoryIdValue) return false;
   const result = await db
