@@ -50,6 +50,47 @@ test('canonical deduplication handles legacy copies without durable ids', () => 
   assert.equal(merged.length, 1);
 });
 
+test('canonical deduplication ignores evolved rendered tags and keeps account provenance', () => {
+  const account = {
+    ...boundary,
+    content: `${boundary.content} | tags: work, evenings, availability`,
+  };
+  const staleDevice = {
+    ...boundary,
+    id: 'local-older-tags',
+    content: `${boundary.content} | tags: work`,
+  };
+  const merged = mergeAccountAndDeviceMemory([account], [staleDevice]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].origin, 'account');
+});
+
+test('authoritative account archive suppresses a stale active device copy', () => {
+  // Archived rows are intentionally absent from the active D1 query. An empty,
+  // successful account result must therefore outrank an old browser cache.
+  const merged = mergeAccountAndDeviceMemory([], [boundary], true);
+  assert.deepEqual(merged, []);
+  assert.deepEqual(selectRelevantMemoryContext('late work messages', merged), []);
+});
+
+test('authoritative source deletion suppresses stale source-derived device learning', () => {
+  const sourceLearning = {
+    ...boundary,
+    id: 'local-source-copy',
+    sourceKind: 'document',
+    sourceSessionId: 'deleted-document-id',
+  };
+  const merged = mergeAccountAndDeviceMemory([], [sourceLearning], true);
+  assert.deepEqual(merged, []);
+  assert.deepEqual(selectRelevantMemoryContext('late work messages', merged), []);
+});
+
+test('device memory remains fallback when the account read is unavailable', () => {
+  const merged = mergeAccountAndDeviceMemory([], [boundary], false);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].origin, 'device');
+});
+
 test('related learning passes relevance while unrelated high-value learning stays out', () => {
   const related = selectRelevantMemoryContext(
     'Late-night work messages keep arriving.',
@@ -75,6 +116,33 @@ test('a correction turn is not contaminated by stale generic memory', () => {
     [preference],
   );
   assert.deepEqual(selected, []);
+});
+
+test('correction detection uses only the current Keep Talking message', () => {
+  const preference = {
+    type: 'USER_PREFERENCE',
+    content: 'Choice: I prefer option A.',
+    status: 'active',
+    confidence: 'user_confirmed',
+  };
+  const retrievalQuery = 'Earlier observation: Correction, I prefer option A.\nTell me more about option A.';
+  const ordinaryTurn = selectRelevantMemoryContext(
+    retrievalQuery,
+    [preference],
+    6,
+    null,
+    'Tell me more about option A.',
+  );
+  assert.equal(ordinaryTurn.length, 1);
+
+  const correctiveTurn = selectRelevantMemoryContext(
+    'Earlier observation mentions option A.\nCorrection, I prefer option B now.',
+    [preference],
+    6,
+    null,
+    'Correction, I prefer option B now.',
+  );
+  assert.deepEqual(correctiveTurn, []);
 });
 
 test('rejected hypotheses remain active negative evidence when relevant', () => {

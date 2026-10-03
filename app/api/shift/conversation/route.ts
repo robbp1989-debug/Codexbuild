@@ -112,6 +112,7 @@ export async function POST(request: Request) {
     const combinedMemory = mergeAccountAndDeviceMemory(
       durableMemory,
       memoryItems,
+      accountMemoryAvailable,
     );
     const retrievalQuery = `${observation}\n${message}`;
     let queryEmbedding: number[] | null = null;
@@ -132,6 +133,7 @@ export async function POST(request: Request) {
       combinedMemory,
       6,
       queryEmbedding,
+      message,
     );
     const relevantMemory = selection.context;
     const relevantTherapyLessons = selectRelevantTherapyLessons(

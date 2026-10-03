@@ -69,6 +69,7 @@ export async function POST(request: Request) {
     const combinedMemory = mergeAccountAndDeviceMemory(
       durableMemory,
       memoryItems,
+      accountMemoryAvailable,
     );
     let queryEmbedding: number[] | null = null;
     if (

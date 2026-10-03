@@ -137,7 +137,14 @@ export function canonicalMemorySignature(memory: CompactMemoryItem): string {
       .replace(/[^a-z0-9\s-]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-  return `${canonical(memory.type)}|${canonical(memory.content)}`;
+  // Tags are mutable ranking metadata. Device rows render them into `content`,
+  // while account consolidation may merge a newer tag set. They must not become
+  // part of the logical identity or create another vote for the same learning.
+  const learningContent = normalizeText(memory.content).replace(
+    /\s*\|\s*tags\s*:.*$/i,
+    '',
+  );
+  return `${canonical(memory.type)}|${canonical(learningContent)}`;
 }
 
 /**
@@ -148,6 +155,7 @@ export function canonicalMemorySignature(memory: CompactMemoryItem): string {
 export function mergeAccountAndDeviceMemory(
   accountInput: unknown,
   deviceInput: unknown,
+  accountAuthoritative = false,
 ): CompactMemoryItem[] {
   const account: CompactMemoryItem[] = sanitizeMemoryItems(accountInput).map(
     (item) => ({ ...item, origin: 'account' }),
@@ -155,6 +163,12 @@ export function mergeAccountAndDeviceMemory(
   const device: CompactMemoryItem[] = sanitizeMemoryItems(deviceInput).map(
     (item) => ({ ...item, origin: 'device' }),
   );
+  // Once the authenticated D1 read succeeds, its active rows are the complete
+  // authority. Do not accept browser migration copies in that request: an absent
+  // row may be an archive/source deletion, which an old browser cannot override.
+  // Device rows remain the fallback when account storage is unavailable or the
+  // read fails. A future migration must be an explicit, consented write to D1.
+  if (accountAuthoritative) return account;
   const seenIds = new Set(account.map((item) => item.id).filter(Boolean));
   const seenSignatures = new Set(account.map(canonicalMemorySignature));
   const output = [...account];
@@ -250,12 +264,14 @@ export function selectRelevantMemoryContext(
   input: unknown,
   limit = 6,
   queryEmbedding?: number[] | null,
+  correctionInput = query,
 ): string[] {
   return selectRelevantMemoryContextWithProvenance(
     query,
     input,
     limit,
     queryEmbedding,
+    correctionInput,
   ).context;
 }
 
@@ -264,10 +280,11 @@ export function selectRelevantMemoryContextWithProvenance(
   input: unknown,
   limit = 6,
   queryEmbedding?: number[] | null,
+  correctionInput = query,
 ): SelectedMemoryContext {
   // The correction itself is authoritative. Omitting historical generic memory
   // from this turn prevents the stale claim from framing the model's response.
-  if (isExplicitCorrection(query)) return { context: [], origins: [] };
+  if (isExplicitCorrection(correctionInput)) return { context: [], origins: [] };
   const queryTokens = tokens(query);
   const safeQueryEmbedding = safeEmbedding(queryEmbedding);
   if (!queryTokens.size && !safeQueryEmbedding)
