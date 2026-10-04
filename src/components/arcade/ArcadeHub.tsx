@@ -45,7 +45,7 @@ import { PersonalizedScenarioGame } from './modes/PersonalizedScenarioGame';
 import { UrgeSurfer3D } from './3d/UrgeSurfer3D';
 import { RealityTarget3D } from './3d/RealityTarget3D';
 import { PerspectivePrism3D } from './3d/PerspectivePrism3D';
-import { ResponsibilityScale3D } from './3d/ResponsibilityScale3D';
+import { ResponsibilityScale3D } from './3d/ResponsibilityScale3D';\nimport { OrbitalGarden3D } from './3d/OrbitalGarden3D';
 
 interface ModeMetadata {
   id: ArcadeModeType;
@@ -113,6 +113,17 @@ const MODES: ModeMetadata[] = [
     difficulty: 'Beginner',
     estMinutes: '2 min',
     category: 'Boundaries',
+    is3D: true,
+  },
+  {
+    id: 'orbital_garden_3d',
+    gameNumber: 17,
+    title: 'Orbital Garden',
+    tagline: 'Explore 48,000 living particles as they reorganize between a flower, gravity ring, and spiral galaxy.',
+    icon: Sparkles,
+    difficulty: 'Beginner',
+    estMinutes: '3 min',
+    category: 'Regulation',
     is3D: true,
   },
   {
@@ -335,6 +346,7 @@ export const ArcadeHub: React.FC = () => {
           {activeMode === 'reality_target_3d' && <RealityTarget3D onComplete={handleBackToHub} />}
           {activeMode === 'perspective_prism_3d' && <PerspectivePrism3D onComplete={handleBackToHub} />}
           {activeMode === 'responsibility_scale_3d' && <ResponsibilityScale3D onComplete={handleBackToHub} />}
+          {activeMode === 'orbital_garden_3d' && <OrbitalGarden3D />}
           {activeMode === 'fact_or_story' && <FactOrStoryMode onCompleteSession={handleBackToHub} />}
           {activeMode === 'known_possible_assumed' && <KnownPossibleAssumed onComplete={handleBackToHub} />}
           {activeMode === 'both_can_be_true' && <BothCanBeTrue onComplete={handleBackToHub} />}
@@ -355,7 +367,7 @@ export const ArcadeHub: React.FC = () => {
           <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-teal-950/50 border border-slate-800 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
             <div className="space-y-2 max-w-xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-950 border border-teal-500/30 text-teal-400 text-xs font-mono">
-                <span>16 REUSABLE GAME ENGINES (5 IN 3D)</span>
+                <span>17 REUSABLE GAME ENGINES (6 IN 3D)</span>
                 <span>•</span>
                 <span>ZERO TYPING</span>
               </div>
@@ -442,7 +454,7 @@ export const ArcadeHub: React.FC = () => {
             ))}
           </div>
 
-          {/* 16 Game Engines Grid */}
+          {/* 17 Game Engines Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredModes.map((mode) => {
               const Icon = mode.icon;
