@@ -54,7 +54,7 @@ export type ArcadeModeType =
   | 'urge_surfer_3d'
   | 'reality_target_3d'
   | 'perspective_prism_3d'
-  | 'responsibility_scale_3d';
+  | 'responsibility_scale_3d'\n  | 'orbital_garden_3d';
 
 export interface RuleVersion {
   versionId: string;
