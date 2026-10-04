@@ -26,7 +26,7 @@ export const OrbitalGarden3D: React.FC = () => {
 
       <div className="overflow-hidden rounded-2xl border border-slate-800 bg-[#080f12] shadow-2xl">
         <iframe
-          src="/games/orbital-garden/"
+          src="/games/orbital-garden/index.html"
           title="Orbital Garden interactive 3D particle experience"
           className="block h-[920px] w-full sm:h-[1050px]"
           loading="eager"
